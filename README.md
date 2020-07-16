@@ -93,3 +93,4 @@ The following scripts uses as input a txt file (foldes.txt) generated with
 
 - generate.bev.and.pcds.sh
 - generate.videos.bash
+- copy.img2.to.img3.bash: this script copies the "selected" images from original KITTI/DATA folder (example image_03/data) to somewhere else using the filenames contained in some other folder, example image_02
