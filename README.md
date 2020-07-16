@@ -59,6 +59,7 @@ reproject takes as input the following list of arguments
 
 
 Example for Pycharm debug:
+```
 /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/pred/0000001018_pred.npz
 /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/alvaromask/0000001018pred.png
 out_aanet.ply 
@@ -66,6 +67,7 @@ out_aanet.ply
 /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/image_02/0000001018.png 
 /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/image_03/0000001018.png 
 /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/bev/0000001018.png
+```
 
 example output during execution:
 
