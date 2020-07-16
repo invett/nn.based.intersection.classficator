@@ -16,7 +16,8 @@
 - files in *alvaromask* are created with **DualBiSeNet** (this correspond to the IV2020 Alvaro Submission)
 - files in *pred* are created with **aanet** ; this are numpy-compressed images created with this version of [aanet](https://github.com/invett/aanet)
 - files in *bev* and *pcd* are created with the **reproject.py** Python script; the PCD creation needs the PCL-Library installed as it uses *pcl_ply2pcd*; you don't need to call directly this script, but instead use the *generate.bev.and.pcds.sh* bash script in /scripts 
-.
+
+```.
 ├── 2011_09_30_drive_0018_sync
 │   ├── alvaromask
 │   ├── bev
@@ -33,6 +34,7 @@
 │   └── pred
 .
 .
+```
 
 # Video Generations
 
