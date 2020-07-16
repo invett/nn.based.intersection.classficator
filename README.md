@@ -1,12 +1,10 @@
 # nn.based.intersection.classficator
 
-# TODO
-
 - [ ] Create dataloader
 - [ ] Create NN
 - [ ] Try to classify using BEVs + LABELs
 
-# Experiments were performed on the RTX Ivan PC.
+Experiments were performed on the RTX Ivan PC.
 
 
 # Data Folder structure.
