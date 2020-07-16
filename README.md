@@ -81,7 +81,7 @@ Available dimensions: x y z rgb
 > Saving /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/pcd/0000001017.pcd [done, 2 ms : 45604 points]
 ```
 
-# Video Generations
+# Video Generation
 
 Given the folders' structure you can generate a mosaic of BEVs+Images using the script _generate.videos.bash_
 
