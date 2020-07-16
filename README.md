@@ -69,13 +69,15 @@ out_aanet.ply
 
 example output during execution:
 
-```python reproject.py /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/pred/0000001017_pred.npz /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/alvaromask/0000001017pred.png out_aanet.ply /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/pcd/0000001017.pcd /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/image_02/0000001017.png /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/image_03/0000001017.png /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/bev/0000001017.png
+```
+python reproject.py /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/pred/0000001017_pred.npz /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/alvaromask/0000001017pred.png out_aanet.ply /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/pcd/0000001017.pcd /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/image_02/0000001017.png /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/image_03/0000001017.png /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/bev/0000001017.png
 out_aanet.ply saved
 Convert a PLY file to PCD format. For more information, use: pcl_ply2pcd -h
 PCD output format: binary
 > Loading out_aanet.ply [done, 110 ms : 45604 points]
 Available dimensions: x y z rgb
-> Saving /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/pcd/0000001017.pcd [done, 2 ms : 45604 points]```
+> Saving /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/pcd/0000001017.pcd [done, 2 ms : 45604 points]
+```
 
 # Video Generations
 
