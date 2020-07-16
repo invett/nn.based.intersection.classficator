@@ -109,13 +109,15 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
                     print('Saving report and confusion matrix')
                     df_report = pd.DataFrame.from_dict(report)
                     df_report = df_report.transpose()
-                    df_report.to_csv('report.csv')
+                    df_report.to_csv('report.csv', sep=';')
                     df_matrix = pd.DataFrame(data=confusion_matrix,
                                              index=['type 0', 'type 1', 'type 2', 'type 3', 'type 4', 'type 5',
                                                     'type6'],
                                              columns=['type 0', 'type 1', 'type 2', 'type 3', 'type 4', 'type 5',
                                                       'type6'])
-                    df_matrix.to_csv('confusionMatrix.csv')
+                    df_matrix.to_csv('confusionMatrix.csv', sep=';')
+                else:
+                    print('Validation accuracy: {}'.format(kfold_acc))
 
             else:
                 patience += 1
