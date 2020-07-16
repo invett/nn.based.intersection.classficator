@@ -1,6 +1,6 @@
 # Dataloader for DualBisenet under prepared Kitti dataset
 import os
-from cv2 import imread
+import cv2
 from torch.utils.data import Dataset
 import pandas as pd
 
@@ -26,6 +26,7 @@ class SequenceDataset(Dataset):
                     filelist.append(os.path.join(folder, file))
 
         self.file_list = filelist
+        assert len(self.file_list) > 0, 'Training files missing'
 
     def __len__(self):
 
@@ -36,14 +37,15 @@ class SequenceDataset(Dataset):
         # Select file subset
         imagepath = self.file_list[idx]
 
-        image = imread(imagepath, cv2.IMREAD_UNCHANGED)
+        image = cv2.imread(imagepath, cv2.IMREAD_UNCHANGED)
 
         # Obtaining ground truth
         head, tail = os.path.split(imagepath)
+        head, _ = os.path.split(head)
         filename, _ = os.path.splitext(tail)
         gt_path = os.path.join(head, 'frames_topology.txt')
-        data = pd.read_csv(gt_path, sep=';', header=None, dtype=str)
-        gTruth = int(data.loc[0] == filename)
+        gtdata = pd.read_csv(gt_path, sep=';', header=None, dtype=str)
+        gTruth = int(gtdata.loc[gtdata[0] == filename][2])
 
         sample = {'data': image, 'label': gTruth}
 

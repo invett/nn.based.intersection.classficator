@@ -2,23 +2,28 @@ import argparse
 import os
 import numpy as np
 import tqdm
+import pandas as pd
 
 import torch
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
+from dataloaders.transforms import Rescale, ToTensor, Normalize
 
 from dataloaders.sequencedataloader import SequenceDataset
 from model.resnet_models import get_model_resnet, get_model_resnext
 from sklearn.model_selection import KFold
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 
 
 def validation(args, model, criterion, dataloader_val):
+    print('\nstart val!')
     model.eval()
     loss_record = 0.0
-    conf_matrix = np.zeros((args.num_classes, args.num_classes))
+    labellist = np.array([])
+    predlist = np.array([])
+    target_names = ['type 0', 'type 1', 'type 2', 'type 3', 'type 4', 'type 5', 'type6']
     for sample in dataloader_val:
-        data = sample['image']
+        data = sample['data']
         label = sample['label']
 
         if torch.cuda.is_available() and args.use_gpu:
@@ -31,12 +36,21 @@ def validation(args, model, criterion, dataloader_val):
         loss_record += loss.item()
 
         predict = torch.argmax(output, 1)
-        conf_matrix += confusion_matrix(label, predict)
+        label = label.squeeze().cpu().numpy()
+        predict = predict.squeeze().cpu().numpy()
+
+        labellist = np.append(labellist, label)
+        predlist = np.append(predlist, predict)
 
     loss_val_mean = loss_record / len(dataloader_val)
     print('loss for validation : %f' % loss_val_mean)
-    acc, acc_perclass, precision_perclass, recall_perclass = computemetrics(conf_matrix) ## Nope
-    return acc, acc_perclass, precision_perclass, recall_perclass
+
+    # Calculate validation metrics
+    conf_matrix = confusion_matrix(labellist, predlist)
+    report_dict = classification_report(labellist, predlist, target_names=target_names, output_dict=True,
+                                        zero_division=0)
+    acc = accuracy_score(labellist, predlist)
+    return report_dict, conf_matrix, acc
 
 
 def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
@@ -55,7 +69,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
         model.zero_grad()
 
         for sample in dataloader_train:
-            data = sample['image']
+            data = sample['data']
             label = sample['label']
 
             if torch.cuda.is_available() and args.use_gpu:
@@ -81,7 +95,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
         print('loss for train : %f' % loss_train_mean)
 
         if epoch % args.validation_step == 0:
-            acc = validation(args, model, criterion, dataloader_val)
+            report, confusion_matrix, acc = validation(args, model, criterion, dataloader_val)
 
             if kfold_acc < acc:
                 patience = 0
@@ -89,18 +103,29 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
                 if acc_pre < kfold_acc:
                     bestModel = model.state_dict()
                     acc_pre = kfold_acc
-                    print('Best global accuracy\n')
-                    print('Saving model: ', os.path.join(args.save_model_path, 'model_{}.pth'.format(args.model)))
-                    torch.save(bestModel, os.path.join(args.save_model_path, 'model_{}.pth'.format(args.model)))
+                    print('Best global accuracy: {}'.format(kfold_acc))
+                    print('Saving model: ', os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
+                    torch.save(bestModel, os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
+                    print('Saving report and confusion matrix')
+                    df_report = pd.DataFrame.from_dict(report)
+                    df_report = df_report.transpose()
+                    df_report.to_csv('report.csv')
+                    df_matrix = pd.DataFrame(data=confusion_matrix,
+                                             index=['type 0', 'type 1', 'type 2', 'type 3', 'type 4', 'type 5',
+                                                    'type6'],
+                                             columns=['type 0', 'type 1', 'type 2', 'type 3', 'type 4', 'type 5',
+                                                      'type6'])
+                    df_matrix.to_csv('confusionMatrix.csv')
+
             else:
                 patience += 1
 
-        if patience >= args.patience:
+        if patience >= args.patience > 0:
             break
 
     with open('acc_log.txt', 'a') as logfile:
-        logfile.write('Acc: {}\n'.format(acc_pre))
-        print('acc: {}\n'.format(acc_pre))
+        logfile.write('Acc: {}\n'.format(kfold_acc))
+        print('acc: {}\n'.format(kfold_acc))
 
     return acc_pre
 
@@ -110,53 +135,77 @@ def main(args):
     acc = 0.0
 
     # create dataset and dataloader
-    data_path = args.data
+    data_path = args.dataset
 
     dataset = SequenceDataset(data_path,
                               transform=transforms.Compose([
-                                  transforms.Resize(224, 224),
-                                  transforms.ToTensor(),
-                                  transforms.Normalize([0.485, 0.456, 0.406],
-                                                       [0.229, 0.224, 0.225])
+                                  Rescale((224, 224)),
+                                  Normalize(),
+                                  ToTensor()
                               ]))
 
     kf = KFold(n_splits=10, shuffle=False)
 
-    for i, train_index, test_index in enumerate(kf.split(list(range(len(dataset))))):
+    for train_index, test_index in kf.split(list(range(len(dataset)))):
         train_data = torch.utils.data.Subset(dataset, train_index)
         test_data = torch.utils.data.Subset(dataset, test_index)
 
-        dataloader_train = DataLoader(train_data, batch_size=args.batch_size, shuffle=True, num_workers=4)
-        dataloader_test = DataLoader(test_data, batch_size=args.batch_size, shuffle=True, num_workers=4)
+        dataloader_train = DataLoader(train_data, batch_size=args.batch_size, shuffle=True,
+                                      num_workers=args.num_workers)
+        dataloader_test = DataLoader(test_data, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
 
         # Build model
-        if args.model[0:6] == 'resnet':
-            model = get_model_resnet(args.model)
-        elif args.model[0:7] == 'resnext':
-            model = get_model_resnext(args.model)
+        if args.resnetmodel[0:6] == 'resnet':
+            model = get_model_resnet(args.resnetmodel, args.num_classes)
+        elif args.resnetmodel[0:7] == 'resnext':
+            model = get_model_resnext(args.resnetmodel, args.num_classes)
         else:
             print('not supported model \n')
             exit()
+        if torch.cuda.is_available() and args.use_gpu:
+            model = model.cuda()
 
-            # Build optimizer
-            # build optimizer
-            if args.optimizer == 'rmsprop':
-                optimizer = torch.optim.RMSprop(model.parameters(), args.learning_rate, momentum=args.momentum)
-            elif args.optimizer == 'sgd':
-                optimizer = torch.optim.SGD(model.parameters(), args.learning_rate, momentum=args.momentum)
-            elif args.optimizer == 'adam':
-                optimizer = torch.optim.Adam(model.parameters(), args.learning_rate)
-            elif args.optimizer == 'ASGD':
-                optimizer = torch.optim.ASGD(model.parameters(), args.learning_rate)
-            elif args.optimizer == 'Adamax':
-                optimizer = torch.optim.Adamax(model.parameters(), args.learning_rate)
-            else:
-                print('not supported optimizer \n')
-                return None
+        # build optimizer
+        if args.optimizer == 'rmsprop':
+            optimizer = torch.optim.RMSprop(model.parameters(), args.learning_rate, momentum=args.momentum)
+        elif args.optimizer == 'sgd':
+            optimizer = torch.optim.SGD(model.parameters(), args.learning_rate, momentum=args.momentum)
+        elif args.optimizer == 'adam':
+            optimizer = torch.optim.Adam(model.parameters(), args.learning_rate)
+        elif args.optimizer == 'ASGD':
+            optimizer = torch.optim.ASGD(model.parameters(), args.learning_rate)
+        elif args.optimizer == 'Adamax':
+            optimizer = torch.optim.Adamax(model.parameters(), args.learning_rate)
+        else:
+            print('not supported optimizer \n')
+            exit()
 
         # train model
         acc = train(args, model, optimizer, dataloader_train, dataloader_test, acc)
 
 
 if __name__ == '__main__':
-    pass
+    # basic parameters
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
+    parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
+                                                                       'checkpoint (epochs)')
+    parser.add_argument('--dataset', type=str, help='path to the dataset you are using.')
+    parser.add_argument('--batch_size', type=int, default=4, help='Number of images in each batch')
+    parser.add_argument('--resnetmodel', type=str, default="resnet18",
+                        help='The context path model you are using, resnet18, resnet50 or resnet101.')
+    parser.add_argument('--learning_rate', type=float, default=0.01, help='learning rate used for train')
+    parser.add_argument('--momentum', type=float, default=0.99, help='momentum used for train')
+
+    parser.add_argument('--num_workers', type=int, default=4, help='num of workers')
+    parser.add_argument('--num_classes', type=int, default=7, help='num of object classes')
+    parser.add_argument('--cuda', type=str, default='0', help='GPU is used for training')
+    parser.add_argument('--use_gpu', type=bool, default=True, help='whether to user gpu for training')
+    parser.add_argument('--save_model_path', type=str, default='./trainedmodels/', help='path to save model')
+    parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
+    parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
+
+    args = parser.parse_args()
+
+    print(args)
+    main(args)
