@@ -7,9 +7,9 @@ import pandas as pd
 import torch
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
-from dataloaders.transforms import Rescale, ToTensor, Normalize
+from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev
 
-from dataloaders.sequencedataloader import SequenceDataset
+from dataloaders.sequencedataloader import SequenceDataset, fromAANETandDualBisnet
 from model.resnet_models import get_model_resnet, get_model_resnext
 from sklearn.model_selection import KFold
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
@@ -150,12 +150,19 @@ def main(args):
     # create dataset and dataloader
     data_path = args.dataset
 
-    dataset = SequenceDataset(data_path,
-                              transform=transforms.Compose([
-                                  Rescale((224, 224)),
-                                  Normalize(),
-                                  ToTensor()
-                              ]))
+    if args.dataloader == "SequenceDataset":
+        dataset = SequenceDataset(data_path,
+                                  transform=transforms.Compose([Rescale((224, 224)),
+                                                                Normalize(),
+                                                                ToTensor()
+                                                                ]))
+    elif args.dataloader == "fromAANETandDualBisnet":
+            dataset = fromAANETandDualBisnet(data_path,
+                                        transform=transforms.Compose([GenerateBev(),
+                                                                      Rescale((224, 224)),
+                                                                      Normalize(),
+                                                                      ToTensor()]))
+
 
     kf = KFold(n_splits=10, shuffle=False)
 
@@ -203,6 +210,8 @@ def main(args):
 if __name__ == '__main__':
     # basic parameters
     parser = argparse.ArgumentParser()
+    parser.add_argument('--dataloader', type=str, default="SequenceDataset", help='Dataloader to use (SequenceDataset, fromAANETandDualBisnet)')
+
     parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
     parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
                                                                        'checkpoint (epochs)')
