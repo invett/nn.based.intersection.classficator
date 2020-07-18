@@ -7,6 +7,7 @@ import pandas as pd
 import torch
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
+from torch.utils.data.sampler import SubsetRandomSampler
 from dataloaders.transforms import Rescale, ToTensor, Normalize
 
 from dataloaders.sequencedataloader import SequenceDataset
@@ -63,6 +64,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
         os.mkdir(args.save_model_path)
 
     kfold_acc = 0.0
+    kfold_loss = np.inf
     criterion = torch.nn.CrossEntropyLoss()
 
     for epoch in range(args.num_epochs):
@@ -106,9 +108,10 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
             report, confusion_matrix, acc, val_loss = validation(args, model, criterion, dataloader_val)
             writer.add_scalar('Val/loss', val_loss, epoch)
             writer.add_scalar('Val/acc', acc, epoch)
-            if kfold_acc < acc:
+            if kfold_acc < acc or kfold_loss > loss_train_mean:
                 patience = 0
                 kfold_acc = acc
+                kfold_loss = loss_train_mean
                 if acc_pre < kfold_acc:
                     bestModel = model.state_dict()
                     acc_pre = kfold_acc
@@ -121,6 +124,9 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
                     df_report.to_csv('report.csv', sep=';')
                     df_matrix = pd.DataFrame(data=confusion_matrix)
                     df_matrix.to_csv('confusionMatrix.csv', sep=';')
+
+            elif epoch > args.patience_start:
+                patience = 0
 
             else:
                 patience += 1
@@ -156,15 +162,16 @@ def main(args):
     kf = KFold(n_splits=10, shuffle=True)
 
     for train_index, test_index in kf.split(list(range(len(dataset)))):
-        train_data = torch.utils.data.Subset(dataset, train_index)
-        test_data = torch.utils.data.Subset(dataset, test_index)
+        train_data_sampler = SubsetRandomSampler(dataset, train_index)
+        test_data_sampler = SubsetRandomSampler(dataset, test_index)
 
         print('Train data size: {}'.format(len(train_data)))
         print('Test data size: {}\n'.format(len(test_data)))
 
-        dataloader_train = DataLoader(train_data, batch_size=args.batch_size, shuffle=False,
+        dataloader_train = DataLoader(dataset, batch_size=args.batch_size, sampler=train_data_sampler, shuffle=False,
                                       num_workers=args.num_workers)
-        dataloader_test = DataLoader(test_data, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+        dataloader_test = DataLoader(dataset, batch_size=args.batch_size, sampler=test_data_sampler, shuffle=False,
+                                     num_workers=args.num_workers)
 
         # Build model
         if args.resnetmodel[0:6] == 'resnet':
@@ -216,7 +223,8 @@ if __name__ == '__main__':
     parser.add_argument('--save_model_path', type=str, default='./trainedmodels/', help='path to save model')
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
     parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
-
+    parser.add_argument('--patience_start', type=int, default=50,
+                        help='Starting epoch for patience of validation. Default, 50. ')
     args = parser.parse_args()
 
     print(args)
