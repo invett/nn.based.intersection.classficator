@@ -22,7 +22,7 @@ def validation(args, model, criterion, dataloader_val):
     loss_record = 0.0
     labellist = np.array([])
     predlist = np.array([])
-    target_names = ['type 0', 'type 1', 'type 2', 'type 3', 'type 4', 'type 5', 'type6']
+
     for sample in dataloader_val:
         data = sample['data']
         label = sample['label']
@@ -44,18 +44,18 @@ def validation(args, model, criterion, dataloader_val):
         predlist = np.append(predlist, predict)
 
     loss_val_mean = loss_record / len(dataloader_val)
-    print('loss for validation : %f\n' % loss_val_mean)
+    print('loss for validation : %f' % loss_val_mean)
 
     # Calculate validation metrics
     conf_matrix = confusion_matrix(labellist, predlist)
-    report_dict = classification_report(labellist, predlist, target_names=target_names, output_dict=True,
-                                        zero_division=0)
+    report_dict = classification_report(labellist, predlist, output_dict=True, zero_division=0)
     acc = accuracy_score(labellist, predlist)
+    print('Accuracy for validation : %f\n' % acc)
+
     return report_dict, conf_matrix, acc, loss_val_mean
 
 
 def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
-
     writer = SummaryWriter()
     step = 0
 
@@ -119,14 +119,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
                     df_report = pd.DataFrame.from_dict(report)
                     df_report = df_report.transpose()
                     df_report.to_csv('report.csv', sep=';')
-                    df_matrix = pd.DataFrame(data=confusion_matrix,
-                                             index=['type 0', 'type 1', 'type 2', 'type 3', 'type 4', 'type 5',
-                                                    'type6'],
-                                             columns=['type 0', 'type 1', 'type 2', 'type 3', 'type 4', 'type 5',
-                                                      'type6'])
+                    df_matrix = pd.DataFrame(data=confusion_matrix)
                     df_matrix.to_csv('confusionMatrix.csv', sep=';')
-                else:
-                    print('Validation accuracy: {}'.format(kfold_acc))
 
             else:
                 patience += 1
@@ -153,11 +147,13 @@ def main(args):
     dataset = SequenceDataset(data_path,
                               transform=transforms.Compose([
                                   Rescale((224, 224)),
+                                  transforms.RandomAffine(30, translate=(-0.1, 0.1), scale=(0.8, 1.2),
+                                                          shear=(-0.1, 0.1)),
                                   Normalize(),
                                   ToTensor()
                               ]))
 
-    kf = KFold(n_splits=10, shuffle=False)
+    kf = KFold(n_splits=10, shuffle=True)
 
     for train_index, test_index in kf.split(list(range(len(dataset)))):
         train_data = torch.utils.data.Subset(dataset, train_index)
@@ -166,9 +162,9 @@ def main(args):
         print('Train data size: {}'.format(len(train_data)))
         print('Test data size: {}\n'.format(len(test_data)))
 
-        dataloader_train = DataLoader(train_data, batch_size=args.batch_size, shuffle=True,
+        dataloader_train = DataLoader(train_data, batch_size=args.batch_size, shuffle=False,
                                       num_workers=args.num_workers)
-        dataloader_test = DataLoader(test_data, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+        dataloader_test = DataLoader(test_data, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
         # Build model
         if args.resnetmodel[0:6] == 'resnet':
@@ -183,15 +179,15 @@ def main(args):
 
         # build optimizer
         if args.optimizer == 'rmsprop':
-            optimizer = torch.optim.RMSprop(model.parameters(), args.learning_rate, momentum=args.momentum)
+            optimizer = torch.optim.RMSprop(model.parameters(), args.lr, momentum=args.momentum)
         elif args.optimizer == 'sgd':
-            optimizer = torch.optim.SGD(model.parameters(), args.learning_rate, momentum=args.momentum)
+            optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum)
         elif args.optimizer == 'adam':
-            optimizer = torch.optim.Adam(model.parameters(), args.learning_rate)
+            optimizer = torch.optim.Adam(model.parameters(), args.lr)
         elif args.optimizer == 'ASGD':
-            optimizer = torch.optim.ASGD(model.parameters(), args.learning_rate)
+            optimizer = torch.optim.ASGD(model.parameters(), args.lr)
         elif args.optimizer == 'Adamax':
-            optimizer = torch.optim.Adamax(model.parameters(), args.learning_rate)
+            optimizer = torch.optim.Adamax(model.parameters(), args.lr)
         else:
             print('not supported optimizer \n')
             exit()
@@ -210,7 +206,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=4, help='Number of images in each batch')
     parser.add_argument('--resnetmodel', type=str, default="resnet18",
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
-    parser.add_argument('--learning_rate', type=float, default=0.001, help='learning rate used for train')
+    parser.add_argument('--lr', type=float, default=0.0001, help='learning rate used for train')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum used for train')
 
     parser.add_argument('--num_workers', type=int, default=4, help='num of workers')
