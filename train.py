@@ -8,7 +8,6 @@ import torch
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
-from dataloaders.transforms import Rescale, ToTensor, Normalize
 
 from dataloaders.sequencedataloader import SequenceDataset
 from model.resnet_models import get_model_resnet, get_model_resnext
@@ -150,27 +149,37 @@ def main(args):
     # create dataset and dataloader
     data_path = args.dataset
 
-    dataset = SequenceDataset(data_path,
-                              transform=transforms.Compose([
-                                  Rescale((224, 224)),
-                                  transforms.RandomAffine(30, translate=(-0.1, 0.1), scale=(0.8, 1.2),
-                                                          shear=(-0.1, 0.1)),
-                                  Normalize(),
-                                  ToTensor()
-                              ]))
+    train_transforms = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.RandomAffine(15, translate=(0.1, 0.1), scale=(0.8, 1.2),
+                                shear=(-0.1, 0.1)),
+        transforms.ToTensor(),
+        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+    ])
+
+    test_transforms = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+    ])
+
+    train_dataset = SequenceDataset(data_path, transform=train_transforms)
+
+    test_dataset = SequenceDataset(data_path, transform=test_transforms)
 
     kf = KFold(n_splits=10, shuffle=True)
 
-    for train_index, test_index in kf.split(list(range(len(dataset)))):
-        train_data_sampler = SubsetRandomSampler(dataset, train_index)
-        test_data_sampler = SubsetRandomSampler(dataset, test_index)
+    for train_index, test_index in kf.split(list(range(len(train_dataset)))):
+        train_data_sampler = SubsetRandomSampler(train_index)
+        test_data_sampler = SubsetRandomSampler(test_index)
 
-        print('Train data size: {}'.format(len(train_data)))
-        print('Test data size: {}\n'.format(len(test_data)))
+        print('Train data size: {}'.format(len(train_index)))
+        print('Test data size: {}\n'.format(len(test_index)))
 
-        dataloader_train = DataLoader(dataset, batch_size=args.batch_size, sampler=train_data_sampler, shuffle=False,
+        dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_data_sampler,
+                                      shuffle=False,
                                       num_workers=args.num_workers)
-        dataloader_test = DataLoader(dataset, batch_size=args.batch_size, sampler=test_data_sampler, shuffle=False,
+        dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, sampler=test_data_sampler, shuffle=False,
                                      num_workers=args.num_workers)
 
         # Build model
