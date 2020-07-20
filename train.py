@@ -4,6 +4,8 @@ import numpy as np
 import tqdm
 import pandas as pd
 
+import warnings
+
 import torch
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
@@ -156,26 +158,29 @@ def main(args):
                                                                 Normalize(),
                                                                 ToTensor()
                                                                 ]))
-    elif args.dataloader == "fromAANETandDualBisnet":
+    elif args.dataloader == "fromAANETandDualBisenet":
         dataset = fromAANETandDualBisnet(data_path,
                                          transform=transforms.Compose([GenerateBev(decimate=0.2),
                                                                        Rescale((224, 224)),
                                                                        Normalize(),
                                                                        ToTensor()]))
+    else:
+        print('Wrong Dataset')
+        exit()
 
     kf = KFold(n_splits=10, shuffle=True)
 
-    for train_index, test_index in kf.split(list(range(len(dataset)))):
+    for train_index, val_index in kf.split(list(range(len(dataset)))):
         train_data_sampler = SubsetRandomSampler(train_index)
-        test_data_sampler = SubsetRandomSampler(test_index)
+        val_data_sampler = SubsetRandomSampler(val_index)
 
         print('Train data size: {}'.format(len(train_index)))
-        print('Test data size: {}\n'.format(len(test_index)))
+        print('Test data size: {}\n'.format(len(val_index)))
 
-        dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_data_sampler,
+        dataloader_train = DataLoader(dataset, batch_size=args.batch_size, sampler=train_data_sampler,
                                       shuffle=False,
                                       num_workers=args.num_workers)
-        dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, sampler=test_data_sampler, shuffle=False,
+        dataloader_test = DataLoader(dataset, batch_size=args.batch_size, sampler=val_data_sampler, shuffle=False,
                                      num_workers=args.num_workers)
 
         # Build model
@@ -212,7 +217,7 @@ if __name__ == '__main__':
     # basic parameters
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataloader', type=str, default="SequenceDataset",
-                        help='Dataloader to use (SequenceDataset, fromAANETandDualBisnet)')
+                        help='Dataloader to use (SequenceDataset, fromAANETandDualBisenet)')
 
     parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
     parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
@@ -236,4 +241,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     print(args)
+    warnings.filterwarnings("ignore")
     main(args)

@@ -2,7 +2,8 @@ import torch
 import numpy as np
 import cv2.cv2 as cv2
 from scipy.spatial.transform import Rotation as R
-import matplotlib.pyplot as plt
+from skimage.transform import resize
+# import matplotlib.pyplot as plt
 
 # For debugging
 ShowImage = False
@@ -23,7 +24,7 @@ class Rescale(object):
 
     def __call__(self, image):
 
-        h, w = image.size
+        h, w = image.shape[:2]
         if isinstance(self.output_size, int):
             if h > w:
                 new_h, new_w = self.output_size * h / w, self.output_size
@@ -34,7 +35,7 @@ class Rescale(object):
 
         new_h, new_w = int(new_h), int(new_w)
 
-        image = image.resize((new_h, new_w))
+        image = resize(image, (new_h, new_w), anti_aliasing=True)
 
         return image
 
