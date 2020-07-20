@@ -150,7 +150,6 @@ def main(args):
     # create dataset and dataloader
     data_path = args.dataset
 
-
     if args.dataloader == "SequenceDataset":
         dataset = SequenceDataset(data_path,
                                   transform=transforms.Compose([Rescale((224, 224)),
@@ -158,19 +157,15 @@ def main(args):
                                                                 ToTensor()
                                                                 ]))
     elif args.dataloader == "fromAANETandDualBisnet":
-            dataset = fromAANETandDualBisnet(data_path,
-                                        transform=transforms.Compose([GenerateBev(decimate=0.2),
-                                                                      Rescale((224, 224)),
-                                                                      Normalize(),
-                                                                      ToTensor()]))
-
-    train_dataset = SequenceDataset(data_path, transform=train_transforms)
-
-    test_dataset = SequenceDataset(data_path, transform=test_transforms)
+        dataset = fromAANETandDualBisnet(data_path,
+                                         transform=transforms.Compose([GenerateBev(decimate=0.2),
+                                                                       Rescale((224, 224)),
+                                                                       Normalize(),
+                                                                       ToTensor()]))
 
     kf = KFold(n_splits=10, shuffle=True)
 
-    for train_index, test_index in kf.split(list(range(len(train_dataset)))):
+    for train_index, test_index in kf.split(list(range(len(dataset)))):
         train_data_sampler = SubsetRandomSampler(train_index)
         test_data_sampler = SubsetRandomSampler(test_index)
 
@@ -216,7 +211,8 @@ def main(args):
 if __name__ == '__main__':
     # basic parameters
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataloader', type=str, default="SequenceDataset", help='Dataloader to use (SequenceDataset, fromAANETandDualBisnet)')
+    parser.add_argument('--dataloader', type=str, default="SequenceDataset",
+                        help='Dataloader to use (SequenceDataset, fromAANETandDualBisnet)')
 
     parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
     parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
