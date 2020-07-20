@@ -12,9 +12,10 @@ from torch.utils.data import DataLoader
 from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev
 from torch.utils.data.sampler import SubsetRandomSampler
 
-from dataloaders.sequencedataloader import SequenceDataset, fromAANETandDualBisnet
+from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisnet
 from model.resnet_models import get_model_resnet, get_model_resnext
 from sklearn.model_selection import KFold
+from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 from tensorboardX import SummaryWriter
 
@@ -123,9 +124,9 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
                     print('Saving report and confusion matrix\n')
                     df_report = pd.DataFrame.from_dict(report)
                     df_report = df_report.transpose()
-                    df_report.to_csv('report.csv', sep=';')
+                    df_report.to_csv('validationreport.csv', sep=';')
                     df_matrix = pd.DataFrame(data=confusion_matrix)
-                    df_matrix.to_csv('confusionMatrix.csv', sep=';')
+                    df_matrix.to_csv('validationconfusionMatrix.csv', sep=';')
 
             elif epoch > args.patience_start:
                 patience = 0
@@ -152,36 +153,41 @@ def main(args):
     # create dataset and dataloader
     data_path = args.dataset
 
-    if args.dataloader == "SequenceDataset":
-        dataset = SequenceDataset(data_path,
-                                  transform=transforms.Compose([Rescale((224, 224)),
-                                                                Normalize(),
-                                                                ToTensor()
-                                                                ]))
-    elif args.dataloader == "fromAANETandDualBisenet":
-        dataset = fromAANETandDualBisnet(data_path,
-                                         transform=transforms.Compose([GenerateBev(decimate=0.2),
-                                                                       Rescale((224, 224)),
-                                                                       Normalize(),
-                                                                       ToTensor()]))
-    else:
-        print('Wrong Dataset')
-        exit()
+    # All sequence folders
+    folders = [os.path.join(data_path, folder) for folder in os.listdir(data_path) if
+               os.path.isdir(os.path.join(data_path, folder))]
 
-    kf = KFold(n_splits=10, shuffle=True)
+    # Exclude test samples
+    folders.remove(os.path.join(data_path, '2011_10_03_drive_0027_sync'))
+    test_path = os.path.join(data_path, '2011_10_03_drive_0027_sync', 'bev')
 
-    for train_index, val_index in kf.split(list(range(len(dataset)))):
-        train_data_sampler = SubsetRandomSampler(train_index)
-        val_data_sampler = SubsetRandomSampler(val_index)
+    test_dataset = TestDataset(test_path, transform=transforms.Compose([transforms.Resize((224, 224)),
+                                                                        transforms.ToTensor(),
+                                                                        transforms.Normalize((0.485, 0.456, 0.406),
+                                                                                             (0.229, 0.224, 0.225))
+                                                                        ]))
 
-        print('Train data size: {}'.format(len(train_index)))
-        print('Test data size: {}\n'.format(len(val_index)))
+    dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, sampler=val_data_sampler, shuffle=False,
+                                 num_workers=args.num_workers)
 
-        dataloader_train = DataLoader(dataset, batch_size=args.batch_size, sampler=train_data_sampler,
-                                      shuffle=False,
+    loo = LeaveOneOut()
+    for train_index, val_index in loo.split(folders):
+        train_path, val_path = folders[train_index], folders[val_index]
+        val_dataset = fromAANETandDualBisnet(val_path, transform=transforms.Compose([GenerateBev(decimate=0.2),
+                                                                                     Rescale((224, 224)),
+                                                                                     Normalize(),
+                                                                                     ToTensor()]))
+
+        train_dataset = fromAANETandDualBisnet(train_path, transform=transforms.Compose([GenerateBev(decimate=0.2),
+                                                                                         Rescale((224, 224)),
+                                                                                         Normalize(),
+                                                                                         ToTensor()]))
+
+        dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_data_sampler,
+                                      shuffle=True,
                                       num_workers=args.num_workers)
-        dataloader_test = DataLoader(dataset, batch_size=args.batch_size, sampler=val_data_sampler, shuffle=False,
-                                     num_workers=args.num_workers)
+        dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, sampler=val_data_sampler, shuffle=True,
+                                    num_workers=args.num_workers)
 
         # Build model
         if args.resnetmodel[0:6] == 'resnet':
@@ -210,14 +216,14 @@ def main(args):
             exit()
 
         # train model
-        acc = train(args, model, optimizer, dataloader_train, dataloader_test, acc)
+        acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc)
+
+    # test(args, dataloader_test)
 
 
 if __name__ == '__main__':
     # basic parameters
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataloader', type=str, default="SequenceDataset",
-                        help='Dataloader to use (SequenceDataset, fromAANETandDualBisenet)')
 
     parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
     parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
