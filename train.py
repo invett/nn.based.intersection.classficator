@@ -158,7 +158,7 @@ def main(args):
                                                                 ]))
     elif args.dataloader == "fromAANETandDualBisnet":
             dataset = fromAANETandDualBisnet(data_path,
-                                        transform=transforms.Compose([GenerateBev(),
+                                        transform=transforms.Compose([GenerateBev(decimate=0.2),
                                                                       Rescale((224, 224)),
                                                                       Normalize(),
                                                                       ToTensor()]))

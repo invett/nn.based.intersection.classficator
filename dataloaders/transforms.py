@@ -95,6 +95,25 @@ class GenerateBev(object):
             z: the higher the value, the farther the camera will be from the ground leading to small crossing on image
     """
 
+    def __init__(self,
+                 maxdistance=50.0,
+                 decimate=1.0,
+                 random_Rx_value=2.0,
+                 random_Ry_value=15.0,
+                 random_Rz_value=2.0,
+                 random_Tx=2.0,
+                 random_Ty=2.0,
+                 random_Tz=2.0
+                 ):
+        self.maxdistance = maxdistance
+        self.decimate = decimate
+        self.random_Rx_value = random_Rx_value
+        self.random_Ry_value = random_Ry_value
+        self.random_Rz_value = random_Rz_value
+        self.random_Tx_value = random_Tx
+        self.random_Ty_value = random_Ty
+        self.random_Tz_value = random_Tz
+
     def __call__(self, sample):
 
         #this Q matrix was obtained using STEREORECTIFY; would be nice to import this part of the code too.
@@ -124,7 +143,7 @@ class GenerateBev(object):
         out_colors = out_colors[alvaro > 0]
 
         # filter by dimension
-        idx = np.fabs(out_points[:, 2]) < 50. #TODO change this value, in meters, of max distance
+        idx = np.fabs(out_points[:, 2]) < self.maxdistance
         out_points = out_points[idx]
         out_colors = out_colors.reshape(-1, 3)
         out_colors = out_colors[idx]
@@ -141,10 +160,9 @@ class GenerateBev(object):
                          [0.000000e+00, 0.000000e+00, 1.000000e+00]], dtype=np.float64)
 
         # Set here the default camera position of the camera
-        # TODO this values -2....2 for translation are currently hard coded!
-        random_Tx = np.random.uniform(-2, 2)  # HERE Z is more to the RIGHT (pos val) or LEFT (neg val) wrt forward dir.
-        random_Ty = np.random.uniform(-2, 2)  # HERE Y is FORWARD/BACKWARD (closer or farther from the crossing)
-        random_Tz = np.random.uniform(-2, 2)  # HERE Z is the CAMERA HEIGHT (closer or farther from the ground)
+        random_Tx = np.random.uniform(-self.random_Tx_value, self.random_Tx_value)  # HERE Z is more to the RIGHT (pos val) or LEFT (neg val) wrt forward dir.
+        random_Ty = np.random.uniform(-self.random_Ty_value, self.random_Ty_value)  # HERE Y is FORWARD/BACKWARD (closer or farther from the crossing)
+        random_Tz = np.random.uniform(-self.random_Tz_value, self.random_Tz_value)  # HERE Z is the CAMERA HEIGHT (closer or farther from the ground)
         
         T_00 = np.array([0.000000e+00 + random_Tx,
                          17.00000e+00 + random_Ty,
@@ -163,10 +181,9 @@ class GenerateBev(object):
 
         # Noise for data augmentation, in DEGREES.
         # y-corresponds to a "yaw" of the image, the main effect we want (15 should be enough)
-        # TODO this values -2....2 or -15...15 for rotatins are currently hard coded!
-        random_Rx = np.random.uniform(-2, 2)
-        random_Ry = np.random.uniform(-15, 15)
-        random_Rz = np.random.uniform(-2, 2)
+        random_Rx = np.random.uniform(-self.random_Rx_value, self.random_Rx_value)
+        random_Ry = np.random.uniform(-self.random_Ry_value, self.random_Ry_value)
+        random_Rz = np.random.uniform(-self.random_Rz_value, self.random_Rz_value)
 
         dataAugmentationRotationMatrixX = R.from_euler('x', random_Rx, degrees=True).as_matrix()
         dataAugmentationRotationMatrixY = R.from_euler('y', random_Ry, degrees=True).as_matrix()
@@ -180,6 +197,10 @@ class GenerateBev(object):
         reflect_matrix = np.identity(3)
         reflect_matrix[2] *= -1
         out_points = np.matmul(out_points, reflect_matrix)
+
+        # Decimate the number of remaining points using the decimate parameter.
+        remaining_points = out_points.shape[0] * self.decimate
+        out_points = out_points[np.random.choice(out_points.shape[0], int(remaining_points), replace=False), :]
 
         imagePoints, jacobians = cv2.projectPoints(objectPoints=out_points,
                                                    rvec=cv2.Rodrigues(R_00 @ baseRotationMatrix @
