@@ -197,8 +197,11 @@ class GenerateBev(object):
         out_points = np.matmul(out_points, reflect_matrix)
 
         # Decimate the number of remaining points using the decimate parameter.
-        remaining_points = out_points.shape[0] * self.decimate
-        out_points = out_points[np.random.choice(out_points.shape[0], int(remaining_points), replace=False), :]
+        pointsandcolors = np.concatenate([out_points, out_colors], axis=1)
+        remaining_points = int(pointsandcolors.shape[0] * self.decimate)
+        pointsandcolors = pointsandcolors[np.random.choice(pointsandcolors.shape[0], remaining_points, replace=False), :]
+        out_points = pointsandcolors[:, :3].astype('float64')
+        out_colors = pointsandcolors[:, 3:].astype('uint8')
 
         imagePoints, jacobians = cv2.projectPoints(objectPoints=out_points,
                                                    rvec=cv2.Rodrigues(R_00 @ baseRotationMatrix @
