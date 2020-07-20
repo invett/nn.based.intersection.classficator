@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror
 from torch.utils.data.sampler import SubsetRandomSampler
 
-from dataloaders.sequencedataloader import SequenceDataset, fromAANETandDualBisenet
+from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet
 from model.resnet_models import get_model_resnet, get_model_resnext
 from sklearn.model_selection import KFold
 from sklearn.model_selection import LeaveOneOut
@@ -154,11 +154,11 @@ def main(args):
     data_path = args.dataset
 
     # All sequence folders
-    folders = [os.path.join(data_path, folder) for folder in os.listdir(data_path) if
-               os.path.isdir(os.path.join(data_path, folder))]
+    folders = np.array([os.path.join(data_path, folder) for folder in os.listdir(data_path) if
+                        os.path.isdir(os.path.join(data_path, folder))])
 
     # Exclude test samples
-    folders.remove(os.path.join(data_path, '2011_10_03_drive_0027_sync'))
+    folders = folders[folders != os.path.join(data_path, '2011_10_03_drive_0027_sync')]
     test_path = os.path.join(data_path, '2011_10_03_drive_0027_sync', 'bev')
 
     test_dataset = TestDataset(test_path, transform=transforms.Compose([transforms.Resize((224, 224)),
@@ -167,27 +167,24 @@ def main(args):
                                                                                              (0.229, 0.224, 0.225))
                                                                         ]))
 
-    dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, sampler=val_data_sampler, shuffle=False,
-                                 num_workers=args.num_workers)
+    dataloader_test = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=args.num_workers)
 
     loo = LeaveOneOut()
     for train_index, val_index in loo.split(folders):
         train_path, val_path = folders[train_index], folders[val_index]
-        val_dataset = fromAANETandDualBisnet(val_path, transform=transforms.Compose([GenerateBev(decimate=0.2),
+        val_dataset = fromAANETandDualBisenet(val_path, transform=transforms.Compose([GenerateBev(decimate=0.2),
                                                                                      Rescale((224, 224)),
                                                                                      Normalize(),
                                                                                      ToTensor()]))
 
-        train_dataset = fromAANETandDualBisnet(train_path, transform=transforms.Compose([GenerateBev(decimate=0.2),
+        train_dataset = fromAANETandDualBisenet(train_path, transform=transforms.Compose([GenerateBev(decimate=0.2),
                                                                                          Rescale((224, 224)),
                                                                                          Normalize(),
                                                                                          ToTensor()]))
 
-        dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_data_sampler,
-                                      shuffle=True,
+        dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                       num_workers=args.num_workers)
-        dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, sampler=val_data_sampler, shuffle=True,
-                                    num_workers=args.num_workers)
+        dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
 
         # Build model
         if args.resnetmodel[0:6] == 'resnet':
