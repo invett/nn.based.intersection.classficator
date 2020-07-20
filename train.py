@@ -9,10 +9,10 @@ import warnings
 import torch
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
-from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev
+from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror
 from torch.utils.data.sampler import SubsetRandomSampler
 
-from dataloaders.sequencedataloader import SequenceDataset, fromAANETandDualBisnet
+from dataloaders.sequencedataloader import SequenceDataset, fromAANETandDualBisenet
 from model.resnet_models import get_model_resnet, get_model_resnext
 from sklearn.model_selection import KFold
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
@@ -159,8 +159,9 @@ def main(args):
                                                                 ToTensor()
                                                                 ]))
     elif args.dataloader == "fromAANETandDualBisenet":
-        dataset = fromAANETandDualBisnet(data_path,
-                                         transform=transforms.Compose([GenerateBev(decimate=0.2),
+        dataset = fromAANETandDualBisenet(data_path,
+                                          transform=transforms.Compose([GenerateBev(decimate=0.2),
+                                                                       Mirror(),
                                                                        Rescale((224, 224)),
                                                                        Normalize(),
                                                                        ToTensor()]))

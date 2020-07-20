@@ -57,7 +57,7 @@ class SequenceDataset(Dataset):
         return sample
 
 
-class fromAANETandDualBisnet(Dataset):
+class fromAANETandDualBisenet(Dataset):
 
     def __init__(self, root_dir, transform=None):
         """
@@ -141,9 +141,9 @@ class fromAANETandDualBisnet(Dataset):
                   'label': gTruth}
 
         if self.transform:
-            image = self.transform(sample)
+            bev_with_new_label = self.transform(sample)
 
-        sample = {'data': image, 'label': gTruth}
+        #sample = {'data': image, 'label': gTruth} #TODO delete_this_line
 
-        return sample
+        return bev_with_new_label
 
