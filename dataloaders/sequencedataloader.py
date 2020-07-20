@@ -1,6 +1,6 @@
 # Dataloader for DualBisenet under prepared Kitti dataset
 import os
-import cv2
+from PIL import Image
 from torch.utils.data import Dataset
 import pandas as pd
 from numpy import load
@@ -38,7 +38,7 @@ class SequenceDataset(Dataset):
         # Select file subset
         imagepath = self.file_list[idx]
 
-        image = cv2.imread(imagepath, cv2.IMREAD_UNCHANGED)
+        image = Image.open(imagepath)
 
         # Obtaining ground truth
         head, tail = os.path.split(imagepath)
@@ -51,7 +51,7 @@ class SequenceDataset(Dataset):
         sample = {'data': image, 'label': gTruth}
 
         if self.transform:
-            sample = self.transform(sample)
+            sample['data'] = self.transform(sample['data'])
 
         return sample
 

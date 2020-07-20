@@ -8,6 +8,7 @@ import torch
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev
+from torch.utils.data.sampler import SubsetRandomSampler
 
 from dataloaders.sequencedataloader import SequenceDataset, fromAANETandDualBisnet
 from model.resnet_models import get_model_resnet, get_model_resnext
@@ -22,7 +23,7 @@ def validation(args, model, criterion, dataloader_val):
     loss_record = 0.0
     labellist = np.array([])
     predlist = np.array([])
-    target_names = ['type 0', 'type 1', 'type 2', 'type 3', 'type 4', 'type 5', 'type6']
+
     for sample in dataloader_val:
         data = sample['data']
         label = sample['label']
@@ -44,18 +45,18 @@ def validation(args, model, criterion, dataloader_val):
         predlist = np.append(predlist, predict)
 
     loss_val_mean = loss_record / len(dataloader_val)
-    print('loss for validation : %f\n' % loss_val_mean)
+    print('loss for validation : %f' % loss_val_mean)
 
     # Calculate validation metrics
     conf_matrix = confusion_matrix(labellist, predlist)
-    report_dict = classification_report(labellist, predlist, target_names=target_names, output_dict=True,
-                                        zero_division=0)
+    report_dict = classification_report(labellist, predlist, output_dict=True, zero_division=0)
     acc = accuracy_score(labellist, predlist)
+    print('Accuracy for validation : %f\n' % acc)
+
     return report_dict, conf_matrix, acc, loss_val_mean
 
 
 def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
-
     writer = SummaryWriter()
     step = 0
 
@@ -63,6 +64,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
         os.mkdir(args.save_model_path)
 
     kfold_acc = 0.0
+    kfold_loss = np.inf
     criterion = torch.nn.CrossEntropyLoss()
 
     for epoch in range(args.num_epochs):
@@ -106,9 +108,10 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
             report, confusion_matrix, acc, val_loss = validation(args, model, criterion, dataloader_val)
             writer.add_scalar('Val/loss', val_loss, epoch)
             writer.add_scalar('Val/acc', acc, epoch)
-            if kfold_acc < acc:
+            if kfold_acc < acc or kfold_loss > loss_train_mean:
                 patience = 0
                 kfold_acc = acc
+                kfold_loss = loss_train_mean
                 if acc_pre < kfold_acc:
                     bestModel = model.state_dict()
                     acc_pre = kfold_acc
@@ -119,14 +122,11 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
                     df_report = pd.DataFrame.from_dict(report)
                     df_report = df_report.transpose()
                     df_report.to_csv('report.csv', sep=';')
-                    df_matrix = pd.DataFrame(data=confusion_matrix,
-                                             index=['type 0', 'type 1', 'type 2', 'type 3', 'type 4', 'type 5',
-                                                    'type6'],
-                                             columns=['type 0', 'type 1', 'type 2', 'type 3', 'type 4', 'type 5',
-                                                      'type6'])
+                    df_matrix = pd.DataFrame(data=confusion_matrix)
                     df_matrix.to_csv('confusionMatrix.csv', sep=';')
-                else:
-                    print('Validation accuracy: {}'.format(kfold_acc))
+
+            elif epoch > args.patience_start:
+                patience = 0
 
             else:
                 patience += 1
@@ -150,6 +150,7 @@ def main(args):
     # create dataset and dataloader
     data_path = args.dataset
 
+
     if args.dataloader == "SequenceDataset":
         dataset = SequenceDataset(data_path,
                                   transform=transforms.Compose([Rescale((224, 224)),
@@ -163,19 +164,24 @@ def main(args):
                                                                       Normalize(),
                                                                       ToTensor()]))
 
+    train_dataset = SequenceDataset(data_path, transform=train_transforms)
 
-    kf = KFold(n_splits=10, shuffle=False)
+    test_dataset = SequenceDataset(data_path, transform=test_transforms)
 
-    for train_index, test_index in kf.split(list(range(len(dataset)))):
-        train_data = torch.utils.data.Subset(dataset, train_index)
-        test_data = torch.utils.data.Subset(dataset, test_index)
+    kf = KFold(n_splits=10, shuffle=True)
 
-        print('Train data size: {}'.format(len(train_data)))
-        print('Test data size: {}\n'.format(len(test_data)))
+    for train_index, test_index in kf.split(list(range(len(train_dataset)))):
+        train_data_sampler = SubsetRandomSampler(train_index)
+        test_data_sampler = SubsetRandomSampler(test_index)
 
-        dataloader_train = DataLoader(train_data, batch_size=args.batch_size, shuffle=True,
+        print('Train data size: {}'.format(len(train_index)))
+        print('Test data size: {}\n'.format(len(test_index)))
+
+        dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_data_sampler,
+                                      shuffle=False,
                                       num_workers=args.num_workers)
-        dataloader_test = DataLoader(test_data, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+        dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, sampler=test_data_sampler, shuffle=False,
+                                     num_workers=args.num_workers)
 
         # Build model
         if args.resnetmodel[0:6] == 'resnet':
@@ -190,15 +196,15 @@ def main(args):
 
         # build optimizer
         if args.optimizer == 'rmsprop':
-            optimizer = torch.optim.RMSprop(model.parameters(), args.learning_rate, momentum=args.momentum)
+            optimizer = torch.optim.RMSprop(model.parameters(), args.lr, momentum=args.momentum)
         elif args.optimizer == 'sgd':
-            optimizer = torch.optim.SGD(model.parameters(), args.learning_rate, momentum=args.momentum)
+            optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum)
         elif args.optimizer == 'adam':
-            optimizer = torch.optim.Adam(model.parameters(), args.learning_rate)
+            optimizer = torch.optim.Adam(model.parameters(), args.lr)
         elif args.optimizer == 'ASGD':
-            optimizer = torch.optim.ASGD(model.parameters(), args.learning_rate)
+            optimizer = torch.optim.ASGD(model.parameters(), args.lr)
         elif args.optimizer == 'Adamax':
-            optimizer = torch.optim.Adamax(model.parameters(), args.learning_rate)
+            optimizer = torch.optim.Adamax(model.parameters(), args.lr)
         else:
             print('not supported optimizer \n')
             exit()
@@ -219,7 +225,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=4, help='Number of images in each batch')
     parser.add_argument('--resnetmodel', type=str, default="resnet18",
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
-    parser.add_argument('--learning_rate', type=float, default=0.001, help='learning rate used for train')
+    parser.add_argument('--lr', type=float, default=0.0001, help='learning rate used for train')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum used for train')
 
     parser.add_argument('--num_workers', type=int, default=4, help='num of workers')
@@ -229,7 +235,8 @@ if __name__ == '__main__':
     parser.add_argument('--save_model_path', type=str, default='./trainedmodels/', help='path to save model')
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
     parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
-
+    parser.add_argument('--patience_start', type=int, default=50,
+                        help='Starting epoch for patience of validation. Default, 50. ')
     args = parser.parse_args()
 
     print(args)
