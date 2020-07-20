@@ -130,5 +130,4 @@ class fromAANETandDualBisenet(Dataset):
         if self.transform:
             bev_with_new_label = self.transform(sample)
 
-        #sample = {'data': image, 'label': gTruth} #TODO delete_this_line
         return bev_with_new_label
