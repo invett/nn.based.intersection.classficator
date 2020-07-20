@@ -38,7 +38,6 @@ class Rescale(object):
 
         image = resize(image, (new_h, new_w), anti_aliasing=True)
 
-        #return image #TODO delete_this_line
         return {'data': image, 'label': label}
 
 
@@ -53,7 +52,6 @@ class ToTensor(object):
         # torch image: C X H X W
         image = image.transpose((2, 0, 1))
 
-        #return torch.from_numpy(image) #TODO delete_this_line
         return {'data': torch.from_numpy(image), 'label': torch.tensor(label)}
 
 
@@ -68,7 +66,6 @@ class Normalize(object):
         std = [0.229, 0.224, 0.225]
         image = (image - mean) / std
 
-        #return image.astype(np.float32) #TODO delete_this_line
         return {'data': image.astype(np.float32), 'label': label}
 
 
@@ -89,10 +86,8 @@ class Mirror(object):
                 label = 4
             elif label == 4:
                 label = 3
-            #label = 87 #TODO delete_this_line (was a test, i put 87 to see whether the value goes outside of the DA-routine)
             return {'data': flipped, 'label': label}
         else:
-            #label = 87 #TODO delete_this_line (was a test, i put 87 to see whether the value goes outside of the DA-routine)
             return {'data': image, 'label': label}
 
 
