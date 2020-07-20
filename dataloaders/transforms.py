@@ -22,7 +22,8 @@ class Rescale(object):
         assert isinstance(output_size, (int, tuple))
         self.output_size = output_size
 
-    def __call__(self, image):
+    def __call__(self, sample):
+        image, label = sample['data'], sample['label']
 
         h, w = image.shape[:2]
         if isinstance(self.output_size, int):
@@ -37,30 +38,62 @@ class Rescale(object):
 
         image = resize(image, (new_h, new_w), anti_aliasing=True)
 
-        return image
+        #return image #TODO delete_this_line
+        return {'data': image, 'label': label}
 
 
 class ToTensor(object):
     """Convert ndarrays in sample to Tensors."""
 
-    def __call__(self, image):
+    def __call__(self, sample):
+        image, label = sample['data'], sample['label']
+
         # swap color axis because
         # numpy image: H x W x C
         # torch image: C X H X W
         image = image.transpose((2, 0, 1))
-        return torch.from_numpy(image)
+
+        #return torch.from_numpy(image) #TODO delete_this_line
+        return {'data': torch.from_numpy(image), 'label': torch.tensor(label)}
+
 
 
 class Normalize(object):
 
-    def __call__(self, image):
+    def __call__(self, sample):
+        image, label = sample['data'], sample['label']
 
         image = image / 255
         mean = [0.485, 0.456, 0.406]
         std = [0.229, 0.224, 0.225]
         image = (image - mean) / std
 
-        return image.astype(np.float32)
+        #return image.astype(np.float32) #TODO delete_this_line
+        return {'data': image.astype(np.float32), 'label': label}
+
+
+class Mirror(object):
+
+    def __call__(self, sample):
+        image, label = sample['data'], sample['label']
+
+        if np.random.rand() > 0.5:
+            #TF.hflip(transforms.ToPILImage()(torch.tensor(image))) #TODO maybe we can do this with PIL stuff rather than opencv
+
+            flipped = cv2.flip(image, 1)
+            if label == 1:
+                label = 2
+            elif label == 2:
+                label = 1
+            elif label == 3:
+                label = 4
+            elif label == 4:
+                label = 3
+            #label = 87 #TODO delete_this_line (was a test, i put 87 to see whether the value goes outside of the DA-routine)
+            return {'data': flipped, 'label': label}
+        else:
+            #label = 87 #TODO delete_this_line (was a test, i put 87 to see whether the value goes outside of the DA-routine)
+            return {'data': image, 'label': label}
 
 
 class GenerateBev(object):
@@ -224,4 +257,4 @@ class GenerateBev(object):
             plt.imshow(cv2.cvtColor(blank_image, cv2.COLOR_RGB2BGR))
             plt.show()
 
-        return blank_image
+        return {'data': blank_image, 'label': sample['label']}

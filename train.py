@@ -9,10 +9,10 @@ import warnings
 import torch
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
-from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev
+from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror
 from torch.utils.data.sampler import SubsetRandomSampler
 
-from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisnet
+from dataloaders.sequencedataloader import SequenceDataset, fromAANETandDualBisenet
 from model.resnet_models import get_model_resnet, get_model_resnext
 from sklearn.model_selection import KFold
 from sklearn.model_selection import LeaveOneOut
