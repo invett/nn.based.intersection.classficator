@@ -75,6 +75,9 @@ class fromAANETandDualBisnet(Dataset):
         folders = [os.path.join(self.root_dir, folder) for folder in os.listdir(self.root_dir) if
                    os.path.isdir(os.path.join(self.root_dir, folder))]
 
+        # Exclude test samples
+        folders.remove(os.path.join(self.root_dir, '2011_10_03_drive_0027_sync'))
+
         aanet = []
         alvaromask = []
         image_02 = []
@@ -137,7 +140,9 @@ class fromAANETandDualBisnet(Dataset):
                   'label': gTruth}
 
         if self.transform:
-            sample = self.transform(sample)
+            image = self.transform(sample)
+
+        sample = {'data': image, 'label': gTruth}
 
         return sample
 

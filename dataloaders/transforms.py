@@ -5,7 +5,8 @@ from scipy.spatial.transform import Rotation as R
 import matplotlib.pyplot as plt
 
 # For debugging
-ShowImage = True
+ShowImage = False
+
 
 class Rescale(object):
     """Rescale the image in a sample to a given size.
@@ -52,12 +53,14 @@ class ToTensor(object):
 class Normalize(object):
 
     def __call__(self, image):
+
+        image = image / 255
         mean = [0.485, 0.456, 0.406]
         std = [0.229, 0.224, 0.225]
-        image[:, :, :3] = (image[:, :, :3] - mean) / std
+        image = (image - mean) / std
 
-        return {'data': image.astype(np.float32), 'label': label}
-       
+        return image.astype(np.float32)
+
 
 class GenerateBev(object):
     """
@@ -108,11 +111,11 @@ class GenerateBev(object):
 
     def __call__(self, sample):
 
-        #this Q matrix was obtained using STEREORECTIFY; would be nice to import this part of the code too.
+        # this Q matrix was obtained using STEREORECTIFY; would be nice to import this part of the code too.
         rev_proj_matrix = np.array([
             [1., 0., 0., -607.19281006],
             [0., 1., 0., -185.21570587],
-            [0., 0., 0.,  718.85601807],
+            [0., 0., 0., 718.85601807],
             [0., 0., -1.85185185, 0.]], dtype=np.float64)
 
         points = cv2.reprojectImageTo3D(sample['aanet'], rev_proj_matrix)
@@ -152,10 +155,13 @@ class GenerateBev(object):
                          [0.000000e+00, 0.000000e+00, 1.000000e+00]], dtype=np.float64)
 
         # Set here the default camera position of the camera
-        random_Tx = np.random.uniform(-self.random_Tx_value, self.random_Tx_value)  # HERE Z is more to the RIGHT (pos val) or LEFT (neg val) wrt forward dir.
-        random_Ty = np.random.uniform(-self.random_Ty_value, self.random_Ty_value)  # HERE Y is FORWARD/BACKWARD (closer or farther from the crossing)
-        random_Tz = np.random.uniform(-self.random_Tz_value, self.random_Tz_value)  # HERE Z is the CAMERA HEIGHT (closer or farther from the ground)
-        
+        random_Tx = np.random.uniform(-self.random_Tx_value,
+                                      self.random_Tx_value)  # HERE Z is more to the RIGHT (pos val) or LEFT (neg val) wrt forward dir.
+        random_Ty = np.random.uniform(-self.random_Ty_value,
+                                      self.random_Ty_value)  # HERE Y is FORWARD/BACKWARD (closer or farther from the crossing)
+        random_Tz = np.random.uniform(-self.random_Tz_value,
+                                      self.random_Tz_value)  # HERE Z is the CAMERA HEIGHT (closer or farther from the ground)
+
         T_00 = np.array([0.000000e+00 + random_Tx,
                          17.00000e+00 + random_Ty,
                          10.50000e+00 + random_Tz], dtype=np.float64)
@@ -214,4 +220,4 @@ class GenerateBev(object):
             plt.imshow(cv2.cvtColor(blank_image, cv2.COLOR_RGB2BGR))
             plt.show()
 
-        return {'data': blank_image.astype(np.float32), 'label': sample['label']}
+        return blank_image
