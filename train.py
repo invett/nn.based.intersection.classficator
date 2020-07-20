@@ -7,9 +7,10 @@ import pandas as pd
 import torch
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
+from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev
 from torch.utils.data.sampler import SubsetRandomSampler
 
-from dataloaders.sequencedataloader import SequenceDataset
+from dataloaders.sequencedataloader import SequenceDataset, fromAANETandDualBisnet
 from model.resnet_models import get_model_resnet, get_model_resnext
 from sklearn.model_selection import KFold
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
@@ -149,19 +150,19 @@ def main(args):
     # create dataset and dataloader
     data_path = args.dataset
 
-    train_transforms = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.RandomAffine(15, translate=(0.1, 0.1), scale=(0.8, 1.2),
-                                shear=(-0.1, 0.1)),
-        transforms.ToTensor(),
-        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
-    ])
 
-    test_transforms = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
-    ])
+    if args.dataloader == "SequenceDataset":
+        dataset = SequenceDataset(data_path,
+                                  transform=transforms.Compose([Rescale((224, 224)),
+                                                                Normalize(),
+                                                                ToTensor()
+                                                                ]))
+    elif args.dataloader == "fromAANETandDualBisnet":
+            dataset = fromAANETandDualBisnet(data_path,
+                                        transform=transforms.Compose([GenerateBev(decimate=0.2),
+                                                                      Rescale((224, 224)),
+                                                                      Normalize(),
+                                                                      ToTensor()]))
 
     train_dataset = SequenceDataset(data_path, transform=train_transforms)
 
@@ -215,6 +216,8 @@ def main(args):
 if __name__ == '__main__':
     # basic parameters
     parser = argparse.ArgumentParser()
+    parser.add_argument('--dataloader', type=str, default="SequenceDataset", help='Dataloader to use (SequenceDataset, fromAANETandDualBisnet)')
+
     parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
     parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
                                                                        'checkpoint (epochs)')
