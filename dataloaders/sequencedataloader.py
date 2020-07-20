@@ -7,7 +7,7 @@ from numpy import load
 import cv2
 
 
-class SequenceDataset(Dataset):
+class TestDataset(Dataset):
 
     def __init__(self, root_dir, transform=None):
         """
@@ -17,25 +17,17 @@ class SequenceDataset(Dataset):
                 on a sample.
         """
         self.root_dir = root_dir
+        print('Test files folder: {}'.format(root_dir))
         self.transform = transform
-        folders = [os.path.join(self.root_dir, folder) for folder in os.listdir(self.root_dir) if
-                   os.path.isdir(os.path.join(self.root_dir, folder))]
-        filelist = []
-        for folder in folders:
-            folder = os.path.join(folder, 'bev')
-            for file in os.listdir(folder):
-                if os.path.isfile(os.path.join(folder, file)) and '.png' in file:
-                    filelist.append(os.path.join(folder, file))
+        files = [os.path.join(self.root_dir, name) for name in os.listdir(self.root_dir) if os.path.isfile(os.path.join(self.root_dir, name)) and '*.png' in name]
 
-        self.file_list = filelist
+        self.file_list = files
         assert len(self.file_list) > 0, 'Training files missing'
 
     def __len__(self):
-
         return len(self.file_list)
 
     def __getitem__(self, idx):
-
         # Select file subset
         imagepath = self.file_list[idx]
 
@@ -59,7 +51,7 @@ class SequenceDataset(Dataset):
 
 class fromAANETandDualBisenet(Dataset):
 
-    def __init__(self, root_dir, transform=None):
+    def __init__(self, folders, transform=None):
         """
         Args:
             root_dir (string): Directory with all the images.
@@ -71,13 +63,8 @@ class fromAANETandDualBisenet(Dataset):
         'alvaromask' --> contains the DualBisnet output files; filename format is like 0000000000pred.png
 
         """
-        self.root_dir = root_dir
-        self.transform = transform
-        folders = [os.path.join(self.root_dir, folder) for folder in os.listdir(self.root_dir) if
-                   os.path.isdir(os.path.join(self.root_dir, folder))]
 
-        # Exclude test samples
-        folders.remove(os.path.join(self.root_dir, '2011_10_03_drive_0027_sync'))
+        self.transform = transform
 
         aanet = []
         alvaromask = []
@@ -89,7 +76,7 @@ class fromAANETandDualBisenet(Dataset):
             folder_image_02 = os.path.join(folder, 'image_02')
             for file in os.listdir(folder_aanet):
                 alvarofile = file.replace("_pred.npz", "pred.png")
-                image_02_file = file.replace("_pred.npz",".png")
+                image_02_file = file.replace("_pred.npz", ".png")
 
                 if os.path.isfile(os.path.join(folder_aanet, file)) and \
                         os.path.isfile(os.path.join(folder_alvaromask, alvarofile)) and \
@@ -144,6 +131,4 @@ class fromAANETandDualBisenet(Dataset):
             bev_with_new_label = self.transform(sample)
 
         #sample = {'data': image, 'label': gTruth} #TODO delete_this_line
-
         return bev_with_new_label
-
