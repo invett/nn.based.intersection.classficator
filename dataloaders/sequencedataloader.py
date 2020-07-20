@@ -16,11 +16,10 @@ class TestDataset(Dataset):
             transform (callable, optional): Optional transform to be applied
                 on a sample.
         """
-        self.root_dir = root_dir
-        print('Test files folder: {}'.format(root_dir))
-        self.transform = transform
-        files = [os.path.join(self.root_dir, name) for name in os.listdir(self.root_dir) if os.path.isfile(os.path.join(self.root_dir, name)) and '*.png' in name]
 
+        self.transform = transform
+        files = [os.path.join(root_dir, name) for name in os.listdir(root_dir) if
+                 os.path.isfile(os.path.join(root_dir, name)) and '.png' in name]
         self.file_list = files
         assert len(self.file_list) > 0, 'Training files missing'
 

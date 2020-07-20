@@ -12,12 +12,44 @@ from torch.utils.data import DataLoader
 from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror
 from torch.utils.data.sampler import SubsetRandomSampler
 
-from dataloaders.sequencedataloader import SequenceDataset, fromAANETandDualBisenet
+from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet
 from model.resnet_models import get_model_resnet, get_model_resnext
 from sklearn.model_selection import KFold
 from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 from tensorboardX import SummaryWriter
+
+
+def test(args, dataloader_test):
+    print('start Test!')
+
+    criterion = torch.nn.CrossEntropyLoss()
+
+    # Build model
+    if args.resnetmodel[0:6] == 'resnet':
+        model = get_model_resnet(args.resnetmodel, args.num_classes)
+    elif args.resnetmodel[0:7] == 'resnext':
+        model = get_model_resnext(args.resnetmodel, args.num_classes)
+    else:
+        print('not supported model \n')
+        exit()
+
+    # load Saved Model
+    savepath = './trainedmodels/model_'+args.resnetmodel+'.pth'
+    print('load model from {} ...'.format(savepath))
+    model.load_state_dict(torch.load(savepath))
+    print('Done!')
+    if torch.cuda.is_available() and args.use_gpu:
+        model = model.cuda()
+
+    report, confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test)
+
+    print('Saving report and confusion matrix\n')
+    df_report = pd.DataFrame.from_dict(report)
+    df_report = df_report.transpose()
+    df_report.to_csv('test_report.csv', sep=';')
+    df_matrix = pd.DataFrame(data=confusion_matrix)
+    df_matrix.to_csv('test_confusionMatrix.csv', sep=';')
 
 
 def validation(args, model, criterion, dataloader_val):
@@ -48,13 +80,13 @@ def validation(args, model, criterion, dataloader_val):
         predlist = np.append(predlist, predict)
 
     loss_val_mean = loss_record / len(dataloader_val)
-    print('loss for validation : %f' % loss_val_mean)
+    print('loss for test/validation : %f' % loss_val_mean)
 
     # Calculate validation metrics
     conf_matrix = confusion_matrix(labellist, predlist)
     report_dict = classification_report(labellist, predlist, output_dict=True, zero_division=0)
     acc = accuracy_score(labellist, predlist)
-    print('Accuracy for validation : %f\n' % acc)
+    print('Accuracy for test/validation : %f\n' % acc)
 
     return report_dict, conf_matrix, acc, loss_val_mean
 
@@ -154,11 +186,11 @@ def main(args):
     data_path = args.dataset
 
     # All sequence folders
-    folders = [os.path.join(data_path, folder) for folder in os.listdir(data_path) if
-               os.path.isdir(os.path.join(data_path, folder))]
+    folders = np.array([os.path.join(data_path, folder) for folder in os.listdir(data_path) if
+                        os.path.isdir(os.path.join(data_path, folder))])
 
     # Exclude test samples
-    folders.remove(os.path.join(data_path, '2011_10_03_drive_0027_sync'))
+    folders = folders[folders != os.path.join(data_path, '2011_10_03_drive_0027_sync')]
     test_path = os.path.join(data_path, '2011_10_03_drive_0027_sync', 'bev')
 
     test_dataset = TestDataset(test_path, transform=transforms.Compose([transforms.Resize((224, 224)),
@@ -167,27 +199,24 @@ def main(args):
                                                                                              (0.229, 0.224, 0.225))
                                                                         ]))
 
-    dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, sampler=val_data_sampler, shuffle=False,
-                                 num_workers=args.num_workers)
+    dataloader_test = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=args.num_workers)
 
     loo = LeaveOneOut()
     for train_index, val_index in loo.split(folders):
         train_path, val_path = folders[train_index], folders[val_index]
-        val_dataset = fromAANETandDualBisnet(val_path, transform=transforms.Compose([GenerateBev(decimate=0.2),
-                                                                                     Rescale((224, 224)),
-                                                                                     Normalize(),
-                                                                                     ToTensor()]))
+        val_dataset = fromAANETandDualBisenet(val_path, transform=transforms.Compose([GenerateBev(decimate=0.2),
+                                                                                      Rescale((224, 224)),
+                                                                                      Normalize(),
+                                                                                      ToTensor()]))
 
-        train_dataset = fromAANETandDualBisnet(train_path, transform=transforms.Compose([GenerateBev(decimate=0.2),
-                                                                                         Rescale((224, 224)),
-                                                                                         Normalize(),
-                                                                                         ToTensor()]))
+        train_dataset = fromAANETandDualBisenet(train_path, transform=transforms.Compose([GenerateBev(decimate=0.2),
+                                                                                          Rescale((224, 224)),
+                                                                                          Normalize(),
+                                                                                          ToTensor()]))
 
-        dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_data_sampler,
-                                      shuffle=True,
+        dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                       num_workers=args.num_workers)
-        dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, sampler=val_data_sampler, shuffle=True,
-                                    num_workers=args.num_workers)
+        dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
 
         # Build model
         if args.resnetmodel[0:6] == 'resnet':
@@ -218,7 +247,7 @@ def main(args):
         # train model
         acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc)
 
-    # test(args, dataloader_test)
+    test(args, dataloader_test)
 
 
 if __name__ == '__main__':
