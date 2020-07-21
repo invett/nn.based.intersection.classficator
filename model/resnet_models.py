@@ -23,11 +23,11 @@ def get_model_resnet(model_version, num_classes):
 
 
 def get_model_resnext(model_version, num_classes):
-    if model_version == 'resnet18':
-        model = models.resnext50(pretrained=True)
+    if model_version == 'resnext50':
+        model = models.resnext50_32x4d(pretrained=True)
         model.fc = torch.nn.Linear(2048, num_classes)
-    elif model_version == 'resnet34':
-        model = models.resnext101(pretrained=True)
+    elif model_version == 'resnext101':
+        model = models.resnext101_32x8d(pretrained=True)
         model.fc = torch.nn.Linear(2048, num_classes)
 
     return model
