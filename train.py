@@ -109,8 +109,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
         tq = tqdm.tqdm(total=len(dataloader_train) * args.batch_size)
         tq.set_description('epoch %d, lr %f' % (epoch, lr))
         loss_record = 0.0
-        labellist = np.array([])
-        predlist = np.array([])
+        trainlabellist = np.array([])
+        trainpredlist = np.array([])
 
         for sample in dataloader_train:
             data = sample['data']
@@ -137,13 +137,13 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
             label = label.squeeze().cpu().numpy()
             predict = predict.squeeze().cpu().numpy()
 
-            labellist = np.append(labellist, label)
-            predlist = np.append(predlist, predict)
+            trainlabellist = np.append(trainlabellist, label)
+            trainpredlist = np.append(trainpredlist, predict)
 
         tq.close()
         loss_train_mean = loss_record / len(dataloader_train)
         writer.add_scalar('Train/loss_epoch', loss_train_mean, epoch)
-        acc = accuracy_score(labellist, predlist)
+        acc = accuracy_score(trainlabellist, trainpredlist)
         writer.add_scalar('Train/acc_epoch', acc, epoch)
         print('loss for train : %f' % loss_train_mean)
         print('acc for train : %f' % acc)
