@@ -35,7 +35,7 @@ def test(args, dataloader_test):
         exit()
 
     # load Saved Model
-    savepath = './trainedmodels/model_'+args.resnetmodel+'.pth'
+    savepath = './trainedmodels/model_' + args.resnetmodel + '.pth'
     print('load model from {} ...'.format(savepath))
     model.load_state_dict(torch.load(savepath))
     print('Done!')
@@ -93,7 +93,6 @@ def validation(args, model, criterion, dataloader_val):
 
 def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
     writer = SummaryWriter()
-    step = 0
 
     if not os.path.isdir(args.save_model_path):
         os.mkdir(args.save_model_path)
@@ -101,14 +100,17 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
     kfold_acc = 0.0
     kfold_loss = np.inf
     criterion = torch.nn.CrossEntropyLoss()
+    model.zero_grad()
+    model.train()
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', cooldown=2)
 
     for epoch in range(args.num_epochs):
-        model.train()
         lr = optimizer.param_groups[0]['lr']
         tq = tqdm.tqdm(total=len(dataloader_train) * args.batch_size)
         tq.set_description('epoch %d, lr %f' % (epoch, lr))
         loss_record = 0.0
-        model.zero_grad()
+        labellist = np.array([])
+        predlist = np.array([])
 
         for sample in dataloader_train:
             data = sample['data']
@@ -131,16 +133,24 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
             tq.set_postfix(loss='%.6f' % loss)
 
             loss_record += loss.item()
-            writer.add_scalar('Train/loss_step', loss.item(), step)
-            step += 1
+            predict = torch.argmax(output, 1)
+            label = label.squeeze().cpu().numpy()
+            predict = predict.squeeze().cpu().numpy()
+
+            labellist = np.append(labellist, label)
+            predlist = np.append(predlist, predict)
 
         tq.close()
         loss_train_mean = loss_record / len(dataloader_train)
         writer.add_scalar('Train/loss_epoch', loss_train_mean, epoch)
+        acc = accuracy_score(labellist, predlist)
+        writer.add_scalar('Train/acc_epoch', acc, epoch)
         print('loss for train : %f' % loss_train_mean)
+        print('acc for train : %f' % acc)
 
         if epoch % args.validation_step == 0:
             report, confusion_matrix, acc, val_loss = validation(args, model, criterion, dataloader_val)
+            scheduler.step(val_loss)
             writer.add_scalar('Val/loss', val_loss, epoch)
             writer.add_scalar('Val/acc', acc, epoch)
             if kfold_acc < acc or kfold_loss > loss_train_mean:
@@ -258,7 +268,7 @@ if __name__ == '__main__':
     parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
                                                                        'checkpoint (epochs)')
     parser.add_argument('--dataset', type=str, help='path to the dataset you are using.')
-    parser.add_argument('--batch_size', type=int, default=4, help='Number of images in each batch')
+    parser.add_argument('--batch_size', type=int, default=32, help='Number of images in each batch')
     parser.add_argument('--resnetmodel', type=str, default="resnet18",
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate used for train')
