@@ -55,7 +55,7 @@ def test(args, dataloader_test):
 
     wandb.log({"Test/Acc": acc,
                "conf-matrix_test": wandb.Image(plt)})
-    wandb.log({"Test/report": report})
+    # wandb.log({"Test/report": report})
 
 
 def validation(args, model, criterion, dataloader_val):
@@ -90,7 +90,7 @@ def validation(args, model, criterion, dataloader_val):
 
     # Calculate validation metrics
     conf_matrix = confusion_matrix(labellist, predlist, labels=[0, 1, 2, 3, 4, 5, 6])
-    # report_dict = classification_report(labellist, predlist, output_dict=True, zero_division=0)
+    report_dict = classification_report(labellist, predlist, output_dict=True, zero_division=0)
     acc = accuracy_score(labellist, predlist)
     print('Accuracy for test/validation : %f\n' % acc)
 
@@ -169,7 +169,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
                        "Val/Acc": loss_val,
                        "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)})
 
-            wandb.log({"Val/report": report})
+            # wandb.log({"Val/report": report})
 
             if kfold_acc < acc_val or kfold_loss > loss_train_mean:
                 patience = 0
