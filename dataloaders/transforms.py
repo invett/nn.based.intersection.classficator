@@ -53,7 +53,7 @@ class ToTensor(object):
         # torch image: C X H X W
         image = image.transpose((2, 0, 1))
 
-        return {'data': torch.from_numpy(image.astype(np.float32)), 'label': torch.tensor(label)}
+        return {'data': torch.from_numpy(image), 'label': torch.tensor(label)}
 
 
 class Normalize(object):
@@ -64,7 +64,7 @@ class Normalize(object):
         mean = [0.485, 0.456, 0.406]
         std = [0.229, 0.224, 0.225]
         image = (image - mean) / std
-        sample['image_02'] = image
+        sample['image_02'] = image.astype(np.float32)
 
         return sample
 
@@ -230,7 +230,7 @@ class GenerateBev(object):
         pointsandcolors = pointsandcolors[np.random.choice(pointsandcolors.shape[0], remaining_points, replace=False),
                           :]
         out_points = pointsandcolors[:, :3].astype('float64')
-        out_colors = pointsandcolors[:, 3:].astype('uint8')
+        out_colors = pointsandcolors[:, 3:].astype('float32')
 
         imagePoints, jacobians = cv2.projectPoints(objectPoints=out_points,
                                                    rvec=cv2.Rodrigues(R_00 @ baseRotationMatrix @
@@ -240,7 +240,7 @@ class GenerateBev(object):
                                                    tvec=T_00, cameraMatrix=K_00, distCoeffs=D_00)
 
         # generate the image
-        blank_image = np.zeros((int(cy * 2), int(cx * 2), 3), np.uint8)
+        blank_image = np.zeros((int(cy * 2), int(cx * 2), 3), np.float32)
         for pixel, color in zip(imagePoints, out_colors):
             if ((int(pixel[0, 1]) < blank_image.shape[0]) and
                     (int(pixel[0, 0]) < blank_image.shape[1]) and
