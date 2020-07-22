@@ -16,7 +16,7 @@ from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet
 from model.resnet_models import get_model_resnet, get_model_resnext
 from sklearn.model_selection import KFold
 from sklearn.model_selection import LeaveOneOut
-from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, plot_confusion_matrix
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 
 import matplotlib.pyplot as plt
 
@@ -89,9 +89,7 @@ def validation(args, model, criterion, dataloader_val):
     print('loss for test/validation : %f' % loss_val_mean)
 
     # Calculate validation metrics
-    conf_matrix = confusion_matrix(labellist, predlist,
-                                   labels=['class 0', 'class 1', 'class 2', 'class 3', 'class 4', 'class 5',
-                                           'class 6'])
+    conf_matrix = confusion_matrix(labellist, predlist, labels=[1., 2., 3., 4., 5., 6., 7.])
     report_dict = classification_report(labellist, predlist, output_dict=True, zero_division=0)
     acc = accuracy_score(labellist, predlist)
     print('Accuracy for test/validation : %f\n' % acc)
@@ -100,7 +98,6 @@ def validation(args, model, criterion, dataloader_val):
 
 
 def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
-
     if not os.path.isdir(args.save_model_path):
         os.mkdir(args.save_model_path)
 
@@ -229,13 +226,15 @@ def main(args, model=None):
     for train_index, val_index in loo.split(folders):
         train_path, val_path = folders[train_index], folders[val_index]
         val_dataset = fromAANETandDualBisenet(val_path, transform=transforms.Compose([Normalize(),
-                                                                                      GenerateBev(decimate=args.decimate),
+                                                                                      GenerateBev(
+                                                                                          decimate=args.decimate),
                                                                                       Mirror(),
                                                                                       Rescale((224, 224)),
                                                                                       ToTensor()]))
 
         train_dataset = fromAANETandDualBisenet(train_path, transform=transforms.Compose([Normalize(),
-                                                                                          GenerateBev(decimate=args.decimate),
+                                                                                          GenerateBev(
+                                                                                              decimate=args.decimate),
                                                                                           Mirror(),
                                                                                           Rescale((224, 224)),
                                                                                           ToTensor()]))
