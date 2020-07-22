@@ -165,7 +165,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
             plt.figure(figsize=(10, 7))
             sn.heatmap(df_cm, annot=True)
 
-            wandb.log({"Val/loss": loss_val,
+            wandb.log({"Val/loss": acc_val,
                        "Val/Acc": loss_val,
                        "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)})
 
