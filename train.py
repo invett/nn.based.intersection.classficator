@@ -243,13 +243,13 @@ def main(args, model=None):
     for train_index, val_index in loo.split(folders):
         train_path, val_path = folders[train_index], folders[val_index]
         val_dataset = fromAANETandDualBisenet(val_path, transform=transforms.Compose([Normalize(),
-                                                                                      GenerateBev(decimate=0.2),
+                                                                                      GenerateBev(decimate=args.decimate),
                                                                                       Mirror(),
                                                                                       Rescale((224, 224)),
                                                                                       ToTensor()]))
 
         train_dataset = fromAANETandDualBisenet(train_path, transform=transforms.Compose([Normalize(),
-                                                                                          GenerateBev(decimate=0.2),
+                                                                                          GenerateBev(decimate=args.decimate),
                                                                                           Mirror(),
                                                                                           Rescale((224, 224)),
                                                                                           ToTensor()]))
@@ -313,6 +313,9 @@ if __name__ == '__main__':
     parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
     parser.add_argument('--patience_start', type=int, default=50,
                         help='Starting epoch for patience of validation. Default, 50. ')
+
+    parser.add_argument('--decimate', type=int, default=0.2, help='How much of the points will remain after decimation')
+
     args = parser.parse_args()
 
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
