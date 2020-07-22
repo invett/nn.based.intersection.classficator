@@ -53,8 +53,7 @@ def test(args, dataloader_test):
     plt.figure(figsize=(10, 7))
     sn.heatmap(df_cm, annot=True)
 
-    wandb.log({"Test/loss": loss_val,
-               "Test/Acc": loss_val,
+    wandb.log({"Test/Acc": acc,
                "conf-matrix_test": wandb.Image(plt)})
     wandb.log({"Test/report": report})
 
