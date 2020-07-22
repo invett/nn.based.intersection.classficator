@@ -314,7 +314,7 @@ if __name__ == '__main__':
     parser.add_argument('--patience_start', type=int, default=50,
                         help='Starting epoch for patience of validation. Default, 50. ')
 
-    parser.add_argument('--decimate', type=int, default=0.2, help='How much of the points will remain after decimation')
+    parser.add_argument('--decimate', type=float, default=0.2, help='How much of the points will remain after decimation')
 
     args = parser.parse_args()
 
