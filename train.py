@@ -155,8 +155,10 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
             writer.add_scalar('Val/acc', acc, epoch)
             if kfold_acc < acc or kfold_loss > loss_train_mean:
                 patience = 0
-                kfold_acc = acc
-                kfold_loss = loss_train_mean
+                if kfold_acc < acc:
+                    kfold_acc = acc
+                else:
+                    kfold_loss = loss_train_mean
                 if acc_pre < kfold_acc:
                     bestModel = model.state_dict()
                     acc_pre = kfold_acc
