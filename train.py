@@ -17,7 +17,6 @@ from model.resnet_models import get_model_resnet, get_model_resnext
 from sklearn.model_selection import KFold
 from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, plot_confusion_matrix
-from tensorboardX import SummaryWriter
 
 import matplotlib.pyplot as plt
 
@@ -49,12 +48,15 @@ def test(args, dataloader_test):
 
     report, confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test)
 
-    print('Saving report and confusion matrix\n')
-    df_report = pd.DataFrame.from_dict(report)
-    df_report = df_report.transpose()
-    df_report.to_csv('test_report.csv', sep=';')
-    df_matrix = pd.DataFrame(data=confusion_matrix)
-    df_matrix.to_csv('test_confusionMatrix.csv', sep=';')
+    labels_all = ['class 0', 'class 1', 'class 2', 'class 3', 'class 4', 'class 5', 'class 6']
+    df_cm = pd.DataFrame(confusion_matrix, index=[i for i in labels_all], columns=[i for i in labels_all])
+    plt.figure(figsize=(10, 7))
+    sn.heatmap(df_cm, annot=True)
+
+    wandb.log({"Test/loss": loss_val,
+               "Test/Acc": loss_val,
+               "conf-matrix_test": wandb.Image(plt)})
+    wandb.log({"Test/report": report})
 
 
 def validation(args, model, criterion, dataloader_val):
@@ -88,7 +90,9 @@ def validation(args, model, criterion, dataloader_val):
     print('loss for test/validation : %f' % loss_val_mean)
 
     # Calculate validation metrics
-    conf_matrix = confusion_matrix(labellist, predlist)
+    conf_matrix = confusion_matrix(labellist, predlist,
+                                   labels=['class 0', 'class 1', 'class 2', 'class 3', 'class 4', 'class 5',
+                                           'class 6'])
     report_dict = classification_report(labellist, predlist, output_dict=True, zero_division=0)
     acc = accuracy_score(labellist, predlist)
     print('Accuracy for test/validation : %f\n' % acc)
@@ -97,7 +101,6 @@ def validation(args, model, criterion, dataloader_val):
 
 
 def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
-    writer = SummaryWriter()
 
     if not os.path.isdir(args.save_model_path):
         os.mkdir(args.save_model_path)
@@ -113,7 +116,6 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
 
     for epoch in range(args.num_epochs):
         lr = optimizer.param_groups[0]['lr']
-        writer.add_scalar('Train/lr', lr, epoch)
         tq = tqdm.tqdm(total=len(dataloader_train) * args.batch_size)
         tq.set_description('epoch %d, lr %f' % (epoch, lr))
         loss_record = 0.0
@@ -150,23 +152,17 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
 
         tq.close()
         loss_train_mean = loss_record / len(dataloader_train)
-        writer.add_scalar('Train/loss_epoch', loss_train_mean, epoch)
         acc_train = accuracy_score(trainlabellist, trainpredlist)
-        writer.add_scalar('Train/acc_epoch', acc_train, epoch)
         print('loss for train : %f' % loss_train_mean)
         print('acc for train : %f' % acc_train)
 
         wandb.log({"Train/loss": loss_train_mean,
                    "Train/acc": acc_train,
-                   "Train/epoch": epoch})
+                   "Train/lr": lr})
 
         if epoch % args.validation_step == 0:
             report, confusion_matrix, acc_val, loss_val = validation(args, model, criterion, dataloader_val)
             scheduler.step(loss_val)
-            writer.add_scalar('Val/loss', loss_val, epoch)
-            writer.add_scalar('Val/acc', acc_val, epoch)
-
-            # sklearn.metrics.plot_confusion_matrix
 
             labels_all = ['class 0', 'class 1', 'class 2', 'class 3', 'class 4', 'class 5', 'class 6']
             df_cm = pd.DataFrame(confusion_matrix, index=[i for i in labels_all], columns=[i for i in labels_all])
@@ -175,8 +171,9 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
 
             wandb.log({"Val/loss": loss_val,
                        "Val/Acc": loss_val,
-                       "Val/epoch": epoch,
                        "conf-matrix_{}".format(epoch): wandb.Image(plt)})
+
+            wandb.log({"Val/report": report})
 
             if kfold_acc < acc_val or kfold_loss > loss_train_mean:
                 patience = 0
@@ -190,12 +187,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
                     print('Best global accuracy: {}'.format(kfold_acc))
                     print('Saving model: ', os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
                     torch.save(bestModel, os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
-                    print('Saving report and confusion matrix\n')
-                    df_report = pd.DataFrame.from_dict(report)
-                    df_report = df_report.transpose()
-                    df_report.to_csv('validationreport.csv', sep=';')
-                    df_matrix = pd.DataFrame(data=confusion_matrix)
-                    df_matrix.to_csv('validationconfusionMatrix.csv', sep=';')
+                    wandb.save(os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
 
             elif epoch < args.patience_start:
                 patience = 0
@@ -207,10 +199,6 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
             break
 
     writer.close()
-
-    with open('acc_log.txt', 'a') as logfile:
-        logfile.write('Acc: {}\n'.format(kfold_acc))
-        print('acc: {}\n'.format(kfold_acc))
 
     return acc_pre
 
@@ -313,14 +301,15 @@ if __name__ == '__main__':
     parser.add_argument('--patience_start', type=int, default=50,
                         help='Starting epoch for patience of validation. Default, 50. ')
 
-    parser.add_argument('--decimate', type=float, default=0.2, help='How much of the points will remain after decimation')
+    parser.add_argument('--decimate', type=float, default=0.2, help='How much of the points will remain after '
+                                                                    'decimation')
 
     args = parser.parse_args()
 
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
     group_id = wandb.util.generate_id()
-    wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="eval")
+    wandb.init(project="nn-based-intersection-classficator", group=group_id)
     wandb.config.update(args)
 
     print(args)
