@@ -102,7 +102,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
     criterion = torch.nn.CrossEntropyLoss()
     model.zero_grad()
     model.train()
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', cooldown=2)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', cooldown=2, patience=2)
 
     for epoch in range(args.num_epochs):
         lr = optimizer.param_groups[0]['lr']
@@ -128,7 +128,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
             loss.backward()
 
             optimizer.step()
-            model.zero_grad()
+            optimizer.zero_grad()
 
             tq.update(args.batch_size)
             tq.set_postfix(loss='%.6f' % loss)
@@ -173,7 +173,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
                     df_matrix = pd.DataFrame(data=confusion_matrix)
                     df_matrix.to_csv('validationconfusionMatrix.csv', sep=';')
 
-            elif epoch > args.patience_start:
+            elif epoch < args.patience_start:
                 patience = 0
 
             else:
