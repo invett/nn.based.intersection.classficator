@@ -106,6 +106,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
 
     for epoch in range(args.num_epochs):
         lr = optimizer.param_groups[0]['lr']
+        writer.add_scalar('Train/lr', lr, epoch)
         tq = tqdm.tqdm(total=len(dataloader_train) * args.batch_size)
         tq.set_description('epoch %d, lr %f' % (epoch, lr))
         loss_record = 0.0
@@ -216,14 +217,16 @@ def main(args):
     loo = LeaveOneOut()
     for train_index, val_index in loo.split(folders):
         train_path, val_path = folders[train_index], folders[val_index]
-        val_dataset = fromAANETandDualBisenet(val_path, transform=transforms.Compose([GenerateBev(decimate=0.2),
+        val_dataset = fromAANETandDualBisenet(val_path, transform=transforms.Compose([Normalize(),
+                                                                                      GenerateBev(decimate=0.2),
+                                                                                      Mirror(),
                                                                                       Rescale((224, 224)),
-                                                                                      Normalize(),
                                                                                       ToTensor()]))
 
-        train_dataset = fromAANETandDualBisenet(train_path, transform=transforms.Compose([GenerateBev(decimate=0.2),
+        train_dataset = fromAANETandDualBisenet(train_path, transform=transforms.Compose([Normalize(),
+                                                                                          GenerateBev(decimate=0.2),
+                                                                                          Mirror(),
                                                                                           Rescale((224, 224)),
-                                                                                          Normalize(),
                                                                                           ToTensor()]))
 
         dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,

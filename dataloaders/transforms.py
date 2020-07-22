@@ -3,6 +3,7 @@ import numpy as np
 import cv2.cv2 as cv2
 from scipy.spatial.transform import Rotation as R
 from skimage.transform import resize
+
 # import matplotlib.pyplot as plt
 
 # For debugging
@@ -52,21 +53,20 @@ class ToTensor(object):
         # torch image: C X H X W
         image = image.transpose((2, 0, 1))
 
-        return {'data': torch.from_numpy(image), 'label': torch.tensor(label)}
-
+        return {'data': torch.from_numpy(image.astype(np.float32)), 'label': torch.tensor(label)}
 
 
 class Normalize(object):
 
     def __call__(self, sample):
-        image, label = sample['data'], sample['label']
-
-        image = image / 255
+        image = sample['image_02']
+        image = cv2.normalize(image, 0.0, 1.0, cv2.NORM_MINMAX)
         mean = [0.485, 0.456, 0.406]
         std = [0.229, 0.224, 0.225]
         image = (image - mean) / std
+        sample['image_02'] = image
 
-        return {'data': image.astype(np.float32), 'label': label}
+        return sample
 
 
 class Mirror(object):
@@ -75,7 +75,6 @@ class Mirror(object):
         image, label = sample['data'], sample['label']
 
         if np.random.rand() > 0.5:
-            #TF.hflip(transforms.ToPILImage()(torch.tensor(image))) #TODO maybe we can do this with PIL stuff rather than opencv
 
             flipped = cv2.flip(image, 1)
             if label == 1:
@@ -228,7 +227,8 @@ class GenerateBev(object):
         # Decimate the number of remaining points using the decimate parameter.
         pointsandcolors = np.concatenate([out_points, out_colors], axis=1)
         remaining_points = int(pointsandcolors.shape[0] * self.decimate)
-        pointsandcolors = pointsandcolors[np.random.choice(pointsandcolors.shape[0], remaining_points, replace=False), :]
+        pointsandcolors = pointsandcolors[np.random.choice(pointsandcolors.shape[0], remaining_points, replace=False),
+                          :]
         out_points = pointsandcolors[:, :3].astype('float64')
         out_colors = pointsandcolors[:, 3:].astype('uint8')
 
