@@ -16,8 +16,13 @@ from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet
 from model.resnet_models import get_model_resnet, get_model_resnext
 from sklearn.model_selection import KFold
 from sklearn.model_selection import LeaveOneOut
-from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, plot_confusion_matrix
 from tensorboardX import SummaryWriter
+
+import matplotlib.pyplot as plt
+
+import wandb
+import seaborn as sn
 
 
 def test(args, dataloader_test):
@@ -88,6 +93,13 @@ def validation(args, model, criterion, dataloader_val):
     acc = accuracy_score(labellist, predlist)
     print('Accuracy for test/validation : %f\n' % acc)
 
+    labels_all = [str(i).zfill(1) for i in range(0, conf_matrix.shape[0])]
+    array = confusion_matrix(labellist, predlist)
+    df_cm = pd.DataFrame(array, index=[i for i in labels_all], columns=[i for i in labels_all])
+    plt.figure(figsize=(10, 7))
+    sn.heatmap(df_cm, annot=True)
+    wandb.log({"chart": wandb.Image(plt)})
+
     return report_dict, conf_matrix, acc, loss_val_mean
 
 
@@ -103,6 +115,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
     model.zero_grad()
     model.train()
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', cooldown=2)
+
+    wandb.watch(model, log="all")
 
     for epoch in range(args.num_epochs):
         lr = optimizer.param_groups[0]['lr']
@@ -143,20 +157,31 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
         tq.close()
         loss_train_mean = loss_record / len(dataloader_train)
         writer.add_scalar('Train/loss_epoch', loss_train_mean, epoch)
-        acc = accuracy_score(trainlabellist, trainpredlist)
-        writer.add_scalar('Train/acc_epoch', acc, epoch)
+        acc_train = accuracy_score(trainlabellist, trainpredlist)
+        writer.add_scalar('Train/acc_epoch', acc_train, epoch)
         print('loss for train : %f' % loss_train_mean)
-        print('acc for train : %f' % acc)
+        print('acc for train : %f' % acc_train)
+
+        wandb.log({"Train/loss": loss_train_mean,
+                   "Train/acc": acc_train,
+                   "Train/epoch": epoch})
 
         if epoch % args.validation_step == 0:
-            report, confusion_matrix, acc, val_loss = validation(args, model, criterion, dataloader_val)
-            scheduler.step(val_loss)
-            writer.add_scalar('Val/loss', val_loss, epoch)
-            writer.add_scalar('Val/acc', acc, epoch)
-            if kfold_acc < acc or kfold_loss > loss_train_mean:
+            report, confusion_matrix, acc_val, loss_val = validation(args, model, criterion, dataloader_val)
+            scheduler.step(loss_val)
+            writer.add_scalar('Val/loss', loss_val, epoch)
+            writer.add_scalar('Val/acc', acc_val, epoch)
+
+            # sklearn.metrics.plot_confusion_matrix
+
+            wandb.log({"Val/loss": loss_val,
+                       "Val/Acc": loss_val,
+                       "Val/epoch": epoch})
+
+            if kfold_acc < acc_val or kfold_loss > loss_train_mean:
                 patience = 0
-                if kfold_acc < acc:
-                    kfold_acc = acc
+                if kfold_acc < acc_val:
+                    kfold_acc = acc_val
                 else:
                     kfold_loss = loss_train_mean
                 if acc_pre < kfold_acc:
@@ -190,7 +215,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
     return acc_pre
 
 
-def main(args):
+def main(args, model=None):
     # Acuracy acumulator
     acc = 0.0
 
@@ -286,6 +311,12 @@ if __name__ == '__main__':
     parser.add_argument('--patience_start', type=int, default=50,
                         help='Starting epoch for patience of validation. Default, 50. ')
     args = parser.parse_args()
+
+    # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
+    # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
+    group_id = wandb.util.generate_id()
+    wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="eval")
+    wandb.config.update(args)
 
     print(args)
     warnings.filterwarnings("ignore")
