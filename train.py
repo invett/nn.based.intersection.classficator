@@ -89,8 +89,8 @@ def validation(args, model, criterion, dataloader_val):
     print('loss for test/validation : %f' % loss_val_mean)
 
     # Calculate validation metrics
-    conf_matrix = confusion_matrix(labellist, predlist, labels=[1., 2., 3., 4., 5., 6., 7.])
-    report_dict = classification_report(labellist, predlist, output_dict=True, zero_division=0)
+    conf_matrix = confusion_matrix(labellist, predlist, labels=[0, 1, 2, 3, 4, 5, 6])
+    # report_dict = classification_report(labellist, predlist, output_dict=True, zero_division=0)
     acc = accuracy_score(labellist, predlist)
     print('Accuracy for test/validation : %f\n' % acc)
 
@@ -169,7 +169,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
                        "Val/Acc": loss_val,
                        "conf-matrix_{}".format(epoch): wandb.Image(plt)})
 
-            wandb.log({"Val/report": report})
+            # wandb.log({"Val/report": report})
 
             if kfold_acc < acc_val or kfold_loss > loss_train_mean:
                 patience = 0
@@ -307,7 +307,7 @@ if __name__ == '__main__':
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
     group_id = wandb.util.generate_id()
-    wandb.init(project="nn-based-intersection-classficator", group=group_id)
+    wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type='training')
     wandb.config.update(args)
 
     print(args)
