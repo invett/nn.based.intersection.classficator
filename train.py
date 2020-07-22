@@ -97,7 +97,7 @@ def validation(args, model, criterion, dataloader_val):
     return report_dict, conf_matrix, acc, loss_val_mean
 
 
-def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
+def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, valfolder):
     if not os.path.isdir(args.save_model_path):
         os.mkdir(args.save_model_path)
 
@@ -167,7 +167,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
 
             wandb.log({"Val/loss": loss_val,
                        "Val/Acc": loss_val,
-                       "conf-matrix_{}".format(epoch): wandb.Image(plt)})
+                       "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)})
 
             wandb.log({"Val/report": report})
 
@@ -270,7 +270,7 @@ def main(args, model=None):
             exit()
 
         # train model
-        acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc)
+        acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc, os.path.basename(val_path))
 
     test(args, dataloader_test)
 
