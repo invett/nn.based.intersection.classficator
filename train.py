@@ -90,7 +90,7 @@ def validation(args, model, criterion, dataloader_val):
 
     # Calculate validation metrics
     conf_matrix = confusion_matrix(labellist, predlist, labels=[0, 1, 2, 3, 4, 5, 6])
-    report_dict = classification_report(labellist, predlist, output_dict=True, zero_division=0)
+    # report_dict = classification_report(labellist, predlist, output_dict=True, zero_division=0)
     acc = accuracy_score(labellist, predlist)
     print('Accuracy for test/validation : %f\n' % acc)
 
