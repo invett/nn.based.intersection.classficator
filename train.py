@@ -270,7 +270,7 @@ def main(args, model=None):
             exit()
 
         # train model
-        acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc, os.path.basename(val_path))
+        acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc, os.path.basename(val_path[0]))
 
     test(args, dataloader_test)
 
