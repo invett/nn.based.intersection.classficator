@@ -93,13 +93,6 @@ def validation(args, model, criterion, dataloader_val):
     acc = accuracy_score(labellist, predlist)
     print('Accuracy for test/validation : %f\n' % acc)
 
-    labels_all = [str(i).zfill(1) for i in range(0, conf_matrix.shape[0])]
-    array = confusion_matrix(labellist, predlist)
-    df_cm = pd.DataFrame(array, index=[i for i in labels_all], columns=[i for i in labels_all])
-    plt.figure(figsize=(10, 7))
-    sn.heatmap(df_cm, annot=True)
-    wandb.log({"chart": wandb.Image(plt)})
-
     return report_dict, conf_matrix, acc, loss_val_mean
 
 
@@ -175,9 +168,15 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre):
 
             # sklearn.metrics.plot_confusion_matrix
 
+            labels_all = ['class 0', 'class 1', 'class 2', 'class 3', 'class 4', 'class 5', 'class 6']
+            df_cm = pd.DataFrame(confusion_matrix, index=[i for i in labels_all], columns=[i for i in labels_all])
+            plt.figure(figsize=(10, 7))
+            sn.heatmap(df_cm, annot=True)
+
             wandb.log({"Val/loss": loss_val,
                        "Val/Acc": loss_val,
-                       "Val/epoch": epoch})
+                       "Val/epoch": epoch,
+                       "conf-matrix_{}".format(epoch): wandb.Image(plt)})
 
             if kfold_acc < acc_val or kfold_loss > loss_train_mean:
                 patience = 0
