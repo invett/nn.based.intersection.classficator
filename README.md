@@ -15,6 +15,8 @@ We used the following software; in brackets the version;
 - nvidia drivers(10.2)
 - aanet(invett fork in github)
 - opencv(4)
+- wandb
+- seaborn
 
 # Data Folder structure
 
