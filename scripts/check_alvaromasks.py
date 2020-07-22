@@ -4,6 +4,14 @@ import cv2
 import argparse
 import warnings
 
+from dl_bot import DLBot
+telegram_token = "1178257144:AAH5DEYxJjPb0Qm_afbGTuJZ0-oqfIMFlmY"  # replace TOKEN with your bot's token
+telegram_user_id = None   # replace None with your telegram user id (integer):
+# Create a DLBot instance
+bot = DLBot(token=telegram_token, user_id=telegram_user_id)
+# Activate the bot
+bot.activate_bot()
+
 def main(args):
 
     for root, subdirs, files in os.walk(args.rootfolder):
@@ -20,6 +28,8 @@ def main(args):
 
                 if (alvaromask > 0).sum() < args.threshold:
                     print(filename)
+                    bot.send_message(filename)
+                    bot.send_image(filename.replace("alvaromask","image_02").replace("pred.png",".png"))
         break
 
 
