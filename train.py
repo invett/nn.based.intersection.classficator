@@ -89,7 +89,7 @@ def validation(args, model, criterion, dataloader_val):
     print('loss for test/validation : %f' % loss_val_mean)
 
     # Calculate validation metrics
-    conf_matrix = confusion_matrix(labellist, predlist, labels=[1., 2., 3., 4., 5., 6., 7.])
+    conf_matrix = confusion_matrix(labellist, predlist, labels=[0, 1, 2, 3, 4, 5, 6])
     report_dict = classification_report(labellist, predlist, output_dict=True, zero_division=0)
     acc = accuracy_score(labellist, predlist)
     print('Accuracy for test/validation : %f\n' % acc)
