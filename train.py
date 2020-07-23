@@ -27,12 +27,15 @@ import sys
 
 from dl_bot import DLBot
 
-telegram_token = "1178257144:AAH5DEYxJjPb0Qm_afbGTuJZ0-oqfIMFlmY"  # replace TOKEN with your bot's token
-telegram_user_id = None  # replace None with your telegram user id (integer):
-# Create a DLBot instance
-bot = DLBot(token=telegram_token, user_id=telegram_user_id)
-# Activate the bot
-bot.activate_bot()
+telegram = True
+
+if telegram:
+    telegram_token = "1178257144:AAH5DEYxJjPb0Qm_afbGTuJZ0-oqfIMFlmY"  # replace TOKEN with your bot's token
+    telegram_user_id = None  # replace None with your telegram user id (integer):
+    # Create a DLBot instance
+    bot = DLBot(token=telegram_token, user_id=telegram_user_id)
+    # Activate the bot
+    bot.activate_bot()
 
 
 def test(args, dataloader_test):
@@ -271,12 +274,17 @@ def main(args, model=None):
 
             # train model
             acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc, os.path.basename(val_path[0]))
-            bot.send_message("K-Fold finished")
+
+            if telegram:
+                bot.send_message("K-Fold finished")
 
     except:  # catch *all* exceptions
         e = sys.exc_info()[0]
         print(e)
-        bot.send_message(str(e))
+
+        if telegram:
+            bot.send_message(str(e))
+
         exit()
 
     # Final Test on 2011_10_03_drive_0027_sync
@@ -289,7 +297,8 @@ def main(args, model=None):
     dataloader_test = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=args.num_workers)
     test(args, dataloader_test)
 
-    bot.send_message("Finish successfully")
+    if telegram:
+        bot.send_message("Finish successfully")
 
 
 if __name__ == '__main__':
@@ -326,7 +335,9 @@ if __name__ == '__main__':
     group_id = wandb.util.generate_id()
     wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="training")
     wandb.config.update(args)
-    bot.send_message('Starting experiment nn-based-intersection-classficator')
     print(args)
     warnings.filterwarnings("ignore")
+
+    if telegram:
+        bot.send_message('Starting experiment nn-based-intersection-classficator')
     main(args)
