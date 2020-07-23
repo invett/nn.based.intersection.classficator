@@ -33,7 +33,7 @@ def main(args):
     folders = np.array([os.path.join(args.rootfolder, folder) for folder in os.listdir(args.rootfolder) if
                         os.path.isdir(os.path.join(args.rootfolder, folder))])
 
-    dataset = fromAANETandDualBisenet(folders, transform=transforms.Compose([Normalize(),
+    dataset = fromAANETandDualBisenet(folders, transform=transforms.Compose([#Normalize(),
                                                                              GenerateBev(),
                                                                              Mirror(),
                                                                              Rescale((224, 224)),
