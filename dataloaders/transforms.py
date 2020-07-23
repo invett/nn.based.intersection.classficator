@@ -9,6 +9,21 @@ from skimage.transform import resize
 # For debugging
 ShowImage = False
 
+class GenerateNewDataset(object):
+    """
+    This simply sets a value that will be used in the getitem to save the image (with the correct filename) inside the
+    path passed as parameter
+    """
+
+    def __init__(self, path):
+        self.path = path
+
+    def __call__(self, sample):
+
+        return {'data': sample['data'],
+                'label': sample['label'],
+                'path': self.path}
+
 
 class Rescale(object):
     """Rescale the image in a sample to a given size.
