@@ -7,6 +7,58 @@ from numpy import load
 import cv2
 
 
+class BaseLine(Dataset):
+    def __init__(self, folders, transform=None):
+        """
+        Args:
+            root_dir (string): Directory with all the images.
+            transform (callable, optional): Optional transform to be applied
+                on a sample.
+        """
+
+        self.transform = transform
+
+        image_02 = []
+
+        for folder in folders:
+            folder_image_02 = os.path.join(folder, 'image_02')
+            for image_02_file in os.listdir(folder_image_02):
+                if os.path.isfile(os.path.join(folder_image_02, image_02_file)) and '.png' in image_02_file:
+                    image_02.append(os.path.join(folder_image_02, image_02_file))
+                else:
+                    print("Loader error")
+                    print(os.path.join(folder_image_02, image_02_file))
+
+        self.image_02 = image_02
+
+        assert len(self.image_02) > 0, 'Training files missing [alvaromask]'
+
+    def __len__(self):
+
+        return len(self.image_02)
+
+    def __getitem__(self, idx):
+        # Select file subset
+        imagepath = self.image_02[idx]
+
+        image = Image.open(imagepath)
+
+        # Obtaining ground truth
+        head, tail = os.path.split(imagepath)
+        head, _ = os.path.split(head)
+        filename, _ = os.path.splitext(tail)
+        gt_path = os.path.join(head, 'frames_topology.txt')
+        gtdata = pd.read_csv(gt_path, sep=';', header=None, dtype=str)
+        gTruth = int(gtdata.loc[gtdata[0] == filename][2])
+
+        sample = {'data': image, 'label': gTruth}
+
+        if self.transform:
+            sample['data'] = self.transform(sample['data'])
+
+        return sample
+
+
 class TestDataset(Dataset):
 
     def __init__(self, root_dir, transform=None):
@@ -18,6 +70,9 @@ class TestDataset(Dataset):
         """
 
         self.transform = transform
+
+        root_dir = os.path.join(root_dir, 'bev')
+
         files = [os.path.join(root_dir, name) for name in os.listdir(root_dir) if
                  os.path.isfile(os.path.join(root_dir, name)) and '.png' in name]
         self.file_list = files
