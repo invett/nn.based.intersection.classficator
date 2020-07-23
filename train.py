@@ -23,6 +23,13 @@ import matplotlib.pyplot as plt
 import wandb
 import seaborn as sn
 
+from dl_bot import DLBot
+telegram_token = "1178257144:AAH5DEYxJjPb0Qm_afbGTuJZ0-oqfIMFlmY"  # replace TOKEN with your bot's token
+telegram_user_id = None   # replace None with your telegram user id (integer):
+# Create a DLBot instance
+bot = DLBot(token=telegram_token, user_id=telegram_user_id)
+# Activate the bot
+bot.activate_bot()
 
 def test(args, dataloader_test):
     print('start Test!')
@@ -269,6 +276,8 @@ def main(args, model=None):
         acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc, os.path.basename(val_path[0]))
 
     test(args, dataloader_test)
+
+    bot.send_message("Finish")
 
 
 if __name__ == '__main__':
