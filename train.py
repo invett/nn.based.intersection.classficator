@@ -227,6 +227,7 @@ def main(args, model=None):
         loo = LeaveOneOut()
         for train_index, val_index in loo.split(folders):
             wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="training", reinit=True)
+            wandb.config.update(args)
             train_path, val_path = folders[train_index], folders[val_index]
             if args.bev:
                 val_dataset = fromAANETandDualBisenet(val_path, transform=transforms.Compose([Normalize(),
@@ -368,7 +369,6 @@ if __name__ == '__main__':
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
     group_id = wandb.util.generate_id()
-    wandb.config.update(args)
     print(args)
     warnings.filterwarnings("ignore")
 
