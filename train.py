@@ -23,6 +23,8 @@ import matplotlib.pyplot as plt
 import wandb
 import seaborn as sn
 
+import sys
+
 from dl_bot import DLBot
 telegram_token = "1178257144:AAH5DEYxJjPb0Qm_afbGTuJZ0-oqfIMFlmY"  # replace TOKEN with your bot's token
 telegram_user_id = None   # replace None with your telegram user id (integer):
@@ -30,6 +32,7 @@ telegram_user_id = None   # replace None with your telegram user id (integer):
 bot = DLBot(token=telegram_token, user_id=telegram_user_id)
 # Activate the bot
 bot.activate_bot()
+
 
 def test(args, dataloader_test):
     print('start Test!')
@@ -217,6 +220,65 @@ def main(args, model=None):
     folders = folders[folders != os.path.join(data_path, '2011_10_03_drive_0027_sync')]
     test_path = os.path.join(data_path, '2011_10_03_drive_0027_sync', 'bev')
 
+    try:
+        loo = LeaveOneOut()
+        for train_index, val_index in loo.split(folders):
+            train_path, val_path = folders[train_index], folders[val_index]
+            val_dataset = fromAANETandDualBisenet(val_path, transform=transforms.Compose([Normalize(),
+                                                                                          GenerateBev(
+                                                                                              decimate=args.decimate),
+                                                                                          Mirror(),
+                                                                                          Rescale((224, 224)),
+                                                                                          ToTensor()]))
+
+            train_dataset = fromAANETandDualBisenet(train_path, transform=transforms.Compose([Normalize(),
+                                                                                              GenerateBev(
+                                                                                                  decimate=args.decimate),
+                                                                                              Mirror(),
+                                                                                              Rescale((224, 224)),
+                                                                                              ToTensor()]))
+
+            dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
+                                          num_workers=args.num_workers)
+            dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+
+            # Build model
+            if args.resnetmodel[0:6] == 'resnet':
+                model = get_model_resnet(args.resnetmodel, args.num_classes)
+            elif args.resnetmodel[0:7] == 'resnext':
+                model = get_model_resnext(args.resnetmodel, args.num_classes)
+            else:
+                print('not supported model \n')
+                exit()
+            if torch.cuda.is_available() and args.use_gpu:
+                model = model.cuda()
+
+            # build optimizer
+            if args.optimizer == 'rmsprop':
+                optimizer = torch.optim.RMSprop(model.parameters(), args.lr, momentum=args.momentum)
+            elif args.optimizer == 'sgd':
+                optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum)
+            elif args.optimizer == 'adam':
+                optimizer = torch.optim.Adam(model.parameters(), args.lr)
+            elif args.optimizer == 'ASGD':
+                optimizer = torch.optim.ASGD(model.parameters(), args.lr)
+            elif args.optimizer == 'Adamax':
+                optimizer = torch.optim.Adamax(model.parameters(), args.lr)
+            else:
+                print('not supported optimizer \n')
+                exit()
+
+            # train model
+            acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc, os.path.basename(val_path[0]))
+            bot.send_message("K-Fold finished")
+
+    except: # catch *all* exceptions
+        e = sys.exc_info()[0]
+        print(e)
+        bot.send_message(e)
+
+
+    # Final Test on 2011_10_03_drive_0027_sync
     test_dataset = TestDataset(test_path, transform=transforms.Compose([transforms.Resize((224, 224)),
                                                                         transforms.ToTensor(),
                                                                         transforms.Normalize((0.485, 0.456, 0.406),
@@ -224,60 +286,9 @@ def main(args, model=None):
                                                                         ]))
 
     dataloader_test = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=args.num_workers)
-
-    loo = LeaveOneOut()
-    for train_index, val_index in loo.split(folders):
-        train_path, val_path = folders[train_index], folders[val_index]
-        val_dataset = fromAANETandDualBisenet(val_path, transform=transforms.Compose([Normalize(),
-                                                                                      GenerateBev(
-                                                                                          decimate=args.decimate),
-                                                                                      Mirror(),
-                                                                                      Rescale((224, 224)),
-                                                                                      ToTensor()]))
-
-        train_dataset = fromAANETandDualBisenet(train_path, transform=transforms.Compose([Normalize(),
-                                                                                          GenerateBev(
-                                                                                              decimate=args.decimate),
-                                                                                          Mirror(),
-                                                                                          Rescale((224, 224)),
-                                                                                          ToTensor()]))
-
-        dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                                      num_workers=args.num_workers)
-        dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
-
-        # Build model
-        if args.resnetmodel[0:6] == 'resnet':
-            model = get_model_resnet(args.resnetmodel, args.num_classes)
-        elif args.resnetmodel[0:7] == 'resnext':
-            model = get_model_resnext(args.resnetmodel, args.num_classes)
-        else:
-            print('not supported model \n')
-            exit()
-        if torch.cuda.is_available() and args.use_gpu:
-            model = model.cuda()
-
-        # build optimizer
-        if args.optimizer == 'rmsprop':
-            optimizer = torch.optim.RMSprop(model.parameters(), args.lr, momentum=args.momentum)
-        elif args.optimizer == 'sgd':
-            optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum)
-        elif args.optimizer == 'adam':
-            optimizer = torch.optim.Adam(model.parameters(), args.lr)
-        elif args.optimizer == 'ASGD':
-            optimizer = torch.optim.ASGD(model.parameters(), args.lr)
-        elif args.optimizer == 'Adamax':
-            optimizer = torch.optim.Adamax(model.parameters(), args.lr)
-        else:
-            print('not supported optimizer \n')
-            exit()
-
-        # train model
-        acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc, os.path.basename(val_path[0]))
-
     test(args, dataloader_test)
 
-    bot.send_message("Finish")
+    bot.send_message("Finish successfully")
 
 
 if __name__ == '__main__':
