@@ -26,8 +26,9 @@ import seaborn as sn
 import sys
 
 from dl_bot import DLBot
+
 telegram_token = "1178257144:AAH5DEYxJjPb0Qm_afbGTuJZ0-oqfIMFlmY"  # replace TOKEN with your bot's token
-telegram_user_id = None   # replace None with your telegram user id (integer):
+telegram_user_id = None  # replace None with your telegram user id (integer):
 # Create a DLBot instance
 bot = DLBot(token=telegram_token, user_id=telegram_user_id)
 # Activate the bot
@@ -178,7 +179,6 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
                        "Val/Acc": acc_val,
                        "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)})
 
-
             if kfold_acc < acc_val or kfold_loss > loss_train_mean:
                 patience = 0
                 if kfold_acc < acc_val:
@@ -240,7 +240,8 @@ def main(args, model=None):
 
             dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                           num_workers=args.num_workers)
-            dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+            dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True,
+                                        num_workers=args.num_workers)
 
             # Build model
             if args.resnetmodel[0:6] == 'resnet':
@@ -272,11 +273,11 @@ def main(args, model=None):
             acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc, os.path.basename(val_path[0]))
             bot.send_message("K-Fold finished")
 
-    except: # catch *all* exceptions
+    except:  # catch *all* exceptions
         e = sys.exc_info()[0]
         print(e)
-        bot.send_message(e)
-
+        bot.send_message(str(e))
+        exit()
 
     # Final Test on 2011_10_03_drive_0027_sync
     test_dataset = TestDataset(test_path, transform=transforms.Compose([transforms.Resize((224, 224)),
@@ -323,9 +324,9 @@ if __name__ == '__main__':
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
     group_id = wandb.util.generate_id()
-    wandb.init(project="nn-based-intersection-classficator", group=group_id)
+    wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="training")
     wandb.config.update(args)
-
+    bot.send_message('Starting experiment nn-based-intersection-classficator')
     print(args)
     warnings.filterwarnings("ignore")
     main(args)
