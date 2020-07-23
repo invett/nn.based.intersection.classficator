@@ -226,6 +226,7 @@ def main(args, model=None):
     try:
         loo = LeaveOneOut()
         for train_index, val_index in loo.split(folders):
+            wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="training", reinit=True)
             train_path, val_path = folders[train_index], folders[val_index]
             if args.bev:
                 val_dataset = fromAANETandDualBisenet(val_path, transform=transforms.Compose([Normalize(),
@@ -249,8 +250,14 @@ def main(args, model=None):
                                                                                    (0.229, 0.224, 0.225))
                                                                                ]))
                 train_dataset = BaseLine(train_path, transform=transforms.Compose([transforms.Resize((224, 224)),
-                                                                                   transforms.RandomAffine(15,translate=(0.0,0.1),shear=(-15,15)),
-                                                                                   transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
+                                                                                   transforms.RandomAffine(15,
+                                                                                                           translate=(
+                                                                                                           0.0, 0.1),
+                                                                                                           shear=(
+                                                                                                           -15, 15)),
+                                                                                   transforms.ColorJitter(
+                                                                                       brightness=0.5, contrast=0.5,
+                                                                                       saturation=0.5),
                                                                                    ransforms.RandomPerspective(),
                                                                                    transforms.ToTensor(),
                                                                                    transforms.Normalize(
@@ -294,6 +301,8 @@ def main(args, model=None):
 
             if telegram:
                 bot.send_message("K-Fold finished")
+
+            wandb.join()
 
     except:  # catch *all* exceptions
         e = sys.exc_info()
@@ -359,7 +368,6 @@ if __name__ == '__main__':
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
     group_id = wandb.util.generate_id()
-    wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="training")
     wandb.config.update(args)
     print(args)
     warnings.filterwarnings("ignore")
