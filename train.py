@@ -10,8 +10,9 @@ import torch
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror
+from torch.utils.data.sampler import SubsetRandomSampler
 
-from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet
+from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet, BaseLine
 from model.resnet_models import get_model_resnet, get_model_resnext
 from sklearn.model_selection import KFold
 from sklearn.model_selection import LeaveOneOut
@@ -23,8 +24,6 @@ import wandb
 import seaborn as sn
 
 import sys
-
-from dl_bot import DLBot
 
 import requests
 import json
@@ -253,25 +252,50 @@ def main(args, model=None):
 
     # Exclude test samples
     folders = folders[folders != os.path.join(data_path, '2011_10_03_drive_0027_sync')]
-    test_path = os.path.join(data_path, '2011_10_03_drive_0027_sync', 'bev')
+    test_path = os.path.join(data_path, '2011_10_03_drive_0027_sync')
 
     try:
         loo = LeaveOneOut()
         for train_index, val_index in loo.split(folders):
+            wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="training", reinit=True)
+            wandb.config.update(args)
             train_path, val_path = folders[train_index], folders[val_index]
-            val_dataset = fromAANETandDualBisenet(val_path, transform=transforms.Compose([Normalize(),
-                                                                                          GenerateBev(
-                                                                                              decimate=args.decimate),
-                                                                                          Mirror(),
-                                                                                          Rescale((224, 224)),
-                                                                                          ToTensor()]))
-
-            train_dataset = fromAANETandDualBisenet(train_path, transform=transforms.Compose([Normalize(),
+            if args.bev:
+                val_dataset = fromAANETandDualBisenet(val_path, transform=transforms.Compose([Normalize(),
                                                                                               GenerateBev(
                                                                                                   decimate=args.decimate),
                                                                                               Mirror(),
                                                                                               Rescale((224, 224)),
                                                                                               ToTensor()]))
+
+                train_dataset = fromAANETandDualBisenet(train_path, transform=transforms.Compose([Normalize(),
+                                                                                                  GenerateBev(
+                                                                                                      decimate=args.decimate),
+                                                                                                  Mirror(),
+                                                                                                  Rescale((224, 224)),
+                                                                                                  ToTensor()]))
+            else:
+                val_dataset = BaseLine(val_path, transform=transforms.Compose([transforms.Resize((224, 224)),
+                                                                               transforms.ToTensor(),
+                                                                               transforms.Normalize(
+                                                                                   (0.485, 0.456, 0.406),
+                                                                                   (0.229, 0.224, 0.225))
+                                                                               ]))
+                train_dataset = BaseLine(train_path, transform=transforms.Compose([transforms.Resize((224, 224)),
+                                                                                   transforms.RandomAffine(15,
+                                                                                                           translate=(
+                                                                                                           0.0, 0.1),
+                                                                                                           shear=(
+                                                                                                           -15, 15)),
+                                                                                   transforms.ColorJitter(
+                                                                                       brightness=0.5, contrast=0.5,
+                                                                                       saturation=0.5),
+                                                                                   ransforms.RandomPerspective(),
+                                                                                   transforms.ToTensor(),
+                                                                                   transforms.Normalize(
+                                                                                       (0.485, 0.456, 0.406),
+                                                                                       (0.229, 0.224, 0.225))
+                                                                                   ]))
 
             dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                           num_workers=args.num_workers)
@@ -310,8 +334,10 @@ def main(args, model=None):
             if telegram:
                 send_telegram_message("K-Fold finished")
 
+            wandb.join()
+
     except:  # catch *all* exceptions
-        e = sys.exc_info()[0]
+        e = sys.exc_info()
         print(e)
 
         if telegram:
@@ -320,13 +346,21 @@ def main(args, model=None):
         exit()
 
     # Final Test on 2011_10_03_drive_0027_sync
-    test_dataset = TestDataset(test_path, transform=transforms.Compose([transforms.Resize((224, 224)),
-                                                                        transforms.ToTensor(),
-                                                                        transforms.Normalize((0.485, 0.456, 0.406),
-                                                                                             (0.229, 0.224, 0.225))
-                                                                        ]))
+    if args.bev:
+        test_dataset = TestDataset(test_path, transform=transforms.Compose([transforms.Resize((224, 224)),
+                                                                            transforms.ToTensor(),
+                                                                            transforms.Normalize((0.485, 0.456, 0.406),
+                                                                                                 (0.229, 0.224, 0.225))
+                                                                            ]))
+    else:
+        test_dataset = BaseLine([test_path], transform=transforms.Compose([transforms.Resize((224, 224)),
+                                                                           transforms.ToTensor(),
+                                                                           transforms.Normalize((0.485, 0.456, 0.406),
+                                                                                                (0.229, 0.224, 0.225))
+                                                                           ]))
 
     dataloader_test = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=args.num_workers)
+
     test(args, dataloader_test)
 
     if telegram:
@@ -341,6 +375,7 @@ if __name__ == '__main__':
     parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
                                                                        'checkpoint (epochs)')
     parser.add_argument('--dataset', type=str, help='path to the dataset you are using.')
+    parser.add_argument('--bev', action='store_true', help='path to the dataset you are using.')
     parser.add_argument('--batch_size', type=int, default=32, help='Number of images in each batch')
     parser.add_argument('--resnetmodel', type=str, default="resnet18",
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
