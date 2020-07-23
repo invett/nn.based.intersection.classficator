@@ -55,7 +55,6 @@ def test(args, dataloader_test):
 
     wandb.log({"Test/Acc": acc,
                "conf-matrix_test": wandb.Image(plt)})
-    # wandb.log({"Test/report": report})
 
 
 def validation(args, model, criterion, dataloader_val):
@@ -165,11 +164,10 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
             plt.figure(figsize=(10, 7))
             sn.heatmap(df_cm, annot=True)
 
-            wandb.log({"Val/loss": acc_val,
-                       "Val/Acc": loss_val,
+            wandb.log({"Val/loss": loss_val,
+                       "Val/Acc": acc_val,
                        "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)})
 
-            # wandb.log({"Val/report": report})
 
             if kfold_acc < acc_val or kfold_loss > loss_train_mean:
                 patience = 0
@@ -193,8 +191,6 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
         if patience >= args.patience > 0:
             break
-
-    writer.close()
 
     return acc_pre
 
