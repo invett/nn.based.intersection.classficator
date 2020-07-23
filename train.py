@@ -10,7 +10,6 @@ import torch
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror
-from torch.utils.data.sampler import SubsetRandomSampler
 
 from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet
 from model.resnet_models import get_model_resnet, get_model_resnext
@@ -27,15 +26,46 @@ import sys
 
 from dl_bot import DLBot
 
-telegram = True
+import requests
+import json
 
-if telegram:
-    telegram_token = "1178257144:AAH5DEYxJjPb0Qm_afbGTuJZ0-oqfIMFlmY"  # replace TOKEN with your bot's token
-    telegram_user_id = None  # replace None with your telegram user id (integer):
-    # Create a DLBot instance
-    bot = DLBot(token=telegram_token, user_id=telegram_user_id)
-    # Activate the bot
-    bot.activate_bot()
+
+telegram = True
+telegram_token = "1178257144:AAH5DEYxJjPb0Qm_afbGTuJZ0-oqfIMFlmY"  # replace TOKEN with your bot's token
+telegram_channel = '-1001352516993'
+
+
+def send_telegram_message(message):
+    """
+
+    Args:
+        message: text
+
+    Returns: True if ok
+
+    """
+    URI = 'https://api.telegram.org/bot' + telegram_token + '/sendMessage?chat_id=' + telegram_channel + '&parse_mode=Markdown&text=' + message
+    response = requests.get(URI)
+    return json.loads(response.content)['ok']
+
+
+def send_telegram_picture(plt, description):
+    """
+
+    Args:
+        plt: matplotlib.pyplot
+        description: sends a figure with the confusion matrix through the telegram channel
+
+    Returns: True if ok
+
+    """
+    figdata = BytesIO()
+    plt.savefig(figdata, format='png')
+    URI = 'https://api.telegram.org/bot' + telegram_token + '/sendPhoto?chat_id=' + telegram_channel + "&caption=" + description
+    pic = {'photo': ("Foto", figdata.getvalue(), 'image/png')}
+    response = requests.get(URI, files=pic)
+
+    return json.loads(response.content)['ok']
 
 
 def test(args, dataloader_test):
@@ -178,6 +208,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
             plt.figure(figsize=(10, 7))
             sn.heatmap(df_cm, annot=True)
 
+            send_telegram_picture(plt, "Epoch:" + str(epoch))
+
             wandb.log({"Val/loss": loss_val,
                        "Val/Acc": acc_val,
                        "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)})
@@ -276,14 +308,14 @@ def main(args, model=None):
             acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc, os.path.basename(val_path[0]))
 
             if telegram:
-                bot.send_message("K-Fold finished")
+                send_telegram_message("K-Fold finished")
 
     except:  # catch *all* exceptions
         e = sys.exc_info()[0]
         print(e)
 
         if telegram:
-            bot.send_message(str(e))
+            send_telegram_message(str(e))
 
         exit()
 
@@ -298,7 +330,7 @@ def main(args, model=None):
     test(args, dataloader_test)
 
     if telegram:
-        bot.send_message("Finish successfully")
+        send_telegram_message("Finish successfully")
 
 
 if __name__ == '__main__':
@@ -339,5 +371,6 @@ if __name__ == '__main__':
     warnings.filterwarnings("ignore")
 
     if telegram:
-        bot.send_message('Starting experiment nn-based-intersection-classficator')
+        send_telegram_message("Starting experiment nn-based-intersection-classficator")
+
     main(args)
