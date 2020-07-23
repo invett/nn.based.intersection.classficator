@@ -4,6 +4,8 @@ import numpy as np
 import tqdm
 import pandas as pd
 
+from io import BytesIO
+
 import warnings
 
 import torch
