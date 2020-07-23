@@ -290,7 +290,7 @@ def main(args, model=None):
                                                                                    transforms.ColorJitter(
                                                                                        brightness=0.5, contrast=0.5,
                                                                                        saturation=0.5),
-                                                                                   ransforms.RandomPerspective(),
+                                                                                   transforms.RandomPerspective(),
                                                                                    transforms.ToTensor(),
                                                                                    transforms.Normalize(
                                                                                        (0.485, 0.456, 0.406),
@@ -361,7 +361,9 @@ def main(args, model=None):
 
     dataloader_test = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=args.num_workers)
 
+    wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="eval", reinit=True)
     test(args, dataloader_test)
+    wandb.join()
 
     if telegram:
         send_telegram_message("Finish successfully")
