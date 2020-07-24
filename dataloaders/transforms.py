@@ -4,10 +4,27 @@ import cv2.cv2 as cv2
 from scipy.spatial.transform import Rotation as R
 from skimage.transform import resize
 
-# import matplotlib.pyplot as plt
 
 # For debugging
 ShowImage = False
+
+if ShowImage:
+    import matplotlib.pyplot as plt
+
+class GenerateNewDataset(object):
+    """
+    This simply sets a value that will be used in the getitem to save the image (with the correct filename) inside the
+    path passed as parameter
+    """
+
+    def __init__(self, path):
+        self.path = path
+
+    def __call__(self, sample):
+
+        return {'data': sample['data'],
+                'label': sample['label'],
+                'path': self.path}
 
 
 class Rescale(object):
@@ -59,12 +76,18 @@ class ToTensor(object):
 class Normalize(object):
 
     def __call__(self, sample):
-        image = sample['image_02']
-        image = cv2.normalize(image, 0.0, 1.0, cv2.NORM_MINMAX)
+        #image = sample['image_02']
+        #image = cv2.normalize(image, 0.0, 1.0, cv2.NORM_MINMAX)
+        #mean = [0.485, 0.456, 0.406]
+        #std = [0.229, 0.224, 0.225]
+        #image = (image - mean) / std
+        #sample['image_02'] = image.astype(np.float32)
+
         mean = [0.485, 0.456, 0.406]
         std = [0.229, 0.224, 0.225]
-        image = (image - mean) / std
-        sample['image_02'] = image.astype(np.float32)
+        image_norm = cv2.normalize(sample['image_02'], None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX,
+                                   dtype=cv2.CV_32F)
+        sample = (image_norm - mean) / std
 
         return sample
 

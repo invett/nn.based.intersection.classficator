@@ -1,5 +1,6 @@
 # Dataloader for DualBisenet under prepared Kitti dataset
 import os
+import glob
 from PIL import Image
 from torch.utils.data import Dataset
 import pandas as pd
@@ -183,5 +184,16 @@ class fromAANETandDualBisenet(Dataset):
 
         if self.transform:
             bev_with_new_label = self.transform(sample)
+
+            if "path" in bev_with_new_label:
+
+                folder, file = os.path.split(image_02_file.replace("data_raw", "data_raw_bev").replace("image_02", ""))
+                base_file_star = str(file.split(".")[0]) + "*"
+                last_number = len(glob.glob1(folder, base_file_star))
+                final_filename = str(file.split(".")[0]) + '.' + str(last_number+1).zfill(3) + ".png"
+                path_filename = os.path.join(folder, final_filename)
+
+                # path must already exist!
+                cv2.imwrite(path_filename, bev_with_new_label['data'])
 
         return bev_with_new_label
