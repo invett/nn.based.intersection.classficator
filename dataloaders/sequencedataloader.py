@@ -26,13 +26,10 @@ class BaseLine(Dataset):
             for image_02_file in os.listdir(folder_image_02):
                 if os.path.isfile(os.path.join(folder_image_02, image_02_file)) and '.png' in image_02_file:
                     image_02.append(os.path.join(folder_image_02, image_02_file))
-                else:
-                    print("Loader error")
-                    print(os.path.join(folder_image_02, image_02_file))
 
         self.image_02 = image_02
 
-        assert len(self.image_02) > 0, 'Training files missing [alvaromask]'
+        assert len(self.image_02) > 0, 'Training files missing'
 
     def __len__(self):
 

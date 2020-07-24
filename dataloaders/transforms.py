@@ -4,12 +4,12 @@ import cv2.cv2 as cv2
 from scipy.spatial.transform import Rotation as R
 from skimage.transform import resize
 
-
 # For debugging
 ShowImage = False
 
 if ShowImage:
     import matplotlib.pyplot as plt
+
 
 class GenerateNewDataset(object):
     """
@@ -21,7 +21,6 @@ class GenerateNewDataset(object):
         self.path = path
 
     def __call__(self, sample):
-
         return {'data': sample['data'],
                 'label': sample['label'],
                 'path': self.path}
@@ -70,19 +69,12 @@ class ToTensor(object):
         # torch image: C X H X W
         image = image.transpose((2, 0, 1))
 
-        return {'data': torch.from_numpy(image), 'label': torch.tensor(label)}
+        return {'data': torch.from_numpy(image), 'label': label}
 
 
 class Normalize(object):
 
     def __call__(self, sample):
-        #image = sample['image_02']
-        #image = cv2.normalize(image, 0.0, 1.0, cv2.NORM_MINMAX)
-        #mean = [0.485, 0.456, 0.406]
-        #std = [0.229, 0.224, 0.225]
-        #image = (image - mean) / std
-        #sample['image_02'] = image.astype(np.float32)
-
         mean = [0.485, 0.456, 0.406]
         std = [0.229, 0.224, 0.225]
         image_norm = cv2.normalize(sample['image_02'], None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX,

@@ -30,7 +30,6 @@ import sys
 import requests
 import json
 
-
 telegram = True
 telegram_token = "1178257144:AAH5DEYxJjPb0Qm_afbGTuJZ0-oqfIMFlmY"  # replace TOKEN with your bot's token
 telegram_channel = '-1001352516993'
@@ -126,6 +125,9 @@ def validation(args, model, criterion, dataloader_val):
         label = label.squeeze().cpu().numpy()
         predict = predict.squeeze().cpu().numpy()
 
+        print(label.shape)
+        print(predict.shape)
+
         labellist = np.append(labellist, label)
         predlist = np.append(predlist, predict)
 
@@ -205,7 +207,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
             scheduler.step(loss_val)
 
             labels_all = ['class 0', 'class 1', 'class 2', 'class 3', 'class 4', 'class 5', 'class 6']
-            df_cm = pd.DataFrame(confusion_matrix, index=[i for i in labels_all], columns=[i for i in labels_all])
+            df_cm = pd.DataFrame(confusion_matrix, index=labels_all, columns=labels_all)
             plt.figure(figsize=(10, 7))
             sn.heatmap(df_cm, annot=True)
 
@@ -286,13 +288,14 @@ def main(args, model=None):
                 train_dataset = BaseLine(train_path, transform=transforms.Compose([transforms.Resize((224, 224)),
                                                                                    transforms.RandomAffine(15,
                                                                                                            translate=(
-                                                                                                           0.0, 0.1),
+                                                                                                               0.0,
+                                                                                                               0.1),
                                                                                                            shear=(
-                                                                                                           -15, 15)),
+                                                                                                               -15,
+                                                                                                               15)),
                                                                                    transforms.ColorJitter(
                                                                                        brightness=0.5, contrast=0.5,
                                                                                        saturation=0.5),
-                                                                                   transforms.RandomPerspective(),
                                                                                    transforms.ToTensor(),
                                                                                    transforms.Normalize(
                                                                                        (0.485, 0.456, 0.406),
@@ -404,8 +407,6 @@ if __name__ == '__main__':
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
     group_id = wandb.util.generate_id()
-    wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="training")
-    wandb.config.update(args)
     print(args)
     warnings.filterwarnings("ignore")
 
