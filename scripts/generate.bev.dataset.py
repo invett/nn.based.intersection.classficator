@@ -41,11 +41,12 @@ def main(args):
 
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=1)
 
-    for sample in dataloader:
-        data = sample['data']
-        label = sample['label']
+    for index in range(args.augmentation):
+        for sample in dataloader:
+            data = sample['data']
+            label = sample['label']
 
-        print("gigi")
+        print("Run {} generated".format(index))
 
 
 if __name__ == '__main__':
