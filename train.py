@@ -90,10 +90,10 @@ def test(args, dataloader_test):
     if torch.cuda.is_available() and args.use_gpu:
         model = model.cuda()
 
-    report, confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test)
+    confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test)
 
     labels_all = ['class 0', 'class 1', 'class 2', 'class 3', 'class 4', 'class 5', 'class 6']
-    df_cm = pd.DataFrame(confusion_matrix, index=[i for i in labels_all], columns=[i for i in labels_all])
+    df_cm = pd.DataFrame(confusion_matrix, index=labels_all, columns=labels_all)
     plt.figure(figsize=(10, 7))
     sn.heatmap(df_cm, annot=True)
 
@@ -105,8 +105,8 @@ def validation(args, model, criterion, dataloader_val):
     print('\nstart val!')
     model.eval()
     loss_record = 0.0
-    labellist = np.array([])
-    predlist = np.array([])
+    acc_record = 0.0
+    conf_matrix = np.zeros((7, 7), dtype=np.uint8)
 
     for sample in dataloader_val:
         data = sample['data']
@@ -125,22 +125,17 @@ def validation(args, model, criterion, dataloader_val):
         label = label.squeeze().cpu().numpy()
         predict = predict.squeeze().cpu().numpy()
 
-        print(label.shape)
-        print(predict.shape)
+        conf_matrix += confusion_matrix(label, predict, labels=[0, 1, 2, 3, 4, 5, 6]).astype(np.uint8)
+        acc_record += accuracy_score(label, predict)
 
-        labellist = np.append(labellist, label)
-        predlist = np.append(predlist, predict)
-
+    # Calculate validation metrics
     loss_val_mean = loss_record / len(dataloader_val)
     print('loss for test/validation : %f' % loss_val_mean)
 
-    # Calculate validation metrics
-    conf_matrix = confusion_matrix(labellist, predlist, labels=[0, 1, 2, 3, 4, 5, 6])
-    report_dict = classification_report(labellist, predlist, output_dict=True, zero_division=0)
-    acc = accuracy_score(labellist, predlist)
+    acc = acc_record / len(dataloader_val)
     print('Accuracy for test/validation : %f\n' % acc)
 
-    return report_dict, conf_matrix, acc, loss_val_mean
+    return conf_matrix, acc, loss_val_mean
 
 
 def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, valfolder):
@@ -161,8 +156,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         tq = tqdm.tqdm(total=len(dataloader_train) * args.batch_size)
         tq.set_description('epoch %d, lr %f' % (epoch, lr))
         loss_record = 0.0
-        trainlabellist = np.array([])
-        trainpredlist = np.array([])
+        acc_record = 0.0
 
         for sample in dataloader_train:
             data = sample['data']
@@ -189,12 +183,13 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
             label = label.squeeze().cpu().numpy()
             predict = predict.squeeze().cpu().numpy()
 
-            trainlabellist = np.append(trainlabellist, label)
-            trainpredlist = np.append(trainpredlist, predict)
+            acc_record += accuracy_score(label, predict)
 
         tq.close()
+
+        # Calculate validation metrics
         loss_train_mean = loss_record / len(dataloader_train)
-        acc_train = accuracy_score(trainlabellist, trainpredlist)
+        acc_train = acc_record / len(dataloader_train)
         print('loss for train : %f' % loss_train_mean)
         print('acc for train : %f' % acc_train)
 
@@ -203,7 +198,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
                    "Train/lr": lr})
 
         if epoch % args.validation_step == 0:
-            report, confusion_matrix, acc_val, loss_val = validation(args, model, criterion, dataloader_val)
+            confusion_matrix, acc_val, loss_val = validation(args, model, criterion, dataloader_val)
             scheduler.step(loss_val)
 
             labels_all = ['class 0', 'class 1', 'class 2', 'class 3', 'class 4', 'class 5', 'class 6']
@@ -304,7 +299,7 @@ def main(args, model=None):
 
             dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                           num_workers=args.num_workers)
-            dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True,
+            dataloader_val = DataLoader(val_dataset, batch_size=4, shuffle=False,
                                         num_workers=args.num_workers)
 
             # Build model
