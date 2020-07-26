@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror
 from torch.utils.data.sampler import SubsetRandomSampler
 
-from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet, BaseLine
+from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet, BaseLine, fromGeneratedDataset
 from model.resnet_models import get_model_resnet, get_model_resnext
 from sklearn.model_selection import KFold
 from sklearn.model_selection import LeaveOneOut
@@ -214,97 +214,94 @@ def main(args, model=None):
     folders = folders[folders != os.path.join(data_path, '2011_10_03_drive_0027_sync')]
     test_path = os.path.join(data_path, '2011_10_03_drive_0027_sync')
 
-    try:
-        loo = LeaveOneOut()
-        for train_index, val_index in loo.split(folders):
-            wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="training", reinit=True)
-            wandb.config.update(args)
-            train_path, val_path = folders[train_index], folders[val_index]
-            if args.bev:
-                val_dataset = fromAANETandDualBisenet(val_path, transform=transforms.Compose([Normalize(),
+    loo = LeaveOneOut()
+    for train_index, val_index in loo.split(folders):
+        wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="training", reinit=True)
+        wandb.config.update(args)
+        train_path, val_path = folders[train_index], folders[val_index]
+        if args.dataloader == "fromAANETandDualBisenet":
+            val_dataset = fromAANETandDualBisenet(val_path, transform=transforms.Compose([Normalize(),
+                                                                                          GenerateBev(
+                                                                                              decimate=args.decimate),
+                                                                                          Mirror(),
+                                                                                          Rescale((224, 224)),
+                                                                                          ToTensor()]))
+
+            train_dataset = fromAANETandDualBisenet(train_path, transform=transforms.Compose([Normalize(),
                                                                                               GenerateBev(
                                                                                                   decimate=args.decimate),
                                                                                               Mirror(),
                                                                                               Rescale((224, 224)),
                                                                                               ToTensor()]))
+        elif args.dataloader == "generatedDataset":
+            val_dataset = fromGeneratedDataset(val_path, transform=transforms.Compose([ToTensor()]))
 
-                train_dataset = fromAANETandDualBisenet(train_path, transform=transforms.Compose([Normalize(),
-                                                                                                  GenerateBev(
-                                                                                                      decimate=args.decimate),
-                                                                                                  Mirror(),
-                                                                                                  Rescale((224, 224)),
-                                                                                                  ToTensor()]))
-            else:
-                val_dataset = BaseLine(val_path, transform=transforms.Compose([transforms.Resize((224, 224)),
+            train_dataset = fromGeneratedDataset(train_path, transform=transforms.Compose([ToTensor()]))
+        elif args.dataloader == "BaseLine":
+            val_dataset = BaseLine(val_path, transform=transforms.Compose([transforms.Resize((224, 224)),
+                                                                           transforms.ToTensor(),
+                                                                           transforms.Normalize(
+                                                                               (0.485, 0.456, 0.406),
+                                                                               (0.229, 0.224, 0.225))
+                                                                           ]))
+            train_dataset = BaseLine(train_path, transform=transforms.Compose([transforms.Resize((224, 224)),
+                                                                               transforms.RandomAffine(15,
+                                                                                                       translate=(
+                                                                                                           0.0,
+                                                                                                           0.1),
+                                                                                                       shear=(
+                                                                                                           -15,
+                                                                                                           15)),
+                                                                               transforms.ColorJitter(
+                                                                                   brightness=0.5, contrast=0.5,
+                                                                                   saturation=0.5),
                                                                                transforms.ToTensor(),
                                                                                transforms.Normalize(
                                                                                    (0.485, 0.456, 0.406),
                                                                                    (0.229, 0.224, 0.225))
                                                                                ]))
-                train_dataset = BaseLine(train_path, transform=transforms.Compose([transforms.Resize((224, 224)),
-                                                                                   transforms.RandomAffine(15,
-                                                                                                           translate=(
-                                                                                                               0.0,
-                                                                                                               0.1),
-                                                                                                           shear=(
-                                                                                                               -15,
-                                                                                                               15)),
-                                                                                   transforms.ColorJitter(
-                                                                                       brightness=0.5, contrast=0.5,
-                                                                                       saturation=0.5),
-                                                                                   transforms.ToTensor(),
-                                                                                   transforms.Normalize(
-                                                                                       (0.485, 0.456, 0.406),
-                                                                                       (0.229, 0.224, 0.225))
-                                                                                   ]))
+        else:
+            raise Exception("Dataloader not found")
 
-            dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                                          num_workers=args.num_workers)
-            dataloader_val = DataLoader(val_dataset, batch_size=4, shuffle=False,
-                                        num_workers=args.num_workers)
+        dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
+                                      num_workers=args.num_workers)
+        dataloader_val = DataLoader(val_dataset, batch_size=4, shuffle=False,
+                                    num_workers=args.num_workers)
 
-            # Build model
-            if args.resnetmodel[0:6] == 'resnet':
-                model = get_model_resnet(args.resnetmodel, args.num_classes, args.transfer)
-            elif args.resnetmodel[0:7] == 'resnext':
-                model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer)
-            else:
-                print('not supported model \n')
-                exit()
-            if torch.cuda.is_available() and args.use_gpu:
-                model = model.cuda()
+        # Build model
+        if args.resnetmodel[0:6] == 'resnet':
+            model = get_model_resnet(args.resnetmodel, args.num_classes, args.transfer)
+        elif args.resnetmodel[0:7] == 'resnext':
+            model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer)
+        else:
+            print('not supported model \n')
+            exit()
+        if torch.cuda.is_available() and args.use_gpu:
+            model = model.cuda()
 
-            # build optimizer
-            if args.optimizer == 'rmsprop':
-                optimizer = torch.optim.RMSprop(model.parameters(), args.lr, momentum=args.momentum)
-            elif args.optimizer == 'sgd':
-                optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum)
-            elif args.optimizer == 'adam':
-                optimizer = torch.optim.Adam(model.parameters(), args.lr)
-            elif args.optimizer == 'ASGD':
-                optimizer = torch.optim.ASGD(model.parameters(), args.lr)
-            elif args.optimizer == 'Adamax':
-                optimizer = torch.optim.Adamax(model.parameters(), args.lr)
-            else:
-                print('not supported optimizer \n')
-                exit()
+        # build optimizer
+        if args.optimizer == 'rmsprop':
+            optimizer = torch.optim.RMSprop(model.parameters(), args.lr, momentum=args.momentum)
+        elif args.optimizer == 'sgd':
+            optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum)
+        elif args.optimizer == 'adam':
+            optimizer = torch.optim.Adam(model.parameters(), args.lr)
+        elif args.optimizer == 'ASGD':
+            optimizer = torch.optim.ASGD(model.parameters(), args.lr)
+        elif args.optimizer == 'Adamax':
+            optimizer = torch.optim.Adamax(model.parameters(), args.lr)
+        else:
+            print('not supported optimizer \n')
+            exit()
 
-            # train model
-            acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc, os.path.basename(val_path[0]))
-
-            if args.telegram:
-                send_telegram_message("K-Fold finished")
-
-            wandb.join()
-
-    except:  # catch *all* exceptions
-        e = sys.exc_info()
-        print(e)
+        # train model
+        acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc, os.path.basename(val_path[0]))
 
         if args.telegram:
-            send_telegram_message(str(e))
+            send_telegram_message("K-Fold finished")
 
-        exit()
+        wandb.join()
+
 
     # Final Test on 2011_10_03_drive_0027_sync
     if args.bev:
@@ -338,7 +335,6 @@ if __name__ == '__main__':
     parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
                                                                        'checkpoint (epochs)')
     parser.add_argument('--dataset', type=str, help='path to the dataset you are using.')
-    parser.add_argument('--bev', action='store_true', help='Bev or RGB dataset')
     parser.add_argument('--transfer', action='store_true', help='Fine tuning or transfer learning')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
     parser.add_argument('--resnetmodel', type=str, default="resnet18",
@@ -360,6 +356,13 @@ if __name__ == '__main__':
                                                                     'decimation')
     parser.add_argument('--telegram', type=bool, default=True, help='Send info through Telegram')
 
+    # different data loaders, use one from choises; a description is provided in the documentation of each dataloader
+    parser.add_argument('--dataloader', type=str, default='BaseLine', choices=['fromAANETandDualBisenet',
+                                                                                'generatedDataset',
+                                                                                'BaseLine',
+                                                                                'TestDataset'],
+                        help='One of the supported datasets')
+
     args = parser.parse_args()
 
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
@@ -379,12 +382,13 @@ if __name__ == '__main__':
             send_telegram_message("Experiment of nn-based-intersection-classficator ended after " +
                                   str(time.strftime("%H:%M:%S", time.gmtime(toc - tic))))
 
-    except (KeyboardInterrupt, SystemExit):
+    except KeyboardInterrupt:
         print("Shutdown requested")
         if args.telegram:
             send_telegram_message("Shutdown requested")
-        raise
-    except:
+    except Exception as e:
+        if isinstance(e, SystemExit):
+            exit()
         e = sys.exc_info()
         print(e)
         if args.telegram:

@@ -8,11 +8,15 @@ from numpy import load
 import cv2
 import json
 from miscellaneous.utils import write_ply
+import time
 
 
 class BaseLine(Dataset):
     def __init__(self, folders, transform=None):
         """
+
+        THIS IS THE DATALOADER USED TO DIRECTLY USE RGB IMAGES
+
         Args:
             root_dir (string): Directory with all the images.
             transform (callable, optional): Optional transform to be applied
@@ -63,6 +67,15 @@ class TestDataset(Dataset):
 
     def __init__(self, root_dir, transform=None):
         """
+
+        THIS IS THE FIRST DATA LOADER WE USED WITH THE BEVs GENERATED OFFLINE WITH THE AUGUSTO's SCRIPTS, NOT INSIDE
+        THIS PROJECT. THE DATASET DIDN'T CONTAIN ANY DATA AUGMENTATION, WE MADE DATA AUGMENTATION HERE BUT IN THIS WAY
+        THE NUMBER OF POINTS CAN NOT CHANGE FOR EXAMPLE IN A ROTATION, RESULTING IN A BLACK AREA OF THE IMAGE WHERE
+        INSTEAD WE CAN DO WAY BETTER GENERATING ON-THE-FLY THE BEVs.
+
+        WHIS WAS DONE WITH <fromAANETandDualBisenet> DATALOADER, BUT IT DRASTICALLY DECREASES THE SPEED OF THE PROCESS.
+        FOR THESE REASON THEN WE MADE AN "AUGMENTED" OFFLINE DATASET WITH A NEW DATALOADER, <fromGeneratedDataset>
+
         Args:
             root_dir (string): Directory with all the images.
             transform (callable, optional): Optional transform to be applied
@@ -222,3 +235,53 @@ class fromAANETandDualBisenet(Dataset):
                     debug_values.pop('save_out_colors')
 
         return bev_with_new_label
+
+
+class fromGeneratedDataset(Dataset):
+
+    def __init__(self, folders, transform=None):
+        """
+        Args:
+            root_dir (string): Directory with all the images.
+
+        """
+
+        self.transform = transform
+
+        self.bev_images = []
+        self.bev_labels = []
+
+        tic = time.time()
+        for folder in folders:
+            current_filelist = glob.glob1(str(folder), "*.png")
+            for file in current_filelist:
+                bev_filename = os.path.join(folder, file)
+                json_filename = str(bev_filename.replace('png', 'png.json'))
+
+                assert os.path.exists(bev_filename), "no bev file"
+                assert os.path.exists(json_filename), "no json file"
+
+                self.bev_images.append(bev_filename)
+                
+                with open(json_filename) as json_file:
+                    bev_label = json.load(json_file)
+                    self.bev_labels.append(bev_label['label'])
+        toc = time.time()
+        print("[fromGeneratedDataset] - " + str(len(self.bev_labels)) + " elements loaded in " +
+              str(time.strftime("%H:%M:%S", time.gmtime(toc - tic))))
+
+    def __len__(self):
+
+        return len(self.bev_labels)
+
+    def __getitem__(self, idx):
+
+        bev_image = cv2.imread(self.bev_images[idx], cv2.IMREAD_UNCHANGED)
+        bev_label = self.bev_labels[idx]
+
+        sample = {'data': bev_image,
+                  'label': bev_label}
+
+        sample = self.transform(sample)
+
+        return sample
