@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 import numpy as np
 import tqdm
 import pandas as pd
@@ -25,11 +26,10 @@ import matplotlib.pyplot as plt
 import wandb
 import seaborn as sn
 
-import sys
-
+from miscellaneous.utils import send_telegram_picture, send_telegram_message
 
 telegram = True
-from miscellaneous.utils import send_telegram_picture, send_telegram_message
+
 
 def test(args, dataloader_test):
     print('start Test!')
@@ -267,9 +267,9 @@ def main(args, model=None):
 
             # Build model
             if args.resnetmodel[0:6] == 'resnet':
-                model = get_model_resnet(args.resnetmodel, args.num_classes)
+                model = get_model_resnet(args.resnetmodel, args.num_classes, args.transfer)
             elif args.resnetmodel[0:7] == 'resnext':
-                model = get_model_resnext(args.resnetmodel, args.num_classes)
+                model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer)
             else:
                 print('not supported model \n')
                 exit()
@@ -322,7 +322,7 @@ def main(args, model=None):
                                                                                                 (0.229, 0.224, 0.225))
                                                                            ]))
 
-    dataloader_test = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=args.num_workers)
+    dataloader_test = DataLoader(test_dataset, batch_size=4, shuffle=False, num_workers=args.num_workers)
 
     wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="eval", reinit=True)
     test(args, dataloader_test)
@@ -340,8 +340,9 @@ if __name__ == '__main__':
     parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
                                                                        'checkpoint (epochs)')
     parser.add_argument('--dataset', type=str, help='path to the dataset you are using.')
-    parser.add_argument('--bev', action='store_true', help='path to the dataset you are using.')
-    parser.add_argument('--batch_size', type=int, default=32, help='Number of images in each batch')
+    parser.add_argument('--bev', action='store_true', help='Bev or RGB dataset')
+    parser.add_argument('--transfer', action='store_true', help='Fine tuning or transfer learning')
+    parser.add_argument('--batch_size', type=int, default=16, help='Number of images in each batch')
     parser.add_argument('--resnetmodel', type=str, default="resnet18",
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate used for train')
