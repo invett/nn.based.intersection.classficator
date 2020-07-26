@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+import time
 import numpy as np
 import tqdm
 import pandas as pd
@@ -25,8 +26,6 @@ import wandb
 import seaborn as sn
 
 from miscellaneous.utils import send_telegram_picture, send_telegram_message
-
-telegram = True
 
 
 def test(args, dataloader_test):
@@ -167,7 +166,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
             plt.figure(figsize=(10, 7))
             sn.heatmap(df_cm, annot=True)
 
-            send_telegram_picture(plt, "Epoch:" + str(epoch))
+            if args.telegram:
+                send_telegram_picture(plt, "Epoch:" + str(epoch))
 
             wandb.log({"Val/loss": loss_val,
                        "Val/Acc": acc_val,
@@ -200,7 +200,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
 
 def main(args, model=None):
-    # Acuracy acumulator
+    # Accuracy accumulator
     acc = 0.0
 
     # create dataset and dataloader
@@ -292,7 +292,7 @@ def main(args, model=None):
             # train model
             acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc, os.path.basename(val_path[0]))
 
-            if telegram:
+            if args.telegram:
                 send_telegram_message("K-Fold finished")
 
             wandb.join()
@@ -301,7 +301,7 @@ def main(args, model=None):
         e = sys.exc_info()
         print(e)
 
-        if telegram:
+        if args.telegram:
             send_telegram_message(str(e))
 
         exit()
@@ -326,7 +326,7 @@ def main(args, model=None):
     test(args, dataloader_test)
     wandb.join()
 
-    if telegram:
+    if args.telegram:
         send_telegram_message("Finish successfully")
 
 
@@ -358,6 +358,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--decimate', type=float, default=0.2, help='How much of the points will remain after '
                                                                     'decimation')
+    parser.add_argument('--telegram', type=bool, default=True, help='Send info through Telegram')
 
     args = parser.parse_args()
 
@@ -367,7 +368,26 @@ if __name__ == '__main__':
     print(args)
     warnings.filterwarnings("ignore")
 
-    if telegram:
+    if args.telegram:
         send_telegram_message("Starting experiment nn-based-intersection-classficator")
 
-    main(args)
+    try:
+        tic = time.time()
+        main(args)
+        toc = time.time()
+        if args.telegram:
+            send_telegram_message("Experiment of nn-based-intersection-classficator ended after " +
+                                  str(time.strftime("%H:%M:%S", time.gmtime(toc - tic))))
+
+    except (KeyboardInterrupt, SystemExit):
+        print("Shutdown requested")
+        if args.telegram:
+            send_telegram_message("Shutdown requested")
+        raise
+    except:
+        e = sys.exc_info()
+        print(e)
+        if args.telegram:
+            send_telegram_message("Error catched in nn-based-intersection-classficator :" + str(e))
+
+
