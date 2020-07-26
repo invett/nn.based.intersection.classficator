@@ -68,6 +68,7 @@ class Rescale(object):
 
         return sample
 
+
 class ToTensor(object):
     """Convert ndarrays in sample to Tensors."""
 

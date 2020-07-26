@@ -5,8 +5,6 @@ import numpy as np
 import tqdm
 import pandas as pd
 
-from io import BytesIO
-
 import warnings
 
 import torch
@@ -342,7 +340,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, help='path to the dataset you are using.')
     parser.add_argument('--bev', action='store_true', help='Bev or RGB dataset')
     parser.add_argument('--transfer', action='store_true', help='Fine tuning or transfer learning')
-    parser.add_argument('--batch_size', type=int, default=16, help='Number of images in each batch')
+    parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
     parser.add_argument('--resnetmodel', type=str, default="resnet18",
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate used for train')
