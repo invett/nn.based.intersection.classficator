@@ -37,7 +37,7 @@ def get_model_resnet(model_version, num_classes, transfer):
     return model
 
 
-def get_model_resnext(model_version, num_classes):
+def get_model_resnext(model_version, num_classes, transfer):
     if model_version == 'resnext50':
         model = models.resnext50_32x4d(pretrained=True)
         if transfer:
