@@ -5,6 +5,8 @@ import requests
 import json
 import datetime
 
+from io import BytesIO
+
 
 def write_ply(fn, verts, colors=0):
     if colors.any():
