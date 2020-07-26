@@ -9,6 +9,7 @@ import cv2
 import json
 from miscellaneous.utils import write_ply
 
+
 class BaseLine(Dataset):
     def __init__(self, folders, transform=None):
         """
@@ -194,7 +195,7 @@ class fromAANETandDualBisenet(Dataset):
             base_file_star = str(file.split(".")[0]) + "*"
             current_filelist = glob.glob1(folder, base_file_star)
             last_number = len([x for x in current_filelist if "json" not in x])
-            final_filename = str(file.split(".")[0]) + '.' + str(last_number+1).zfill(3) + ".png"
+            final_filename = str(file.split(".")[0]) + '.' + str(last_number + 1).zfill(3) + ".png"
             bev_path_filename = os.path.join(folder, final_filename)
 
             # path must already exist!
@@ -203,8 +204,9 @@ class fromAANETandDualBisenet(Dataset):
 
             # for debuggin' purposes
             if "save_out_points" in bev_with_new_label:
-                cv2.imwrite(bev_path_filename+"original.png", image_02_image)
-                write_ply(bev_path_filename+".ply", bev_with_new_label['save_out_points'], bev_with_new_label['save_out_colors'])
+                cv2.imwrite(bev_path_filename + "original.png", image_02_image)
+                write_ply(bev_path_filename + ".ply", bev_with_new_label['save_out_points'],
+                          bev_with_new_label['save_out_colors'])
 
             if "debug" in bev_with_new_label:
                 debug_values = bev_with_new_label.copy()
