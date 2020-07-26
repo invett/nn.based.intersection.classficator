@@ -3,6 +3,7 @@ import os
 import numpy as np
 from torch.utils.data import DataLoader
 import sys
+import time
 
 import torchvision.transforms as transforms
 from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror, GenerateNewDataset, \
@@ -69,9 +70,13 @@ if __name__ == '__main__':
         send_telegram_message("Executing generate.bev.dataset.py")
 
     try:
+        tic = time.time()
         main(args)
+        toc = time.time()
         if args.telegram:
-            send_telegram_message("Generation of dataset ended correctly")
+            send_telegram_message("Generation of dataset ended correctly after " +
+                                  str(time.strftime("%H:%M:%S", time.gmtime(toc - tic))))
+
     except (KeyboardInterrupt, SystemExit):
         print("Shutdown requested")
         if args.telegram:
