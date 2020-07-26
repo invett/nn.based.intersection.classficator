@@ -21,9 +21,18 @@ class GenerateNewDataset(object):
         self.path = path
 
     def __call__(self, sample):
-        return {'data': sample['data'],
-                'label': sample['label'],
-                'path': self.path}
+        sample['path'] = self.path
+        return sample
+
+
+class WriteDebugInfoOnNewDataset(object):
+    """
+    Sets a label used later to write debug information
+    """
+
+    def __call__(self, sample):
+        sample['debug'] = True
+        return sample
 
 
 class Rescale(object):
@@ -40,7 +49,7 @@ class Rescale(object):
         self.output_size = output_size
 
     def __call__(self, sample):
-        image, label = sample['data'], sample['label']
+        image = sample['data']
 
         h, w = image.shape[:2]
         if isinstance(self.output_size, int):
@@ -55,8 +64,9 @@ class Rescale(object):
 
         image = resize(image, (new_h, new_w), anti_aliasing=True)
 
-        return {'data': image, 'label': label}
+        sample['data'] = image
 
+        return sample
 
 class ToTensor(object):
     """Convert ndarrays in sample to Tensors."""
@@ -75,11 +85,13 @@ class ToTensor(object):
 class Normalize(object):
 
     def __call__(self, sample):
-        mean = [0.485, 0.456, 0.406]
-        std = [0.229, 0.224, 0.225]
+        mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+        std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
         image_norm = cv2.normalize(sample['image_02'], None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX,
                                    dtype=cv2.CV_32F)
-        sample = (image_norm - mean) / std
+        image_norm = (image_norm - mean) / std
+
+        sample['image_02'] = image_norm
 
         return sample
 
@@ -100,14 +112,32 @@ class Mirror(object):
                 label = 4
             elif label == 4:
                 label = 3
-            return {'data': flipped, 'label': label}
+            sample['data'] = flipped
+            sample['label'] = label
+            sample['mirrored'] = True
+            return sample
         else:
-            return {'data': image, 'label': label}
+            sample['mirrored'] = False
+            return sample
 
 
 class GenerateBev(object):
     """
     Data Augmentation routine;
+
+    INPUT:
+        1. AANET NPZ
+        2. RGB IMAGE FROM KITTI
+        3. ALVAROMASK
+
+    OUTPUT:
+        4. THE GENERATED BEV
+
+    PARAMETERS:
+        1. decimate factor - default=1.0 (no.decimate)
+        2. TRANSLATION - random_T*_meters -> used to initialize a uniform distribution, then adding a value drawn from
+        3. ROTATION - random_R*_degrees -> used to initialize a uniform distribution, then adding a value drawn from
+        4. returnPoints --> used to return the 3D points with colors, used to debug the code
 
     REFERENCE FRAME for rotation and translation:
 
@@ -136,21 +166,23 @@ class GenerateBev(object):
     def __init__(self,
                  maxdistance=50.0,
                  decimate=1.0,
-                 random_Rx_value=2.0,
-                 random_Ry_value=15.0,
-                 random_Rz_value=2.0,
-                 random_Tx=2.0,
-                 random_Ty=2.0,
-                 random_Tz=2.0
+                 random_Rx_degrees=2.0,
+                 random_Ry_degrees=15.0,
+                 random_Rz_degrees=2.0,
+                 random_Tx_meters=2.0,
+                 random_Ty_meters=2.0,
+                 random_Tz_meters=2.0,
+                 returnPoints=False
                  ):
         self.maxdistance = maxdistance
         self.decimate = decimate
-        self.random_Rx_value = random_Rx_value
-        self.random_Ry_value = random_Ry_value
-        self.random_Rz_value = random_Rz_value
-        self.random_Tx_value = random_Tx
-        self.random_Ty_value = random_Ty
-        self.random_Tz_value = random_Tz
+        self.random_Rx_degrees = random_Rx_degrees
+        self.random_Ry_degrees = random_Ry_degrees
+        self.random_Rz_degrees = random_Rz_degrees
+        self.random_Tx_meters = random_Tx_meters
+        self.random_Ty_meters = random_Ty_meters
+        self.random_Tz_meters = random_Tz_meters
+        self.returnPoints = returnPoints
 
     def __call__(self, sample):
 
@@ -175,6 +207,16 @@ class GenerateBev(object):
         out_points = points  # [mask]
         out_colors = colors  # [mask]
 
+        if self.returnPoints:
+            save_out_points = out_points.copy()
+            save_out_colors = out_colors.copy()
+
+            # filter by dimension
+            idx = np.fabs(save_out_points[:, :, 2]) < self.maxdistance
+            save_out_points = save_out_points[idx]
+            save_out_colors = save_out_colors
+            save_out_colors = save_out_colors[idx]
+
         # ALVARO MASK
         alvaro = sample['alvaromask']
         out_points = out_points[alvaro > 0]
@@ -198,12 +240,12 @@ class GenerateBev(object):
                          [0.000000e+00, 0.000000e+00, 1.000000e+00]], dtype=np.float64)
 
         # Set here the default camera position of the camera
-        random_Tx = np.random.uniform(-self.random_Tx_value,
-                                      self.random_Tx_value)  # HERE Z is more to the RIGHT (pos val) or LEFT (neg val) wrt forward dir.
-        random_Ty = np.random.uniform(-self.random_Ty_value,
-                                      self.random_Ty_value)  # HERE Y is FORWARD/BACKWARD (closer or farther from the crossing)
-        random_Tz = np.random.uniform(-self.random_Tz_value,
-                                      self.random_Tz_value)  # HERE Z is the CAMERA HEIGHT (closer or farther from the ground)
+        # HERE Z is more to the RIGHT (pos val) or LEFT (neg val) wrt forward dir.
+        # HERE Y is FORWARD/BACKWARD (closer or farther from the crossing)
+        # HERE Z is the CAMERA HEIGHT (closer or farther from the ground)
+        random_Tx = np.random.uniform(-self.random_Tx_meters, self.random_Tx_meters)
+        random_Ty = np.random.uniform(-self.random_Ty_meters, self.random_Ty_meters)
+        random_Tz = np.random.uniform(-self.random_Tz_meters, self.random_Tz_meters)
 
         T_00 = np.array([0.000000e+00 + random_Tx,
                          17.00000e+00 + random_Ty,
@@ -222,9 +264,9 @@ class GenerateBev(object):
 
         # Noise for data augmentation, in DEGREES.
         # y-corresponds to a "yaw" of the image, the main effect we want (15 should be enough)
-        random_Rx = np.random.uniform(-self.random_Rx_value, self.random_Rx_value)
-        random_Ry = np.random.uniform(-self.random_Ry_value, self.random_Ry_value)
-        random_Rz = np.random.uniform(-self.random_Rz_value, self.random_Rz_value)
+        random_Rx = np.random.uniform(-self.random_Rx_degrees, self.random_Rx_degrees)
+        random_Ry = np.random.uniform(-self.random_Ry_degrees, self.random_Ry_degrees)
+        random_Rz = np.random.uniform(-self.random_Rz_degrees, self.random_Rz_degrees)
 
         dataAugmentationRotationMatrixX = R.from_euler('x', random_Rx, degrees=True).as_matrix()
         dataAugmentationRotationMatrixY = R.from_euler('y', random_Ry, degrees=True).as_matrix()
@@ -241,6 +283,7 @@ class GenerateBev(object):
 
         # Decimate the number of remaining points using the decimate parameter.
         pointsandcolors = np.concatenate([out_points, out_colors], axis=1)
+        starting_points = pointsandcolors.shape[0]  # used for debug/reporting
         remaining_points = int(pointsandcolors.shape[0] * self.decimate)
         pointsandcolors = pointsandcolors[np.random.choice(pointsandcolors.shape[0], remaining_points, replace=False),
                           :]
@@ -267,4 +310,21 @@ class GenerateBev(object):
             plt.imshow(cv2.cvtColor(blank_image, cv2.COLOR_RGB2BGR))
             plt.show()
 
-        return {'data': blank_image, 'label': sample['label']}
+        # return also the values drawn from the uniform distributions;
+        sample = {'data': blank_image,
+                  'label': sample['label'],
+                  'random_Tx': random_Tx,
+                  'random_Ty': random_Ty,
+                  'random_Tz': random_Tz,
+                  'random_Rx': random_Rx,
+                  'random_Ry': random_Ry,
+                  'random_Rz': random_Rz,
+                  'starting_points': starting_points,
+                  'remaining_points': remaining_points
+                  }
+
+        if self.returnPoints:
+            sample['save_out_points'] = save_out_points
+            sample['save_out_colors'] = save_out_colors
+
+        return sample

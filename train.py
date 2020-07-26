@@ -27,46 +27,9 @@ import seaborn as sn
 
 import sys
 
-import requests
-import json
 
 telegram = True
-telegram_token = "1178257144:AAH5DEYxJjPb0Qm_afbGTuJZ0-oqfIMFlmY"  # replace TOKEN with your bot's token
-telegram_channel = '-1001352516993'
-
-
-def send_telegram_message(message):
-    """
-
-    Args:
-        message: text
-
-    Returns: True if ok
-
-    """
-    URI = 'https://api.telegram.org/bot' + telegram_token + '/sendMessage?chat_id=' + telegram_channel + '&parse_mode=Markdown&text=' + message
-    response = requests.get(URI)
-    return json.loads(response.content)['ok']
-
-
-def send_telegram_picture(plt, description):
-    """
-
-    Args:
-        plt: matplotlib.pyplot
-        description: sends a figure with the confusion matrix through the telegram channel
-
-    Returns: True if ok
-
-    """
-    figdata = BytesIO()
-    plt.savefig(figdata, format='png')
-    URI = 'https://api.telegram.org/bot' + telegram_token + '/sendPhoto?chat_id=' + telegram_channel + "&caption=" + description
-    pic = {'photo': ("Foto", figdata.getvalue(), 'image/png')}
-    response = requests.get(URI, files=pic)
-
-    return json.loads(response.content)['ok']
-
+from miscellaneous.utils import send_telegram_picture, send_telegram_message
 
 def test(args, dataloader_test):
     print('start Test!')

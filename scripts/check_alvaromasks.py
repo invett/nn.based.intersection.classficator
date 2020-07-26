@@ -12,6 +12,9 @@ bot = DLBot(token=telegram_token, user_id=telegram_user_id)
 # Activate the bot
 bot.activate_bot()
 
+# THIS SCRIPT WAS USED TO CHECK HOW MANY VALID PIXELS ARE PRESENT IN THE IMAGES, SO THAT EXCLUDE FRAMES THAT HAD NO INFO
+# FOR EXAMPLE BECAUSE ARE TOO CLOSE TO A WALL OR SOMETHING LIKE THAT
+
 def main(args):
 
     for root, subdirs, files in os.walk(args.rootfolder):
@@ -29,7 +32,7 @@ def main(args):
                 if (alvaromask > 0).sum() < args.threshold:
                     print(filename)
                     bot.send_message(filename)
-                    bot.send_image(filename.replace("alvaromask","image_02").replace("pred.png",".png"))
+                    bot.send_image(filename.replace("alvaromask", "image_02").replace("pred.png", ".png"))
         break
 
 

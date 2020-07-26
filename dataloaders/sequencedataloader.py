@@ -6,7 +6,8 @@ from torch.utils.data import Dataset
 import pandas as pd
 from numpy import load
 import cv2
-
+import json
+from miscellaneous.utils import write_ply
 
 class BaseLine(Dataset):
     def __init__(self, folders, transform=None):
@@ -179,18 +180,43 @@ class fromAANETandDualBisenet(Dataset):
                   'image_02': image_02_image,
                   'label': gTruth}
 
-        if self.transform:
-            bev_with_new_label = self.transform(sample)
+        assert self.transform, "no transform list provided"
 
-            if "path" in bev_with_new_label:
+        # call all the transforms
+        bev_with_new_label = self.transform(sample)
 
-                folder, file = os.path.split(image_02_file.replace("data_raw", "data_raw_bev").replace("image_02", ""))
-                base_file_star = str(file.split(".")[0]) + "*"
-                last_number = len(glob.glob1(folder, base_file_star))
-                final_filename = str(file.split(".")[0]) + '.' + str(last_number+1).zfill(3) + ".png"
-                path_filename = os.path.join(folder, final_filename)
+        # check whether the <GenerateNewDataset> transform was included (check the path); if yes, save the generated BEV
+        # please notice that the path.parameter isn't actually used, was our first intention, but then was simpler to do
+        # the following... OPTIMIZE change "path" as string with boolean
+        if "path" in bev_with_new_label:
 
-                # path must already exist!
-                cv2.imwrite(path_filename, bev_with_new_label['data'])
+            folder, file = os.path.split(image_02_file.replace("data_raw", "data_raw_bev").replace("image_02", ""))
+            base_file_star = str(file.split(".")[0]) + "*"
+            current_filelist = glob.glob1(folder, base_file_star)
+            last_number = len([x for x in current_filelist if "json" not in x])
+            final_filename = str(file.split(".")[0]) + '.' + str(last_number+1).zfill(3) + ".png"
+            bev_path_filename = os.path.join(folder, final_filename)
+
+            # path must already exist!
+            cv2.imwrite(bev_path_filename, bev_with_new_label['data'])
+            bev_with_new_label['bev_path_filename'] = bev_path_filename
+
+            # for debuggin' purposes
+            if "save_out_points" in bev_with_new_label:
+                cv2.imwrite(bev_path_filename+"original.png", image_02_image)
+                write_ply(bev_path_filename+".ply", bev_with_new_label['save_out_points'], bev_with_new_label['save_out_colors'])
+
+            if "debug" in bev_with_new_label:
+                debug_values = bev_with_new_label.copy()
+                debug_values.pop('data')
+                json_path_filename = bev_path_filename + ".json"
+                with open(json_path_filename, 'w') as outfile:
+                    json.dump(debug_values, outfile)
+                bev_with_new_label['json_path_filename'] = json_path_filename
+
+                # for debuggin' purposes
+                if "save_out_points" in bev_with_new_label:
+                    debug_values.pop('save_out_points')
+                    debug_values.pop('save_out_colors')
 
         return bev_with_new_label
