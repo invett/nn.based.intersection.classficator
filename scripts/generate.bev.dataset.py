@@ -38,10 +38,14 @@ def main(args):
         if args.telegram:
             send_telegram_message("Generating run {} ... ".format(index))
 
+        # RESET SEED to have np.random working correctly https://github.com/pytorch/pytorch/issues/5059
+        np.random.seed()
+
         for sample in dataloader:
             data = sample['data']
             label = sample['label']
             print(sample['bev_path_filename'])
+            break
 
         print("Run {} generated".format(index))
         if args.telegram:
