@@ -45,7 +45,7 @@ def main(args):
             data = sample['data']
             label = sample['label']
             print(sample['bev_path_filename'])
-            break
+            #break
 
         print("Run {} generated".format(index))
         if args.telegram:
