@@ -83,8 +83,8 @@ def validation(args, model, criterion, dataloader_val):
         loss_record += loss.item()
 
         predict = torch.argmax(output, 1)
-        label = label.squeeze().cpu().numpy()
-        predict = predict.squeeze().cpu().numpy()
+        label = label.cpu().numpy()
+        predict = predict.cpu().numpy()
 
         conf_matrix += confusion_matrix(label, predict, labels=[0, 1, 2, 3, 4, 5, 6]).astype(np.uint8)
         acc_record += accuracy_score(label, predict)
