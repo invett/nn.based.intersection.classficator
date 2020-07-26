@@ -83,6 +83,19 @@ class ToTensor(object):
         return {'data': torch.from_numpy(image), 'label': label}
 
 
+class NormalizeRange01(object):
+    """
+    Converts the range from 0..255 >> 0..1 (just to be used inside Pytorch)
+    OPTIMIZE this might be faster directly in GPU/Tensor...
+    """
+
+    def __call__(self, sample):
+
+        sample['data'] = cv2.normalize(sample['data'], None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX,
+                                       dtype=cv2.CV_32F)
+
+        return sample
+
 class Normalize(object):
 
     def __call__(self, sample):

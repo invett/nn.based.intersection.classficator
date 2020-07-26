@@ -11,7 +11,7 @@ import warnings
 import torch
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
-from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror
+from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror, NormalizeRange01
 from torch.utils.data.sampler import SubsetRandomSampler
 
 from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet, BaseLine, fromGeneratedDataset
@@ -143,6 +143,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
             label = label.squeeze().cpu().numpy()
             predict = predict.squeeze().cpu().numpy()
 
+            assert len(label) > 1  # FIXME DEBUG If the batch has only one element, then BUG
+
             acc_record += accuracy_score(label, predict)
 
         tq.close()
@@ -234,9 +236,11 @@ def main(args, model=None):
                                                                                               Rescale((224, 224)),
                                                                                               ToTensor()]))
         elif args.dataloader == "generatedDataset":
-            val_dataset = fromGeneratedDataset(val_path, transform=transforms.Compose([ToTensor()]))
+            val_dataset = fromGeneratedDataset(val_path, transform=transforms.Compose([NormalizeRange01(),
+                                                                                       ToTensor()]))
 
-            train_dataset = fromGeneratedDataset(train_path, transform=transforms.Compose([ToTensor()]))
+            train_dataset = fromGeneratedDataset(train_path, transform=transforms.Compose([NormalizeRange01(),
+                                                                                           ToTensor()]))
         elif args.dataloader == "BaseLine":
             val_dataset = BaseLine(val_path, transform=transforms.Compose([transforms.Resize((224, 224)),
                                                                            transforms.ToTensor(),
