@@ -281,7 +281,7 @@ class fromGeneratedDataset(Dataset):
 
         sample = {'data': bev_image,
                   'label': bev_label}
-
-        sample = self.transform(sample)
+        if self.transform is not None:
+            sample = self.transform(sample)
 
         return sample

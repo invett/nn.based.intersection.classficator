@@ -6,6 +6,18 @@ import json
 import datetime
 
 from io import BytesIO
+import linecache
+import sys
+
+
+def PrintException():
+    exc_type, exc_obj, tb = sys.exc_info()
+    f = tb.tb_frame
+    lineno = tb.tb_lineno
+    filename = f.f_code.co_filename
+    linecache.checkcache(filename)
+    line = linecache.getline(filename, lineno, f.f_globals)
+    print('EXCEPTION IN ({}, LINE {} "{}"): {}'.format(filename, lineno, line.strip(), exc_obj))
 
 
 def write_ply(fn, verts, colors=0):
@@ -55,7 +67,8 @@ def send_telegram_message(message):
     Returns: True if ok
 
     """
-    URI = 'https://api.telegram.org/bot' + telegram_token + '/sendMessage?chat_id=' + telegram_channel + '&parse_mode=Markdown&text=' + str(datetime.datetime.now()) + "\n" + message
+    URI = 'https://api.telegram.org/bot' + telegram_token + '/sendMessage?chat_id=' + telegram_channel + '&parse_mode=Markdown&text=' + str(
+        datetime.datetime.now()) + "\n" + message
     response = requests.get(URI)
     return json.loads(response.content)['ok']
 
@@ -72,7 +85,8 @@ def send_telegram_picture(plt, description):
     """
     figdata = BytesIO()
     plt.savefig(figdata, format='png')
-    URI = 'https://api.telegram.org/bot' + telegram_token + '/sendPhoto?chat_id=' + telegram_channel + "&caption=" + str(datetime.datetime.now()) + "\n" + description
+    URI = 'https://api.telegram.org/bot' + telegram_token + '/sendPhoto?chat_id=' + telegram_channel + "&caption=" + str(
+        datetime.datetime.now()) + "\n" + description
     pic = {'photo': ("Foto", figdata.getvalue(), 'image/png')}
     response = requests.get(URI, files=pic)
 

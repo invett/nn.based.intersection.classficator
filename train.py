@@ -15,7 +15,7 @@ from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mi
 from torch.utils.data.sampler import SubsetRandomSampler
 
 from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet, BaseLine, fromGeneratedDataset
-from model.resnet_models import get_model_resnet, get_model_resnext
+from model.resnet_models import get_model_resnet, get_model_resnext, Personalized
 from sklearn.model_selection import KFold
 from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 import wandb
 import seaborn as sn
 
-from miscellaneous.utils import send_telegram_picture, send_telegram_message
+from miscellaneous.utils import send_telegram_picture, send_telegram_message, PrintException
 
 
 def test(args, dataloader_test):
@@ -35,12 +35,11 @@ def test(args, dataloader_test):
 
     # Build model
     if args.resnetmodel[0:6] == 'resnet':
-        model = get_model_resnet(args.resnetmodel, args.num_classes)
+        model = get_model_resnet(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
     elif args.resnetmodel[0:7] == 'resnext':
-        model = get_model_resnext(args.resnetmodel, args.num_classes)
+        model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
     else:
-        print('not supported model \n')
-        exit()
+        model = Personalized(args.num_classes)
 
     # load Saved Model
     savepath = './trainedmodels/model_' + args.resnetmodel + '.pth'
@@ -52,10 +51,8 @@ def test(args, dataloader_test):
 
     confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test)
 
-    labels_all = ['class 0', 'class 1', 'class 2', 'class 3', 'class 4', 'class 5', 'class 6']
-    df_cm = pd.DataFrame(confusion_matrix, index=labels_all, columns=labels_all)
     plt.figure(figsize=(10, 7))
-    sn.heatmap(df_cm, annot=True)
+    sn.heatmap(confusion_matrix, annot=True, fmt="d")
 
     wandb.log({"Test/Acc": acc,
                "conf-matrix_test": wandb.Image(plt)})
@@ -66,7 +63,8 @@ def validation(args, model, criterion, dataloader_val):
     model.eval()
     loss_record = 0.0
     acc_record = 0.0
-    conf_matrix = np.zeros((7, 7), dtype=np.uint8)
+    labelRecord = np.array([], dtype=np.uint8)
+    predRecord = np.array([], dtype=np.uint8)
 
     for sample in dataloader_val:
         data = sample['data']
@@ -85,7 +83,9 @@ def validation(args, model, criterion, dataloader_val):
         label = label.cpu().numpy()
         predict = predict.cpu().numpy()
 
-        conf_matrix += confusion_matrix(label, predict, labels=[0, 1, 2, 3, 4, 5, 6]).astype(np.uint8)
+        labelRecord = np.append(labelRecord, label)
+        predRecord = np.append(predRecord, predict)
+
         acc_record += accuracy_score(label, predict)
 
     # Calculate validation metrics
@@ -94,6 +94,10 @@ def validation(args, model, criterion, dataloader_val):
 
     acc = acc_record / len(dataloader_val)
     print('Accuracy for test/validation : %f\n' % acc)
+
+    conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'], margins=True)
+    conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6, 'All'], columns=[0, 1, 2, 3, 4, 5, 6, 'All'],
+                                      fill_value=0)
 
     return conf_matrix, acc, loss_val_mean
 
@@ -104,7 +108,15 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
     kfold_acc = 0.0
     kfold_loss = np.inf
-    criterion = torch.nn.CrossEntropyLoss()
+    if args.weighted:
+        weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
+        class_weights = torch.FloatTensor(weights).cuda()
+        traincriterion = torch.nn.CrossEntropyLoss(weight=class_weights)
+        valcriterion = torch.nn.CrossEntropyLoss()
+    else:
+        traincriterion = torch.nn.CrossEntropyLoss()
+        valcriterion = torch.nn.CrossEntropyLoss()
+
     model.zero_grad()
     model.train()
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', cooldown=2, patience=2)
@@ -128,7 +140,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
             output = model(data)
 
-            loss = criterion(output, label)
+            loss = traincriterion(output, label)
 
             loss.backward()
 
@@ -140,10 +152,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
             loss_record += loss.item()
             predict = torch.argmax(output, 1)
-            label = label.squeeze().cpu().numpy()
-            predict = predict.squeeze().cpu().numpy()
-
-            assert len(label) > 1  # FIXME DEBUG If the batch has only one element, then BUG
+            label = label.cpu().numpy()
+            predict = predict.cpu().numpy()
 
             acc_record += accuracy_score(label, predict)
 
@@ -160,13 +170,12 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
                    "Train/lr": lr})
 
         if epoch % args.validation_step == 0:
-            confusion_matrix, acc_val, loss_val = validation(args, model, criterion, dataloader_val)
-            scheduler.step(loss_val)
+            confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val)
+            if args.scheduler:
+                scheduler.step(loss_val)
 
-            labels_all = ['class 0', 'class 1', 'class 2', 'class 3', 'class 4', 'class 5', 'class 6']
-            df_cm = pd.DataFrame(confusion_matrix, index=labels_all, columns=labels_all)
             plt.figure(figsize=(10, 7))
-            sn.heatmap(df_cm, annot=True)
+            sn.heatmap(confusion_matrix, annot=True, fmt="d")
 
             if args.telegram:
                 send_telegram_picture(plt, "Epoch:" + str(epoch))
@@ -216,110 +225,116 @@ def main(args, model=None):
     folders = folders[folders != os.path.join(data_path, '2011_10_03_drive_0027_sync')]
     test_path = os.path.join(data_path, '2011_10_03_drive_0027_sync')
 
-    loo = LeaveOneOut()
-    for train_index, val_index in loo.split(folders):
-        wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="training", reinit=True)
-        wandb.config.update(args)
-        train_path, val_path = folders[train_index], folders[val_index]
-        if args.dataloader == "fromAANETandDualBisenet":
-            val_dataset = fromAANETandDualBisenet(val_path, transform=transforms.Compose([Normalize(),
-                                                                                          GenerateBev(
-                                                                                              decimate=args.decimate),
-                                                                                          Mirror(),
-                                                                                          Rescale((224, 224)),
-                                                                                          ToTensor()]))
-
-            train_dataset = fromAANETandDualBisenet(train_path, transform=transforms.Compose([Normalize(),
+    if not args.test:
+        loo = LeaveOneOut()
+        for train_index, val_index in loo.split(folders):
+            wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="training", reinit=True)
+            wandb.config.update(args)
+            train_path, val_path = folders[train_index], folders[val_index]
+            if args.dataloader == "fromAANETandDualBisenet":
+                val_dataset = fromAANETandDualBisenet(val_path, transform=transforms.Compose([Normalize(),
                                                                                               GenerateBev(
                                                                                                   decimate=args.decimate),
                                                                                               Mirror(),
                                                                                               Rescale((224, 224)),
                                                                                               ToTensor()]))
-        elif args.dataloader == "generatedDataset":
-            val_dataset = fromGeneratedDataset(val_path, transform=transforms.Compose([NormalizeRange01(),
-                                                                                       ToTensor()]))
 
-            train_dataset = fromGeneratedDataset(train_path, transform=transforms.Compose([NormalizeRange01(),
+                train_dataset = fromAANETandDualBisenet(train_path, transform=transforms.Compose([Normalize(),
+                                                                                                  GenerateBev(
+                                                                                                      decimate=args.decimate),
+                                                                                                  Mirror(),
+                                                                                                  Rescale((224, 224)),
+                                                                                                  ToTensor()]))
+            elif args.dataloader == "generatedDataset":
+                val_dataset = fromGeneratedDataset(val_path, transform=transforms.Compose([NormalizeRange01(),
                                                                                            ToTensor()]))
-        elif args.dataloader == "BaseLine":
-            val_dataset = BaseLine(val_path, transform=transforms.Compose([transforms.Resize((224, 224)),
-                                                                           transforms.ToTensor(),
-                                                                           transforms.Normalize(
-                                                                               (0.485, 0.456, 0.406),
-                                                                               (0.229, 0.224, 0.225))
-                                                                           ]))
-            train_dataset = BaseLine(train_path, transform=transforms.Compose([transforms.Resize((224, 224)),
-                                                                               transforms.RandomAffine(15,
-                                                                                                       translate=(
-                                                                                                           0.0,
-                                                                                                           0.1),
-                                                                                                       shear=(
-                                                                                                           -15,
-                                                                                                           15)),
-                                                                               transforms.ColorJitter(
-                                                                                   brightness=0.5, contrast=0.5,
-                                                                                   saturation=0.5),
+
+                train_dataset = fromGeneratedDataset(train_path, transform=transforms.Compose([NormalizeRange01(),
+                                                                                               ToTensor()]))
+            elif args.dataloader == "BaseLine":
+                val_dataset = BaseLine(val_path, transform=transforms.Compose([transforms.Resize((224, 224)),
                                                                                transforms.ToTensor(),
                                                                                transforms.Normalize(
                                                                                    (0.485, 0.456, 0.406),
                                                                                    (0.229, 0.224, 0.225))
                                                                                ]))
-        else:
-            raise Exception("Dataloader not found")
+                train_dataset = BaseLine(train_path, transform=transforms.Compose([transforms.Resize((224, 224)),
+                                                                                   transforms.RandomAffine(15,
+                                                                                                           translate=(
+                                                                                                               0.0,
+                                                                                                               0.1),
+                                                                                                           shear=(
+                                                                                                               -15,
+                                                                                                               15)),
+                                                                                   transforms.ColorJitter(
+                                                                                       brightness=0.5, contrast=0.5,
+                                                                                       saturation=0.5),
+                                                                                   transforms.ToTensor(),
+                                                                                   transforms.Normalize(
+                                                                                       (0.485, 0.456, 0.406),
+                                                                                       (0.229, 0.224, 0.225))
+                                                                                   ]))
+            else:
+                raise Exception("Dataloader not found")
 
-        dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                                      num_workers=args.num_workers)
-        dataloader_val = DataLoader(val_dataset, batch_size=4, shuffle=False,
-                                    num_workers=args.num_workers)
+            dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
+                                          num_workers=args.num_workers)
+            dataloader_val = DataLoader(val_dataset, batch_size=4, shuffle=False,
+                                        num_workers=args.num_workers)
 
-        # Build model
-        if args.resnetmodel[0:6] == 'resnet':
-            model = get_model_resnet(args.resnetmodel, args.num_classes, args.transfer)
-        elif args.resnetmodel[0:7] == 'resnext':
-            model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer)
-        else:
-            print('not supported model \n')
-            exit()
-        if torch.cuda.is_available() and args.use_gpu:
-            model = model.cuda()
+            # Build model
+            if args.resnetmodel[0:6] == 'resnet':
+                model = get_model_resnet(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
+            elif args.resnetmodel[0:7] == 'resnext':
+                model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
+            else:
+                model = Personalized(args.num_classes)
+            if torch.cuda.is_available() and args.use_gpu:
+                model = model.cuda()
 
-        # build optimizer
-        if args.optimizer == 'rmsprop':
-            optimizer = torch.optim.RMSprop(model.parameters(), args.lr, momentum=args.momentum)
-        elif args.optimizer == 'sgd':
-            optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum)
-        elif args.optimizer == 'adam':
-            optimizer = torch.optim.Adam(model.parameters(), args.lr)
-        elif args.optimizer == 'ASGD':
-            optimizer = torch.optim.ASGD(model.parameters(), args.lr)
-        elif args.optimizer == 'Adamax':
-            optimizer = torch.optim.Adamax(model.parameters(), args.lr)
-        else:
-            print('not supported optimizer \n')
-            exit()
+            # build optimizer
+            if args.optimizer == 'rmsprop':
+                optimizer = torch.optim.RMSprop(model.parameters(), args.lr, momentum=args.momentum)
+            elif args.optimizer == 'sgd':
+                optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum)
+            elif args.optimizer == 'adam':
+                optimizer = torch.optim.Adam(model.parameters(), args.lr)
+            elif args.optimizer == 'ASGD':
+                optimizer = torch.optim.ASGD(model.parameters(), args.lr)
+            elif args.optimizer == 'Adamax':
+                optimizer = torch.optim.Adamax(model.parameters(), args.lr)
+            else:
+                print('not supported optimizer \n')
+                exit()
 
-        # train model
-        acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc, os.path.basename(val_path[0]))
+            # train model
+            acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc, os.path.basename(val_path[0]))
 
-        if args.telegram:
-            send_telegram_message("K-Fold finished")
+            if args.telegram:
+                send_telegram_message("K-Fold finished")
 
-        wandb.join()
-
+            wandb.join()
 
     # Final Test on 2011_10_03_drive_0027_sync
-    if args.bev:
+    if args.dataloader == "fromAANETandDualBisenet":
         test_dataset = TestDataset(test_path, transform=transforms.Compose([transforms.Resize((224, 224)),
                                                                             transforms.ToTensor(),
                                                                             transforms.Normalize((0.485, 0.456, 0.406),
                                                                                                  (0.229, 0.224, 0.225))
                                                                             ]))
-    else:
+    elif args.dataloader == 'BaseLine':
         test_dataset = BaseLine([test_path], transform=transforms.Compose([transforms.Resize((224, 224)),
                                                                            transforms.ToTensor(),
                                                                            transforms.Normalize((0.485, 0.456, 0.406),
                                                                                                 (0.229, 0.224, 0.225))
                                                                            ]))
+    elif args.dataloader == 'generatedDataset':
+        test_path = test_path.replace('data_raw_bev', 'data_raw')
+        test_dataset = TestDataset(test_path, transform=transforms.Compose([transforms.Resize((224, 224)),
+                                                                            transforms.ToTensor(),
+                                                                            transforms.Normalize((0.062, 0.063, 0.064),
+                                                                                                 (0.157, 0.156, 0.157))
+                                                                            ]))
 
     dataloader_test = DataLoader(test_dataset, batch_size=4, shuffle=False, num_workers=args.num_workers)
 
@@ -360,11 +375,16 @@ if __name__ == '__main__':
                                                                     'decimation')
     parser.add_argument('--telegram', type=bool, default=True, help='Send info through Telegram')
 
+    parser.add_argument('--weighted', action='store_true', help='Weighted losses')
+    parser.add_argument('--pretrained', action='store_true', help='pretrained net')
+    parser.add_argument('--scheduler', action='store_true', help='scheduling lr')
+    parser.add_argument('--test', action='store_true', help='scheduling lr')
+
     # different data loaders, use one from choises; a description is provided in the documentation of each dataloader
     parser.add_argument('--dataloader', type=str, default='BaseLine', choices=['fromAANETandDualBisenet',
-                                                                                'generatedDataset',
-                                                                                'BaseLine',
-                                                                                'TestDataset'],
+                                                                               'generatedDataset',
+                                                                               'BaseLine',
+                                                                               'TestDataset'],
                         help='One of the supported datasets')
 
     args = parser.parse_args()
@@ -393,9 +413,6 @@ if __name__ == '__main__':
     except Exception as e:
         if isinstance(e, SystemExit):
             exit()
-        e = sys.exc_info()
         print(e)
         if args.telegram:
             send_telegram_message("Error catched in nn-based-intersection-classficator :" + str(e))
-
-

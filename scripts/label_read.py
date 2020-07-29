@@ -2,7 +2,7 @@ import os
 import pandas as pd
 
 path = '../../DualBiSeNet/data_raw/'
-
+"""
 with open('labels.txt', 'w') as logfile:
     for root, dirs, files in os.walk(path, topdown=False):
         for name in files:
@@ -14,7 +14,7 @@ with open('labels.txt', 'w') as logfile:
                     logfile)
                 logfile.write('\n')
                 
-"""
+
 for root, dirs, files in os.walk(path, topdown=False):
     for name in files:
         if '.png' in name and 'image_02' in root:

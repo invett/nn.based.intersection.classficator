@@ -90,11 +90,15 @@ class NormalizeRange01(object):
     """
 
     def __call__(self, sample):
-
-        sample['data'] = cv2.normalize(sample['data'], None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX,
-                                       dtype=cv2.CV_32F)
+        mean = np.array([0.062, 0.063, 0.064], dtype=np.float32)
+        std = np.array([0.157, 0.156, 0.157], dtype=np.float32)
+        image_norm = cv2.normalize(sample['data'], None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX,
+                                   dtype=cv2.CV_32F)
+        image_norm = (image_norm - mean) / std
+        sample['data'] = image_norm
 
         return sample
+
 
 class Normalize(object):
 
