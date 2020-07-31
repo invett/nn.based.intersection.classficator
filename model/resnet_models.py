@@ -53,18 +53,22 @@ def set_classifier(num_class):
     return classifier
 
 
-def get_model_resnet(model_version, num_classes, transfer, pretrained):
+def get_model_resnet(model_version, num_classes, transfer, pretrained, greyscale=False):
     if model_version == 'resnet18':
         model = models.resnet18(pretrained=pretrained)
         if transfer:
             for param in model.parameters():
                 param.requires_grad = False
+        if greyscale:
+            model.conv1 = torch.nn.Conv2d(1, 64, 7, stride=2, padding=3, bias=False)  # Change first layer to 1 channel
         model.fc = torch.nn.Linear(512, num_classes)
     elif model_version == 'resnet34':
         model = models.resnet34(pretrained=pretrained)
         if transfer:
             for param in model.parameters():
                 param.requires_grad = False
+        if greyscale:
+            model.conv1 = torch.nn.Conv2d(1, 64, 7, stride=2, padding=3, bias=False)  # Change first layer to 1 channel
         model.fc = torch.nn.Linear(512, num_classes)
     elif model_version == 'resnet50':
         model = models.resnet34(pretrained=pretrained)
@@ -91,7 +95,7 @@ def get_model_resnet(model_version, num_classes, transfer, pretrained):
     return model
 
 
-def get_model_resnext(model_version, num_classes, transfer):
+def get_model_resnext(model_version, num_classes, transfer, pretrained):
     if model_version == 'resnext50':
         model = models.resnext50_32x4d(pretrained=pretrained)
         if transfer:
@@ -138,6 +142,41 @@ class Personalized(nn.Module):
         x = self.avgpool(x)
         x = x.view(-1, 256)
         x = self.ReLu(self.bn(self.fc(x)))
+        x = self.dropout(x)
+        out = self.classifier(x)
+
+        return out
+
+
+class Personalized_small(nn.Module):
+
+    def __init__(self, num_classes):
+        super().__init__()
+        self.convBlock_1 = first_convBlock(3, 64, 7, 2, 3)
+        self.convBlock_2 = convBlock(64, 128, 3)
+
+        self.fc1 = nn.Linear(25088, 2048)
+        self.bn1 = nn.BatchNorm1d(2048)
+        self.fc2 = nn.Linear(2048, 1024)
+        self.bn2 = nn.BatchNorm1d(1024)
+        self.classifier = nn.Linear(1024, num_classes)
+
+        # functionals
+        self.ReLu = nn.ReLU()
+        self.dropout = nn.Dropout(p=0.5)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.avgpool = nn.AvgPool2d(2, 2)
+
+    def forward(self, data):
+        x = self.convBlock_1(data)  # B x 64 x 112 x 112
+        x = self.pool(x)  # B x 64 x 56 x 56
+        x = self.convBlock_2(x)  # B x 128 x 56 x 56
+        x = self.pool(x)  # B x 128 x 28 x 28
+        x = self.avgpool(x)  # B x 128 x 14 x 14
+        x = x.view(-1, 25088)
+        x = self.ReLu(self.bn1(self.fc1(x)))
+        x = self.dropout(x)
+        x = self.ReLu(self.bn2(self.fc2(x)))
         x = self.dropout(x)
         out = self.classifier(x)
 

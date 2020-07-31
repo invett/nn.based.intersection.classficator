@@ -4,27 +4,27 @@
 4    24
 0    15
 ../../DualBiSeNet/data_raw/2011_10_03_drive_0034_sync/frames_topology.txt
-4    114
+4    113
 6     84
 2     82
 3     70
 5     64
 1     49
-0     47
+0     46
 ../../DualBiSeNet/data_raw/2011_09_30_drive_0033_sync/frames_topology.txt
-3    63
+3    62
 0    49
 1    39
 6    19
 4    17
 5    16
 ../../DualBiSeNet/data_raw/2011_09_30_drive_0020_sync/frames_topology.txt
-4    46
+4    45
 0    21
 6    18
 ../../DualBiSeNet/data_raw/2011_09_30_drive_0028_sync/frames_topology.txt
 6    197
-5    132
+5    131
 4    110
 0     75
 1     51
@@ -43,7 +43,7 @@
 4     23
 ../../DualBiSeNet/data_raw/2011_10_03_drive_0027_sync/frames_topology.txt
 6    217
-5    187
+5    183
 3    139
 4     90
 2     25

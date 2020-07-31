@@ -11,11 +11,14 @@ import warnings
 import torch
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
-from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror, NormalizeRange01
+from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror, GrayScale
 from torch.utils.data.sampler import SubsetRandomSampler
 
+from torch.optim.lr_scheduler import MultiStepLR
+
 from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet, BaseLine, fromGeneratedDataset
-from model.resnet_models import get_model_resnet, get_model_resnext, Personalized
+from model.resnet_models import get_model_resnet, get_model_resnext, Personalized, Personalized_small
+from dropout_models import get_resnext, get_resnet
 from sklearn.model_selection import KFold
 from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
@@ -38,8 +41,10 @@ def test(args, dataloader_test):
         model = get_model_resnet(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
     elif args.resnetmodel[0:7] == 'resnext':
         model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
-    else:
+    elif args.resnetmodel == 'personalized':
         model = Personalized(args.num_classes)
+    else:
+        model = Personalized_small(args.num_classes)
 
     # load Saved Model
     savepath = './trainedmodels/model_' + args.resnetmodel + '.pth'
@@ -52,7 +57,7 @@ def test(args, dataloader_test):
     confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test)
 
     plt.figure(figsize=(10, 7))
-    sn.heatmap(confusion_matrix, annot=True, fmt="d")
+    sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
 
     wandb.log({"Test/Acc": acc,
                "conf-matrix_test": wandb.Image(plt)})
@@ -95,7 +100,8 @@ def validation(args, model, criterion, dataloader_val):
     acc = acc_record / len(dataloader_val)
     print('Accuracy for test/validation : %f\n' % acc)
 
-    conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'], margins=True)
+    conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'], margins=True,
+                              normalize='all')
     conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6, 'All'], columns=[0, 1, 2, 3, 4, 5, 6, 'All'],
                                       fill_value=0)
 
@@ -119,7 +125,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
     model.zero_grad()
     model.train()
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', cooldown=2, patience=2)
+    scheduler = MultiStepLR(optimizer, milestones=[10, 40, 80], gamma=0.5)
 
     wandb.watch(model, log="all")
 
@@ -159,6 +165,9 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
         tq.close()
 
+        if args.scheduler:
+            scheduler.step()
+
         # Calculate validation metrics
         loss_train_mean = loss_record / len(dataloader_train)
         acc_train = acc_record / len(dataloader_train)
@@ -167,24 +176,22 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
         wandb.log({"Train/loss": loss_train_mean,
                    "Train/acc": acc_train,
-                   "Train/lr": lr})
+                   "Train/lr": lr}, step=epoch)
 
         if epoch % args.validation_step == 0:
             confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val)
-            if args.scheduler:
-                scheduler.step(loss_val)
 
             plt.figure(figsize=(10, 7))
-            sn.heatmap(confusion_matrix, annot=True, fmt="d")
+            sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
 
             if args.telegram:
                 send_telegram_picture(plt, "Epoch:" + str(epoch))
 
             wandb.log({"Val/loss": loss_val,
                        "Val/Acc": acc_val,
-                       "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)})
+                       "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)}, step=epoch)
 
-            if kfold_acc < acc_val or kfold_loss > loss_train_mean:
+            if kfold_acc < acc_val or kfold_loss > loss_val:
                 patience = 0
                 if kfold_acc < acc_val:
                     kfold_acc = acc_val
@@ -203,6 +210,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
             else:
                 patience += 1
+                print('Patience: {}\n'.format(patience))
 
         if patience >= args.patience > 0:
             break
@@ -222,35 +230,34 @@ def main(args, model=None):
                         os.path.isdir(os.path.join(data_path, folder))])
 
     # Exclude test samples
-    folders = folders[folders != os.path.join(data_path, '2011_10_03_drive_0027_sync')]
-    test_path = os.path.join(data_path, '2011_10_03_drive_0027_sync')
+    folders = folders[folders != os.path.join(data_path, '2011_09_30_drive_0028_sync')]
+    test_path = os.path.join(data_path, '2011_09_30_drive_0028_sync')
+
+    if args.grayscale:
+        aanetTransforms = transforms.Compose(
+            [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), GrayScale(), ToTensor()])
+        generateTransforms = transforms.Compose([Normalize(), GrayScale(), ToTensor()])
+    else:
+        aanetTransforms = transforms.Compose(
+            [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), ToTensor()])
+        generateTransforms = transforms.Compose([Normalize(), ToTensor()])
 
     if not args.test:
         loo = LeaveOneOut()
         for train_index, val_index in loo.split(folders):
+
             wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="training", reinit=True)
             wandb.config.update(args)
             train_path, val_path = folders[train_index], folders[val_index]
+
             if args.dataloader == "fromAANETandDualBisenet":
-                val_dataset = fromAANETandDualBisenet(val_path, transform=transforms.Compose([Normalize(),
-                                                                                              GenerateBev(
-                                                                                                  decimate=args.decimate),
-                                                                                              Mirror(),
-                                                                                              Rescale((224, 224)),
-                                                                                              ToTensor()]))
+                val_dataset = fromAANETandDualBisenet(val_path, transform=aanetTransforms)
 
-                train_dataset = fromAANETandDualBisenet(train_path, transform=transforms.Compose([Normalize(),
-                                                                                                  GenerateBev(
-                                                                                                      decimate=args.decimate),
-                                                                                                  Mirror(),
-                                                                                                  Rescale((224, 224)),
-                                                                                                  ToTensor()]))
+                train_dataset = fromAANETandDualBisenet(train_path, transform=aanetTransforms)
             elif args.dataloader == "generatedDataset":
-                val_dataset = fromGeneratedDataset(val_path, transform=transforms.Compose([NormalizeRange01(),
-                                                                                           ToTensor()]))
+                val_dataset = fromGeneratedDataset(val_path, args.distance, transform=generateTransforms)
 
-                train_dataset = fromGeneratedDataset(train_path, transform=transforms.Compose([NormalizeRange01(),
-                                                                                               ToTensor()]))
+                train_dataset = fromGeneratedDataset(train_path, args.distance, transform=generateTransforms)
             elif args.dataloader == "BaseLine":
                 val_dataset = BaseLine(val_path, transform=transforms.Compose([transforms.Resize((224, 224)),
                                                                                transforms.ToTensor(),
@@ -287,8 +294,16 @@ def main(args, model=None):
                 model = get_model_resnet(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
             elif args.resnetmodel[0:7] == 'resnext':
                 model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
-            else:
+            elif args.resnetmodel == 'personalized':
                 model = Personalized(args.num_classes)
+            elif args.resnetmodel == 'personalized_small':
+                model = Personalized_small(args.num_classes)
+            elif args.dropout:
+                if args.resnetmodel == 'resnet':
+                    model = get_resnext(args, args.cardinality, args.d_width, args.num_classes)
+                else:
+                    model = get_resnet(args, args.cardinality)
+
             if torch.cuda.is_available() and args.use_gpu:
                 model = model.cuda()
 
@@ -330,11 +345,12 @@ def main(args, model=None):
                                                                            ]))
     elif args.dataloader == 'generatedDataset':
         test_path = test_path.replace('data_raw_bev', 'data_raw')
-        test_dataset = TestDataset(test_path, transform=transforms.Compose([transforms.Resize((224, 224)),
-                                                                            transforms.ToTensor(),
-                                                                            transforms.Normalize((0.062, 0.063, 0.064),
-                                                                                                 (0.157, 0.156, 0.157))
-                                                                            ]))
+        test_dataset = TestDataset(test_path, args.distance,
+                                   transform=transforms.Compose([transforms.Resize((224, 224)),
+                                                                 transforms.ToTensor(),
+                                                                 transforms.Normalize((0.062, 0.063, 0.064),
+                                                                                      (0.157, 0.156, 0.157))
+                                                                 ]))
 
     dataloader_test = DataLoader(test_dataset, batch_size=4, shuffle=False, num_workers=args.num_workers)
 
@@ -371,14 +387,16 @@ if __name__ == '__main__':
     parser.add_argument('--patience_start', type=int, default=50,
                         help='Starting epoch for patience of validation. Default, 50. ')
 
-    parser.add_argument('--decimate', type=float, default=0.2, help='How much of the points will remain after '
+    parser.add_argument('--decimate', type=float, default=1.0, help='How much of the points will remain after '
                                                                     'decimation')
+    parser.add_argument('--distance', type=float, default=20.0, help='Distance from the corss')
     parser.add_argument('--telegram', type=bool, default=True, help='Send info through Telegram')
 
     parser.add_argument('--weighted', action='store_true', help='Weighted losses')
     parser.add_argument('--pretrained', action='store_true', help='pretrained net')
     parser.add_argument('--scheduler', action='store_true', help='scheduling lr')
     parser.add_argument('--test', action='store_true', help='scheduling lr')
+    parser.add_argument('--grayscale', action='store_true', help='scheduling lr')
 
     # different data loaders, use one from choises; a description is provided in the documentation of each dataloader
     parser.add_argument('--dataloader', type=str, default='BaseLine', choices=['fromAANETandDualBisenet',
@@ -387,11 +405,26 @@ if __name__ == '__main__':
                                                                                'TestDataset'],
                         help='One of the supported datasets')
 
+    subparsers = parser.add_subparsers(help='Subparser for dropout models')
+    parser_drop = subparsers.add_parser('dropout', help='Dropout models. Resnext and Resnet')
+    parser_drop.add_argument('--cardinality', type=int, default=10, help='addition, e.g. widen_factor')
+    parser_drop.add_argument('--d_with', type=int, default=64, help='addition arg2, e.g. base_width (ResNeXt)')
+    parser_drop.add_argument('--depth', type=int, default=100, help='depth of network')
+    parser_drop.add_argument('--block_type', type=int, default=1, help='specify block_type (default: 1)')
+    parser_drop.add_argument('--use_gn', action='store_true', default=False,
+                             help='whether to use group norm (default: False)')
+    parser_drop.add_argument('--gn_groups', type=int, default=8, help='group norm groups')
+    parser_drop.add_argument('--drop_type', type=int, default=0,
+                             help='0-drop-neuron, 1-drop-channel, 2-drop-path, 3-drop-layer')
+    parser_drop.add_argument('--drop_rate', default=0.0, type=float, help='dropout rate')
+    parser_drop.add_argument('--report_ratio ', action='store_true', help='Cardinality of the net')
+
     args = parser.parse_args()
 
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
-    group_id = wandb.util.generate_id()
+    # group_id = wandb.util.generate_id()
+    group_id = 'Personalized_generated_2'
     print(args)
     warnings.filterwarnings("ignore")
 

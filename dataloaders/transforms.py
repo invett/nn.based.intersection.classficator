@@ -69,6 +69,16 @@ class Rescale(object):
         return sample
 
 
+class GrayScale(object):
+    """Convert BGR images in GrayScale images"""
+    def __call__(self, sample):
+        image = sample['data']
+        image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        sample['data'] = image_gray
+
+        return sample
+
+
 class ToTensor(object):
     """Convert ndarrays in sample to Tensors."""
 
@@ -83,7 +93,7 @@ class ToTensor(object):
         return {'data': torch.from_numpy(image), 'label': label}
 
 
-class NormalizeRange01(object):
+class Normalize(object):
     """
     Converts the range from 0..255 >> 0..1 (just to be used inside Pytorch)
     OPTIMIZE this might be faster directly in GPU/Tensor...
@@ -100,7 +110,7 @@ class NormalizeRange01(object):
         return sample
 
 
-class Normalize(object):
+class NormalizePretrained(object):
 
     def __call__(self, sample):
         mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)

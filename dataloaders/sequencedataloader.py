@@ -65,7 +65,7 @@ class BaseLine(Dataset):
 
 class TestDataset(Dataset):
 
-    def __init__(self, root_dir, transform=None):
+    def __init__(self, root_dir, distance=None, transform=None):
         """
 
         THIS IS THE FIRST DATA LOADER WE USED WITH THE BEVs GENERATED OFFLINE WITH THE AUGUSTO's SCRIPTS, NOT INSIDE
@@ -89,6 +89,8 @@ class TestDataset(Dataset):
         files = [os.path.join(root_dir, name) for name in os.listdir(root_dir) if
                  os.path.isfile(os.path.join(root_dir, name)) and '.png' in name]
         self.file_list = files
+        if distance is not None:
+            self.__filterdistance(distance)
         assert len(self.file_list) > 0, 'Training files missing'
 
     def __len__(self):
@@ -114,6 +116,19 @@ class TestDataset(Dataset):
             sample['data'] = self.transform(sample['data'])
 
         return sample
+
+    def __filterdistance(self, distance):
+        images = []
+        for file in self.file_list:
+            head, filename = os.path.split(file)
+            head, _ = os.path.split(os.path.normpath(head))
+            datapath = os.path.join(head, 'frames_topology.txt')
+            name, _ = os.path.splitext(filename)
+            gtdata = pd.read_csv(datapath, sep=';', header=None, dtype=str)
+            if float(gtdata.loc[gtdata[0] == name][1]) < distance:
+                images.append(file)
+
+        self.file_list = images
 
 
 class fromAANETandDualBisenet(Dataset):
@@ -239,7 +254,7 @@ class fromAANETandDualBisenet(Dataset):
 
 class fromGeneratedDataset(Dataset):
 
-    def __init__(self, folders, transform=None):
+    def __init__(self, folders, distance, transform=None):
         """
         Args:
             root_dir (string): Directory with all the images.
@@ -262,10 +277,11 @@ class fromGeneratedDataset(Dataset):
                 assert os.path.exists(json_filename), "no json file"
 
                 self.bev_images.append(bev_filename)
-                
+
                 with open(json_filename) as json_file:
                     bev_label = json.load(json_file)
                     self.bev_labels.append(bev_label['label'])
+        self.__filterdistance(distance)
         toc = time.time()
         print("[fromGeneratedDataset] - " + str(len(self.bev_labels)) + " elements loaded in " +
               str(time.strftime("%H:%M:%S", time.gmtime(toc - tic))))
@@ -285,3 +301,20 @@ class fromGeneratedDataset(Dataset):
             sample = self.transform(sample)
 
         return sample
+
+    def __filterdistance(self, distance):
+        images = []
+        labels = []
+        for file, label in zip(self.bev_images, self.bev_labels):
+            head, filename = os.path.split(file)
+            head = head.replace('data_raw_bev', 'data_raw')
+            datapath = os.path.join(head, 'frames_topology.txt')
+            name, _ = os.path.splitext(filename)
+            name = name.split('.')[0]
+            gtdata = pd.read_csv(datapath, sep=';', header=None, dtype=str)
+            if float(gtdata.loc[gtdata[0] == name][1]) < distance:
+                images.append(file)
+                labels.append(label)
+
+        self.bev_images = images
+        self.bev_labels = labels
