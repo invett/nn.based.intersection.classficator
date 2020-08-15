@@ -133,7 +133,7 @@ class TestDataset(Dataset):
 
 class fromAANETandDualBisenet(Dataset):
 
-    def __init__(self, folders, transform=None):
+    def __init__(self, folders, distance, transform=None):
         """
         Args:
             root_dir (string): Directory with all the images.
@@ -175,6 +175,8 @@ class fromAANETandDualBisenet(Dataset):
         self.aanet = aanet
         self.alvaromask = alvaromask
         self.image_02 = image_02
+
+        self.__filterdistance(distance)
 
         assert len(self.aanet) > 0, 'Training files missing [aanet]'
         assert len(self.alvaromask) > 0, 'Training files missing [alvaromask]'
@@ -250,6 +252,26 @@ class fromAANETandDualBisenet(Dataset):
                     debug_values.pop('save_out_colors')
 
         return bev_with_new_label
+
+    def __filterdistance(self, distance):
+        aanet = []
+        alvaromask = []
+        image_02 = []
+
+        for aafile, mask, image in zip(self.aanet, self.alvaromask, self.image_02):
+            head, filename = os.path.split(image)
+            head, _ = os.path.split(os.path.normpath(head))
+            datapath = os.path.join(head, 'frames_topology.txt')
+            name, _ = os.path.splitext(filename)
+            gtdata = pd.read_csv(datapath, sep=';', header=None, dtype=str)
+            if float(gtdata.loc[gtdata[0] == name][1]) < distance:
+                image_02.append(image)
+                alvaromask.append(mask)
+                aanet.append(aafile)
+
+        self.aanet = aanet
+        self.alvaromask = alvaromask
+        self.image_02 = image_02
 
 
 class fromGeneratedDataset(Dataset):

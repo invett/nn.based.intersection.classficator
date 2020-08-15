@@ -251,9 +251,9 @@ def main(args, model=None):
             train_path, val_path = folders[train_index], folders[val_index]
 
             if args.dataloader == "fromAANETandDualBisenet":
-                val_dataset = fromAANETandDualBisenet(val_path, transform=aanetTransforms)
+                val_dataset = fromAANETandDualBisenet(val_path, args.distance, transform=aanetTransforms)
 
-                train_dataset = fromAANETandDualBisenet(train_path, transform=aanetTransforms)
+                train_dataset = fromAANETandDualBisenet(train_path, args.distance, transform=aanetTransforms)
             elif args.dataloader == "generatedDataset":
                 val_dataset = fromGeneratedDataset(val_path, args.distance, transform=generateTransforms)
 
@@ -313,7 +313,7 @@ def main(args, model=None):
             elif args.optimizer == 'sgd':
                 optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum)
             elif args.optimizer == 'adam':
-                optimizer = torch.optim.Adam(model.parameters(), args.lr)
+                optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=5e-4)
             elif args.optimizer == 'ASGD':
                 optimizer = torch.optim.ASGD(model.parameters(), args.lr)
             elif args.optimizer == 'Adamax':
@@ -332,11 +332,12 @@ def main(args, model=None):
 
     # Final Test on 2011_10_03_drive_0027_sync
     if args.dataloader == "fromAANETandDualBisenet":
-        test_dataset = TestDataset(test_path, transform=transforms.Compose([transforms.Resize((224, 224)),
-                                                                            transforms.ToTensor(),
-                                                                            transforms.Normalize((0.485, 0.456, 0.406),
-                                                                                                 (0.229, 0.224, 0.225))
-                                                                            ]))
+        test_dataset = TestDataset(test_path, args.distance,
+                                   transform=transforms.Compose([transforms.Resize((224, 224)),
+                                                                 transforms.ToTensor(),
+                                                                 transforms.Normalize((0.485, 0.456, 0.406),
+                                                                                      (0.229, 0.224, 0.225))
+                                                                 ]))
     elif args.dataloader == 'BaseLine':
         test_dataset = BaseLine([test_path], transform=transforms.Compose([transforms.Resize((224, 224)),
                                                                            transforms.ToTensor(),
@@ -424,7 +425,7 @@ if __name__ == '__main__':
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
     # group_id = wandb.util.generate_id()
-    group_id = 'Personalized_generated_2'
+    group_id = 'Resnet18_runtime_WD'
     print(args)
     warnings.filterwarnings("ignore")
 
