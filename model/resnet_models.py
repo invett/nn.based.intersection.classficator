@@ -9,6 +9,7 @@ from torch import nn
 1024 > 512
 512 > 256
 256 > num_classes
+
 """
 
 
@@ -53,7 +54,8 @@ def set_classifier(num_class):
     return classifier
 
 
-def get_model_resnet(model_version, num_classes, transfer, pretrained, greyscale=False):
+def get_model_resnet(model_version, num_classes, transfer=False, pretrained=True, greyscale=False, embedding=False):
+
     if model_version == 'resnet18':
         model = models.resnet18(pretrained=pretrained)
         if transfer:
@@ -61,7 +63,11 @@ def get_model_resnet(model_version, num_classes, transfer, pretrained, greyscale
                 param.requires_grad = False
         if greyscale:
             model.conv1 = torch.nn.Conv2d(1, 64, 7, stride=2, padding=3, bias=False)  # Change first layer to 1 channel
-        model.fc = torch.nn.Linear(512, num_classes)
+        if embedding:
+            model = torch.nn.Sequential(*(list(model.children())[:-1]))  # Delete fc layer
+        else:
+            model.fc = torch.nn.Linear(512, num_classes)
+
     elif model_version == 'resnet34':
         model = models.resnet34(pretrained=pretrained)
         if transfer:
@@ -69,7 +75,11 @@ def get_model_resnet(model_version, num_classes, transfer, pretrained, greyscale
                 param.requires_grad = False
         if greyscale:
             model.conv1 = torch.nn.Conv2d(1, 64, 7, stride=2, padding=3, bias=False)  # Change first layer to 1 channel
-        model.fc = torch.nn.Linear(512, num_classes)
+        if embedding:
+            model = torch.nn.Sequential(*(list(model.children())[:-1]))  # Delete fc layer
+        else:
+            model.fc = torch.nn.Linear(512, num_classes)
+
     elif model_version == 'resnet50':
         model = models.resnet34(pretrained=pretrained)
         if transfer:
@@ -77,6 +87,7 @@ def get_model_resnet(model_version, num_classes, transfer, pretrained, greyscale
                 param.requires_grad = False
         fc = set_classifier(num_classes)
         model.fc = fc
+
     elif model_version == 'resnet101':
         model = models.resnet34(pretrained=pretrained)
         if transfer:
@@ -84,6 +95,7 @@ def get_model_resnet(model_version, num_classes, transfer, pretrained, greyscale
                 param.requires_grad = False
         fc = set_classifier(num_classes)
         model.fc = fc
+
     elif model_version == 'resnet152':
         model = models.resnet34(pretrained=pretrained)
         if transfer:

@@ -65,33 +65,36 @@ def test(args, dataloader_test):
 
 def validation(args, model, criterion, dataloader_val):
     print('\nstart val!')
-    model.eval()
+
     loss_record = 0.0
     acc_record = 0.0
     labelRecord = np.array([], dtype=np.uint8)
     predRecord = np.array([], dtype=np.uint8)
 
-    for sample in dataloader_val:
-        data = sample['data']
-        label = sample['label']
+    with torch.no_grad():
+        model.eval()
 
-        if torch.cuda.is_available() and args.use_gpu:
-            data = data.cuda()
-            label = label.cuda()
+        for sample in dataloader_val:
+            data = sample['data']
+            label = sample['label']
 
-        output = model(data)
+            if torch.cuda.is_available() and args.use_gpu:
+                data = data.cuda()
+                label = label.cuda()
 
-        loss = criterion(output, label)
-        loss_record += loss.item()
+            output = model(data)
 
-        predict = torch.argmax(output, 1)
-        label = label.cpu().numpy()
-        predict = predict.cpu().numpy()
+            loss = criterion(output, label)
+            loss_record += loss.item()
 
-        labelRecord = np.append(labelRecord, label)
-        predRecord = np.append(predRecord, predict)
+            predict = torch.argmax(output, 1)
+            label = label.cpu().numpy()
+            predict = predict.cpu().numpy()
 
-        acc_record += accuracy_score(label, predict)
+            labelRecord = np.append(labelRecord, label)
+            predRecord = np.append(predRecord, predict)
+
+            acc_record += accuracy_score(label, predict)
 
     # Calculate validation metrics
     loss_val_mean = loss_record / len(dataloader_val)
@@ -108,17 +111,22 @@ def validation(args, model, criterion, dataloader_val):
     return conf_matrix, acc, loss_val_mean
 
 
-def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, valfolder):
+def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, valfolder, gtmodel=None):
     if not os.path.isdir(args.save_model_path):
         os.mkdir(args.save_model_path)
 
     kfold_acc = 0.0
     kfold_loss = np.inf
+
+    # Build loss criterion
     if args.weighted:
         weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
         class_weights = torch.FloatTensor(weights).cuda()
         traincriterion = torch.nn.CrossEntropyLoss(weight=class_weights)
         valcriterion = torch.nn.CrossEntropyLoss()
+    elif args.embedding:
+        traincriterion = torch.nn.CosineEmbeddingLoss()
+        valcriterion = torch.nn.CosineEmbeddingLoss()
     else:
         traincriterion = torch.nn.CrossEntropyLoss()
         valcriterion = torch.nn.CrossEntropyLoss()
@@ -146,7 +154,14 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
             output = model(data)
 
-            loss = traincriterion(output, label)
+            if args.embedding:
+                with torch.no_grad():
+                    output2 = gtmodel(label)  # (Batch x 512) Tensor
+
+            if args.embedding:
+                loss = traincriterion(output, output2, torch.ones(output.shape))
+            else:
+                loss = traincriterion(output, label)
 
             loss.backward()
 
@@ -168,7 +183,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         if args.scheduler:
             scheduler.step()
 
-        # Calculate validation metrics
+        # Calculate metrics
         loss_train_mean = loss_record / len(dataloader_train)
         acc_train = acc_record / len(dataloader_train)
         print('loss for train : %f' % loss_train_mean)
@@ -196,7 +211,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
                 if kfold_acc < acc_val:
                     kfold_acc = acc_val
                 else:
-                    kfold_loss = loss_train_mean
+                    kfold_loss = loss_val
                 if acc_pre < kfold_acc:
                     bestModel = model.state_dict()
                     acc_pre = kfold_acc
@@ -291,7 +306,8 @@ def main(args, model=None):
 
             # Build model
             if args.resnetmodel[0:6] == 'resnet':
-                model = get_model_resnet(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
+                model = get_model_resnet(args.resnetmodel, args.num_classes, args.transfer, args.pretrained,
+                                         args.embedding)
             elif args.resnetmodel[0:7] == 'resnext':
                 model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
             elif args.resnetmodel == 'personalized':
@@ -304,8 +320,15 @@ def main(args, model=None):
                 else:
                     model = get_resnet(args, args.cardinality)
 
+            if args.embedding:
+                gt_model = copy.deepcopy(model)
+                gt_model.load_state_dict(torch.load(teacher_path))
+                gt_model.eval()
+
             if torch.cuda.is_available() and args.use_gpu:
                 model = model.cuda()
+                if args.embedding:
+                    gt_model = gt_model.cuda()
 
             # build optimizer
             if args.optimizer == 'rmsprop':
@@ -323,7 +346,12 @@ def main(args, model=None):
                 exit()
 
             # train model
-            acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc, os.path.basename(val_path[0]))
+            if args.embedding:
+                acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc,
+                            os.path.basename(val_path[0]), gtmodel=gt_model)
+            else:
+                acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc,
+                            os.path.basename(val_path[0]))
 
             if args.telegram:
                 send_telegram_message("K-Fold finished")
@@ -397,7 +425,8 @@ if __name__ == '__main__':
     parser.add_argument('--pretrained', action='store_true', help='pretrained net')
     parser.add_argument('--scheduler', action='store_true', help='scheduling lr')
     parser.add_argument('--test', action='store_true', help='scheduling lr')
-    parser.add_argument('--grayscale', action='store_true', help='scheduling lr')
+    parser.add_argument('--grayscale', action='store_true', help='Use Grayscale Images')
+    parser.add_argument('--embedding', action='store_true', help='Use embedding matching')
 
     # different data loaders, use one from choises; a description is provided in the documentation of each dataloader
     parser.add_argument('--dataloader', type=str, default='BaseLine', choices=['fromAANETandDualBisenet',
