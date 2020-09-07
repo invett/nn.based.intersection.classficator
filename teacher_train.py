@@ -2,6 +2,33 @@ def main(args):
     # Build Model
     model = get_model_resnet(args.resnetmodel, args.num_classes, args.triplet)
 
+    if torch.cuda.is_available() and args.use_gpu:
+        model = model.cuda()
+
+    # build optimizer
+    if args.optimizer == 'rmsprop':
+        optimizer = torch.optim.RMSprop(model.parameters(), args.lr, momentum=args.momentum)
+    elif args.optimizer == 'sgd':
+        optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum)
+    elif args.optimizer == 'adam':
+        optimizer = torch.optim.Adam(model.parameters(), args.lr)
+    elif args.optimizer == 'ASGD':
+        optimizer = torch.optim.ASGD(model.parameters(), args.lr)
+    elif args.optimizer == 'Adamax':
+        optimizer = torch.optim.Adamax(model.parameters(), args.lr)
+    else:
+        print('not supported optimizer \n')
+        exit()
+
+    # create dataset and dataloader
+    if args.triplet:
+        pass
+    else:
+        pass
+
+    # train model
+    train(args, model, optimizer, dataloader_train, dataloader_val)
+
 
 def validation(args, model, criterion, dataloader_val):
     print('\nstart val!')
@@ -55,22 +82,20 @@ def validation(args, model, criterion, dataloader_val):
                 predRecord = np.append(predRecord, predict)
 
                 acc_record += accuracy_score(label, predict)
+            else:
+                cos = nn.CosineSimilarity(dim=1, eps=1e-6)
+                acc_record += cos(out_anchor, out_positive)
 
     # Calculate validation metrics
     loss_val_mean = loss_record / len(dataloader_val)
     print('loss for test/validation : %f' % loss_val_mean)
+    acc = acc_record / len(dataloader_val)
+    print('Accuracy for test/validation : %f\n' % acc)
 
-    if not args.triplet:
-        acc = acc_record / len(dataloader_val)
-        print('Accuracy for test/validation : %f\n' % acc)
-
-    if not args.triplet:
-        return acc, loss_val_mean
-    else:
-        return loss_val_mean
+    return acc, loss_val_mean
 
 
-def train(args, model, dataloader_train, dataloader_val):
+def train(args, model, optimizer, dataloader_train, dataloader_val):
     if not os.path.isdir(args.save_model_path):
         os.mkdir(args.save_model_path)
 
@@ -80,11 +105,9 @@ def train(args, model, dataloader_train, dataloader_val):
 
     # Build criterion
     if args.triplet:
-        traincriterion = torch.nn.TripletMarginLoss(margin=args.margin)
-        valcriterion = torch.nn.TripletMarginLoss(margin=args.margin)
+        criterion = torch.nn.TripletMarginLoss(margin=args.margin)
     else:
-        traincriterion = torch.nn.CrossEntropyLoss()
-        valcriterion = torch.nn.CrossEntropyLoss()
+        criterion = torch.nn.CrossEntropyLoss()
 
     model.zero_grad()
     model.train()
@@ -122,9 +145,9 @@ def train(args, model, dataloader_train, dataloader_val):
                 output = model(data)
 
             if args.triplet:
-                loss = traincriterion(out_anchor, out_positive, out_negative)
+                loss = criterion(out_anchor, out_positive, out_negative)
             else:
-                loss = traincriterion(output, label)
+                loss = criterion(output, label)
 
             loss.backward()
 
@@ -136,11 +159,15 @@ def train(args, model, dataloader_train, dataloader_val):
 
             loss_record += loss.item()
 
-            predict = torch.argmax(output, 1)
-            label = label.cpu().numpy()
-            predict = predict.cpu().numpy()
+            if args.triplet:
+                cos = nn.CosineSimilarity(dim=1, eps=1e-6)
+                acc_record += cos(out_anchor, out_positive)
+            else:
+                predict = torch.argmax(output, 1)
+                label = label.cpu().numpy()
+                predict = predict.cpu().numpy()
 
-            acc_record += accuracy_score(label, predict)
+                acc_record += accuracy_score(label, predict)
 
         tq.close()
 
@@ -151,10 +178,8 @@ def train(args, model, dataloader_train, dataloader_val):
         print('acc for train : %f' % acc_train)
 
         if epoch % args.validation_step == 0:
-            if args.triplet:
-                loss_val = validation(args, model, valcriterion, dataloader_val)
-            else:
-                acc_val, loss_val = validation(args, model, valcriterion, dataloader_val)
+
+            acc_val, loss_val = validation(args, model, criterion, dataloader_val)
 
             if acc_pre < acc_val or loss_pre > loss_val:
                 patience = 0
@@ -169,7 +194,8 @@ def train(args, model, dataloader_train, dataloader_val):
                 else:
                     print('Best global loss: {}'.format(loss_pre))
                 print('Saving model: ', os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
-                torch.save(bestModel, os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
+                torch.save(bestModel,
+                           os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(args.resnetmodel)))
 
             elif epoch < args.patience_start:
                 patience = 0

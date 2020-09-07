@@ -84,17 +84,29 @@ def validation(args, model, criterion, dataloader_val):
 
             output = model(data)
 
-            loss = criterion(output, label)
+            if args.embedding:
+                with torch.no_grad():
+                    output2 = gtmodel(label)  # (Batch x 512) Tensor
+
+            if args.embedding:
+                loss = criterion(output, output2, torch.ones(output.shape))
+            else:
+                loss = criterion(output, label)
+
             loss_record += loss.item()
 
-            predict = torch.argmax(output, 1)
-            label = label.cpu().numpy()
-            predict = predict.cpu().numpy()
+            if not args.embedding:
+                predict = torch.argmax(output, 1)
+                label = label.cpu().numpy()
+                predict = predict.cpu().numpy()
 
-            labelRecord = np.append(labelRecord, label)
-            predRecord = np.append(predRecord, predict)
+                labelRecord = np.append(labelRecord, label)
+                predRecord = np.append(predRecord, predict)
 
-            acc_record += accuracy_score(label, predict)
+                acc_record += accuracy_score(label, predict)
+            else:
+                cos = nn.CosineSimilarity(dim=1, eps=1e-6)
+                acc_record += cos(output, output2)
 
     # Calculate validation metrics
     loss_val_mean = loss_record / len(dataloader_val)
@@ -103,12 +115,14 @@ def validation(args, model, criterion, dataloader_val):
     acc = acc_record / len(dataloader_val)
     print('Accuracy for test/validation : %f\n' % acc)
 
-    conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'], margins=True,
-                              normalize='all')
-    conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6, 'All'], columns=[0, 1, 2, 3, 4, 5, 6, 'All'],
-                                      fill_value=0)
-
-    return conf_matrix, acc, loss_val_mean
+    if not args.embedding:
+        conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'], margins=True,
+                                  normalize='all')
+        conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6, 'All'], columns=[0, 1, 2, 3, 4, 5, 6, 'All'],
+                                          fill_value=0)
+        return conf_matrix, acc, loss_val_mean
+    else:
+        return acc, loss_val_mean
 
 
 def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, valfolder, gtmodel=None):
@@ -172,11 +186,16 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
             tq.set_postfix(loss='%.6f' % loss)
 
             loss_record += loss.item()
-            predict = torch.argmax(output, 1)
-            label = label.cpu().numpy()
-            predict = predict.cpu().numpy()
 
-            acc_record += accuracy_score(label, predict)
+            if not args.embedding:
+                predict = torch.argmax(output, 1)
+                label = label.cpu().numpy()
+                predict = predict.cpu().numpy()
+
+                acc_record += accuracy_score(label, predict)
+            else:
+                cos = nn.CosineSimilarity(dim=1, eps=1e-6)
+                acc_record += cos(output, output2)
 
         tq.close()
 
@@ -185,26 +204,29 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
         # Calculate metrics
         loss_train_mean = loss_record / len(dataloader_train)
-        acc_train = acc_record / len(dataloader_train)
         print('loss for train : %f' % loss_train_mean)
+        acc_train = acc_record / len(dataloader_train)
         print('acc for train : %f' % acc_train)
-
         wandb.log({"Train/loss": loss_train_mean,
                    "Train/acc": acc_train,
                    "Train/lr": lr}, step=epoch)
 
         if epoch % args.validation_step == 0:
-            confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val)
+            if args.embedding:
+                acc_val, loss_val = validation(args, model, valcriterion, dataloader_val)
+                wandb.log({"Val/loss": loss_val,
+                           "Val/Acc": acc_val}, step=epoch)
+            else:
+                confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val)
+                plt.figure(figsize=(10, 7))
+                sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
 
-            plt.figure(figsize=(10, 7))
-            sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
+                if args.telegram:
+                    send_telegram_picture(plt, "Epoch:" + str(epoch))
 
-            if args.telegram:
-                send_telegram_picture(plt, "Epoch:" + str(epoch))
-
-            wandb.log({"Val/loss": loss_val,
-                       "Val/Acc": acc_val,
-                       "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)}, step=epoch)
+                wandb.log({"Val/loss": loss_val,
+                           "Val/Acc": acc_val,
+                           "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)}, step=epoch)
 
             if kfold_acc < acc_val or kfold_loss > loss_val:
                 patience = 0
