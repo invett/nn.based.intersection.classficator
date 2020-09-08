@@ -38,7 +38,8 @@ def test(args, dataloader_test):
 
     # Build model
     if args.resnetmodel[0:6] == 'resnet':
-        model = get_model_resnet(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
+        model = get_model_resnet(args.resnetmodel, args.num_classes, args.transfer, args.pretrained,
+                                 (args.embedding or args.triplet))
     elif args.resnetmodel[0:7] == 'resnext':
         model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
     elif args.resnetmodel == 'personalized':
@@ -51,19 +52,32 @@ def test(args, dataloader_test):
     print('load model from {} ...'.format(savepath))
     model.load_state_dict(torch.load(savepath))
     print('Done!')
+
+    if args.embedding or args.triplet:
+        gt_model = copy.deepcopy(model)
+        gt_model.eval()
+
     if torch.cuda.is_available() and args.use_gpu:
         model = model.cuda()
+        if args.embedding or args.triplet:
+            gt_model = gt_model.cuda()
 
-    confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test)
+    # Start testing
+    if args.embedding or args.triplet:
+        acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gtmodel=gt_model)
+        wandb.log({"Val/loss": loss_val,
+                   "Val/Acc": acc_val}, step=epoch)
+    else:
+        confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test)
 
-    plt.figure(figsize=(10, 7))
-    sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
+        plt.figure(figsize=(10, 7))
+        sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
 
-    wandb.log({"Test/Acc": acc,
-               "conf-matrix_test": wandb.Image(plt)})
+        wandb.log({"Test/Acc": acc,
+                   "conf-matrix_test": wandb.Image(plt)})
 
 
-def validation(args, model, criterion, dataloader_val):
+def validation(args, model, criterion, dataloader_val, gtmodel=None):
     print('\nstart val!')
 
     loss_record = 0.0
@@ -75,27 +89,49 @@ def validation(args, model, criterion, dataloader_val):
         model.eval()
 
         for sample in dataloader_val:
-            data = sample['data']
-            label = sample['label']
+            if args.triplet and gtmodel is None:
+                anchor = sample['anchor']
+                positive = sample['positive']
+                negative = sample['negative']
+                if torch.cuda.is_available() and args.use_gpu:
+                    anchor = anchor.cuda()
+                    positive = positive.cuda()
+                    negative = negative.cuda()
+            else:
+                data = sample['data']
+                label = sample['label']
+                if torch.cuda.is_available() and args.use_gpu:
+                    data = data.cuda()
+                    label = label.cuda()
 
-            if torch.cuda.is_available() and args.use_gpu:
-                data = data.cuda()
-                label = label.cuda()
+            if args.embedding or gtmodel is not None:
+                output_gt = gtmodel(label)  # (Batch x 512) Tensor
 
-            output = model(data)
+            elif args.triplet:
+                out_anchor = model(anchor)
+                out_positive = model(positive)
+                out_negative = model(negative)
+
+            else:
+                output = model(data)
 
             if args.embedding:
-                with torch.no_grad():
-                    output2 = gtmodel(label)  # (Batch x 512) Tensor
-
-            if args.embedding:
-                loss = criterion(output, output2, torch.ones(output.shape))
+                loss = criterion(output, output_gt, torch.ones(output.shape))
+            elif args.triplet:
+                loss = criterion(out_anchor, out_positive, out_negative)
             else:
                 loss = criterion(output, label)
 
             loss_record += loss.item()
 
-            if not args.embedding:
+            if args.embedding:
+                cos = nn.CosineSimilarity(dim=1, eps=1e-6)
+                acc_record += cos(output, output_gt)
+
+            elif args.triplet:
+                cos = nn.CosineSimilarity(dim=1, eps=1e-6)
+                acc_record += cos(out_anchor, out_positive)
+            else:
                 predict = torch.argmax(output, 1)
                 label = label.cpu().numpy()
                 predict = predict.cpu().numpy()
@@ -104,9 +140,6 @@ def validation(args, model, criterion, dataloader_val):
                 predRecord = np.append(predRecord, predict)
 
                 acc_record += accuracy_score(label, predict)
-            else:
-                cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                acc_record += cos(output, output2)
 
     # Calculate validation metrics
     loss_val_mean = loss_record / len(dataloader_val)
@@ -115,7 +148,7 @@ def validation(args, model, criterion, dataloader_val):
     acc = acc_record / len(dataloader_val)
     print('Accuracy for test/validation : %f\n' % acc)
 
-    if not args.embedding:
+    if not (args.embedding or args.triplet):
         conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'], margins=True,
                                   normalize='all')
         conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6, 'All'], columns=[0, 1, 2, 3, 4, 5, 6, 'All'],
@@ -141,6 +174,9 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
     elif args.embedding:
         traincriterion = torch.nn.CosineEmbeddingLoss()
         valcriterion = torch.nn.CosineEmbeddingLoss()
+    elif args.triplet:
+        traincriterion = torch.nn.TripletMarginLoss(margin=args.margin)
+        valcriterion = torch.nn.CosineEmbeddingLoss()
     else:
         traincriterion = torch.nn.CrossEntropyLoss()
         valcriterion = torch.nn.CrossEntropyLoss()
@@ -159,21 +195,36 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         acc_record = 0.0
 
         for sample in dataloader_train:
-            data = sample['data']
-            label = sample['label']
+            if args.triplet:
+                anchor = sample['anchor']
+                positive = sample['positive']
+                negative = sample['negative']
+                if torch.cuda.is_available() and args.use_gpu:
+                    anchor = anchor.cuda()
+                    positive = positive.cuda()
+                    negative = negative.cuda()
+            else:
+                data = sample['data']
+                label = sample['label']
+                if torch.cuda.is_available() and args.use_gpu:
+                    data = data.cuda()
+                    label = label.cuda()
 
-            if torch.cuda.is_available() and args.use_gpu:
-                data = data.cuda()
-                label = label.cuda()
-
-            output = model(data)
-
-            if args.embedding:
+            if args.triplet:
+                out_anchor = model(anchor)
+                out_positive = model(positive)
+                out_negative = model(negative)
+            elif args.embedding:
                 with torch.no_grad():
-                    output2 = gtmodel(label)  # (Batch x 512) Tensor
+                    output_gt = gtmodel(label)  # (Batch x 512) Tensor
+
+            else:
+                output = model(data)
 
             if args.embedding:
-                loss = traincriterion(output, output2, torch.ones(output.shape))
+                loss = traincriterion(output, output_gt, torch.ones(output.shape))
+            elif args.triplet:
+                loss = traincriterion(out_anchor, out_positive, out_negative)
             else:
                 loss = traincriterion(output, label)
 
@@ -187,15 +238,19 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
             loss_record += loss.item()
 
-            if not args.embedding:
+            if args.embedding:
+                cos = nn.CosineSimilarity(dim=1, eps=1e-6)
+                acc_record += cos(output, output_gt)
+
+            elif args.triplet:
+                cos = nn.CosineSimilarity(dim=1, eps=1e-6)
+                acc_record += cos(out_anchor, out_positive)
+            else:
                 predict = torch.argmax(output, 1)
                 label = label.cpu().numpy()
                 predict = predict.cpu().numpy()
 
                 acc_record += accuracy_score(label, predict)
-            else:
-                cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                acc_record += cos(output, output2)
 
         tq.close()
 
@@ -212,7 +267,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
                    "Train/lr": lr}, step=epoch)
 
         if epoch % args.validation_step == 0:
-            if args.embedding:
+            if args.embedding or args.triplet:
                 acc_val, loss_val = validation(args, model, valcriterion, dataloader_val)
                 wandb.log({"Val/loss": loss_val,
                            "Val/Acc": acc_val}, step=epoch)
@@ -329,7 +384,7 @@ def main(args, model=None):
             # Build model
             if args.resnetmodel[0:6] == 'resnet':
                 model = get_model_resnet(args.resnetmodel, args.num_classes, args.transfer, args.pretrained,
-                                         args.embedding)
+                                         (args.embedding or args.triplet))
             elif args.resnetmodel[0:7] == 'resnext':
                 model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
             elif args.resnetmodel == 'personalized':
