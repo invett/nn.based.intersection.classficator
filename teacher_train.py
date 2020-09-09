@@ -1,3 +1,35 @@
+import argparse
+import os
+import sys
+import time
+import numpy as np
+import tqdm
+
+import torchvision.transforms as transforms
+from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror, GenerateNewDataset, \
+    WriteDebugInfoOnNewDataset
+from dataloaders.sequencedataloader import fromAANETandDualBisenet, teacher_tripletloss
+
+import warnings
+
+import torch
+import torchvision.transforms as transforms
+from torch.utils.data import DataLoader
+from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror, GrayScale
+from torch.utils.data.sampler import SubsetRandomSampler
+
+from torch.optim.lr_scheduler import MultiStepLR
+
+from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet, BaseLine, fromGeneratedDataset
+from model.resnet_models import get_model_resnet, get_model_resnext, Personalized, Personalized_small
+from dropout_models import get_resnext, get_resnet
+from sklearn.model_selection import KFold
+from sklearn.model_selection import LeaveOneOut
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
+
+from miscellaneous.utils import send_telegram_message
+
+
 def main(args):
     # Build Model
     model = get_model_resnet(args.resnetmodel, args.num_classes, args.triplet)
@@ -20,14 +52,31 @@ def main(args):
         print('not supported optimizer \n')
         exit()
 
-    # create dataset and dataloader
-    if args.triplet:
-        pass
-    else:
-        pass
+    data_path = args.dataset
 
-    # train model
-    train(args, model, optimizer, dataloader_train, dataloader_val)
+    # All sequence folders
+    folders = np.array([os.path.join(data_path, folder) for folder in os.listdir(data_path) if
+                        os.path.isdir(os.path.join(data_path, folder))])
+
+    # Exclude test samples
+    folders = folders[folders != os.path.join(data_path, '2011_09_30_drive_0028_sync')]
+    test_path = os.path.join(data_path, '2011_09_30_drive_0028_sync')
+
+    loo = LeaveOneOut()
+    for train_index, val_index in loo.split(folders):
+
+        train_path, val_path = folders[train_index], folders[val_index]
+
+        # create dataset and dataloader
+        if args.triplet:
+            dataloader_train = teacher_tripletloss(train_path, args.distance, transform=[])
+            dataloader_val = teacher_tripletloss(val_path, args.distance, transform=[])
+
+        else:
+            pass
+
+        # train model
+        train(args, model, optimizer, dataloader_train, dataloader_val)
 
 
 def validation(args, model, criterion, dataloader_val):
