@@ -8,7 +8,7 @@ import time
 import torchvision.transforms as transforms
 from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror, GenerateNewDataset, \
     WriteDebugInfoOnNewDataset
-from dataloaders.sequencedataloader import fromAANETandDualBisenet
+from dataloaders.sequencedataloader import fromAANETandDualBisenet, teacher_tripletloss
 
 from miscellaneous.utils import send_telegram_message
 
@@ -24,12 +24,14 @@ def main(args):
     folders = np.array([os.path.join(args.rootfolder, folder) for folder in os.listdir(args.rootfolder) if
                         os.path.isdir(os.path.join(args.rootfolder, folder))])
 
-    dataset = fromAANETandDualBisenet(folders, transform=transforms.Compose([#Normalize(),
-                                                                             GenerateBev(returnPoints=False),
-                                                                             Mirror(),
-                                                                             Rescale((224, 224)),
-                                                                             WriteDebugInfoOnNewDataset(),
-                                                                             GenerateNewDataset(args.savefolder)]))
+    #dataset = fromAANETandDualBisenet(folders, args.distance, transform=transforms.Compose([#Normalize(),
+    #                                                                         GenerateBev(returnPoints=False),
+    #                                                                         Mirror(),
+    #                                                                         Rescale((224, 224)),
+    #                                                                         WriteDebugInfoOnNewDataset(),
+    #                                                                         GenerateNewDataset(args.savefolder)]))
+
+    dataset = teacher_tripletloss(folders, args.distance, transform=[])
 
     # num_workers starts from 0
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=args.workers)
@@ -63,6 +65,8 @@ if __name__ == '__main__':
     parser.add_argument('--workers', type=int, default=0, help='How many workers for the dataloader')
     parser.add_argument('--telegram', action='store_true', help='Send info through Telegram')
     parser.add_argument('--debug', action='store_true', help='Print filenames as walking the filesystem')
+    parser.add_argument('--distance', type=float, default=20.0, help='Distance from the cross')
+
 
     args = parser.parse_args()
 

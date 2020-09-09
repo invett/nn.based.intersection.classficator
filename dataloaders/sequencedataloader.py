@@ -8,6 +8,7 @@ from numpy import load
 import cv2
 import json
 from miscellaneous.utils import write_ply
+import random
 import time
 
 
@@ -73,7 +74,7 @@ class TestDataset(Dataset):
         THE NUMBER OF POINTS CAN NOT CHANGE FOR EXAMPLE IN A ROTATION, RESULTING IN A BLACK AREA OF THE IMAGE WHERE
         INSTEAD WE CAN DO WAY BETTER GENERATING ON-THE-FLY THE BEVs.
 
-        WHIS WAS DONE WITH <fromAANETandDualBisenet> DATALOADER, BUT IT DRASTICALLY DECREASES THE SPEED OF THE PROCESS.
+        THIS WAS DONE WITH <fromAANETandDualBisenet> DATALOADER, BUT IT DRASTICALLY DECREASES THE SPEED OF THE PROCESS.
         FOR THESE REASON THEN WE MADE AN "AUGMENTED" OFFLINE DATASET WITH A NEW DATALOADER, <fromGeneratedDataset>
 
         Args:
@@ -128,7 +129,7 @@ class TestDataset(Dataset):
             if float(gtdata.loc[gtdata[0] == name][1]) < distance:
                 images.append(file)
 
-        self.file_list = images
+        self.file_list = imagesè
 
 
 class fromAANETandDualBisenet(Dataset):
@@ -340,3 +341,118 @@ class fromGeneratedDataset(Dataset):
 
         self.bev_images = images
         self.bev_labels = labels
+
+
+class teacher_tripletloss(Dataset):
+
+    def __init__(self, folders, distance, include_insidecrossing=True, transform=None):
+        """
+
+        Args:
+            folders:    all the folders, like
+                        /home/malvaro/Documentos/DualBiSeNet/data_raw
+                                ├── 2011_09_30_drive_0018_sync
+                                ├── 2011_09_30_drive_0020_sync
+                                ├── 2011_09_30_drive_0027_sync
+                                ├── 2011_09_30_drive_0028_sync
+                                ├── 2011_09_30_drive_0033_sync
+                                ├── 2011_09_30_drive_0034_sync
+                                ├── 2011_10_03_drive_0027_sync
+                                └── 2011_10_03_drive_0034_sync
+
+            distance:   distance to consider
+
+            transform:  transforms to the image
+
+            include_insidecrossing: whether include or not the frames in which the vehicle is almost inside the crossing
+                                    by the definition of our dataset
+        """
+
+        self.transform = transform
+
+        osm_files = []
+        osm_types = []
+        osm_distances = []
+
+        osm_data = []
+
+        try:
+
+            # create the list of elements in all folders
+            for folder in folders:
+                folder_osm = os.path.join(folder, 'OSM')
+
+                # check if the directory exists
+                if os.path.isdir(folder_osm):
+
+                    gt_path = os.path.join(folder, 'frames_topology.txt')
+
+                    # check if the file exists
+                    if os.path.isfile(gt_path):
+
+                        # read data
+                        gt_data = pd.read_csv(gt_path, sep=';', header=None, dtype=str)
+
+                        for file in sorted(os.listdir(folder_osm)):
+                            if file.endswith('.png'):
+
+                                index = os.path.splitext(file)[0]
+
+                                osm_data_distance = float(gt_data.loc[gt_data[0] == index][1])
+                                osm_data_type = int(gt_data.loc[gt_data[0] == index][2])
+                                osm_data_insidecrossing = int(gt_data.loc[gt_data[0] == index][3])
+
+                                if include_insidecrossing or osm_data_insidecrossing == 0:
+
+                                    if osm_data_distance < distance:
+
+                                        osm_data.append([os.path.join(folder, "OSM", file),
+                                                         osm_data_distance,
+                                                         osm_data_type,
+                                                         osm_data_insidecrossing])
+
+                                        # osm_files.append(os.path.join(folder, "OSM", file))
+                                        # osm_types.append(osm_data_type)
+                                        # osm_distances.append(osm_data_distance)
+        except Exception as e:
+            if isinstance(e, SystemExit):
+                exit()
+            print(e)
+            exit()
+
+        self.osm_data = osm_data
+
+    def __len__(self):
+        return len(self.osm_data)
+
+    def __getitem__(self, idx):
+
+        """
+        0 filename
+        1 meters
+        2 typology
+        3 in crossing
+
+        """
+
+        # identify the typology for anchor item
+        anchor_type = self.osm_data[idx][2]
+
+        # create positive and negative list based on the anchor item typology
+        positive_list = [element for element in self.osm_data if element[2] == anchor_type]
+        negative_list = [element for element in self.osm_data if element[2] != anchor_type]
+
+        # remove the anchor item from the positive list
+        positive_list.remove(self.osm_data[idx])
+
+        anchor_image = cv2.imread(self.osm_data[idx][0], cv2.IMREAD_UNCHANGED)
+        positive_image = cv2.imread(random.choice(positive_list)[0], cv2.IMREAD_UNCHANGED)
+        negative_image = cv2.imread(random.choice(negative_list)[0], cv2.IMREAD_UNCHANGED)
+
+        sample = {'anchor': anchor_image,
+                  'positive': positive_image,
+                  'negative': negative_image,
+                  'label': anchor_type}
+
+        return sample
+

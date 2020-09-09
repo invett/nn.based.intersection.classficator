@@ -440,7 +440,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--decimate', type=float, default=1.0, help='How much of the points will remain after '
                                                                     'decimation')
-    parser.add_argument('--distance', type=float, default=20.0, help='Distance from the corss')
+    parser.add_argument('--distance', type=float, default=20.0, help='Distance from the cross')
     parser.add_argument('--telegram', type=bool, default=True, help='Send info through Telegram')
 
     parser.add_argument('--weighted', action='store_true', help='Weighted losses')
