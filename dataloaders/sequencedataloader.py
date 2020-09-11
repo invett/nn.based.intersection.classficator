@@ -345,20 +345,20 @@ class fromGeneratedDataset(Dataset):
 
 class teacher_tripletloss(Dataset):
 
-    def __init__(self, folders, distance, include_insidecrossing=True, transform=None):
+    def __init__(self, folders, distance, include_insidecrossing=False, transform=None):
         """
 
         Args:
             folders:    all the folders, like
                         /home/malvaro/Documentos/DualBiSeNet/data_raw
-                                ├── 2011_09_30_drive_0018_sync
-                                ├── 2011_09_30_drive_0020_sync
-                                ├── 2011_09_30_drive_0027_sync
-                                ├── 2011_09_30_drive_0028_sync
-                                ├── 2011_09_30_drive_0033_sync
-                                ├── 2011_09_30_drive_0034_sync
-                                ├── 2011_10_03_drive_0027_sync
-                                └── 2011_10_03_drive_0034_sync
+                                ├── mkdir 2011_09_30_drive_0018_sync
+                                ├── mkdir 2011_09_30_drive_0020_sync
+                                ├── mkdir 2011_09_30_drive_0027_sync
+                                ├── mkdir 2011_09_30_drive_0028_sync
+                                ├── mkdir 2011_09_30_drive_0033_sync
+                                ├── mkdir 2011_09_30_drive_0034_sync
+                                ├── mkdir 2011_10_03_drive_0027_sync
+                                └── mkdir 2011_10_03_drive_0034_sync
 
             distance:   distance to consider
 
@@ -381,9 +381,11 @@ class teacher_tripletloss(Dataset):
             # create the list of elements in all folders
             for folder in folders:
                 folder_osm = os.path.join(folder, 'OSM')
+                folder_img = os.path.join(folder, 'image_02')
+                folder_oxts = os.path.join(folder, 'oxts/data')
 
                 # check if the directory exists
-                if os.path.isdir(folder_osm):
+                if os.path.isdir(folder_osm) and os.path.isdir(folder_img) and os.path.isdir(folder_oxts):
 
                     gt_path = os.path.join(folder, 'frames_topology.txt')
 
@@ -394,13 +396,26 @@ class teacher_tripletloss(Dataset):
                         gt_data = pd.read_csv(gt_path, sep=';', header=None, dtype=str)
 
                         for file in sorted(os.listdir(folder_osm)):
+
+                            # check if is a PNG .. remember the files should be like 0000000000.png [10digits].png
                             if file.endswith('.png'):
 
                                 index = os.path.splitext(file)[0]
 
+                                # little check; ensure the "index" is a number 
+                                assert index.isdigit()
+
                                 osm_data_distance = float(gt_data.loc[gt_data[0] == index][1])
                                 osm_data_type = int(gt_data.loc[gt_data[0] == index][2])
                                 osm_data_insidecrossing = int(gt_data.loc[gt_data[0] == index][3])
+
+                                oxts_file = os.path.join(folder_oxts, str.replace(file, "png", "txt"))
+                                oxts_data = pd.read_csv(oxts_file, sep=' ', header=None, dtype=str)
+                                oxts_lat = oxts_data[0][0]
+                                oxts_lon = oxts_data[1][0]
+
+                                # check whether the correspondent CAMERA IMAGE exists
+                                # assert os.path.isfile(os.path.join(folder_img, file))
 
                                 if include_insidecrossing or osm_data_insidecrossing == 0:
 
@@ -409,7 +424,9 @@ class teacher_tripletloss(Dataset):
                                         osm_data.append([os.path.join(folder, "OSM", file),
                                                          osm_data_distance,
                                                          osm_data_type,
-                                                         osm_data_insidecrossing])
+                                                         osm_data_insidecrossing,
+                                                         oxts_lat,
+                                                         oxts_lon])
 
                                         # osm_files.append(os.path.join(folder, "OSM", file))
                                         # osm_types.append(osm_data_type)
@@ -444,15 +461,32 @@ class teacher_tripletloss(Dataset):
 
         # remove the anchor item from the positive list
         positive_list.remove(self.osm_data[idx])
+        positive_item = random.choice(positive_list)
+        negative_item = random.choice(negative_list)
 
         anchor_image = cv2.imread(self.osm_data[idx][0], cv2.IMREAD_UNCHANGED)
-        positive_image = cv2.imread(random.choice(positive_list)[0], cv2.IMREAD_UNCHANGED)
-        negative_image = cv2.imread(random.choice(negative_list)[0], cv2.IMREAD_UNCHANGED)
+        positive_image = cv2.imread(positive_item[0], cv2.IMREAD_UNCHANGED)
+        negative_image = cv2.imread(negative_item[0], cv2.IMREAD_UNCHANGED)
+
+        ground_truth_img = cv2.imread(os.path.dirname(str(self.osm_data[idx][0])) + "_TYPES/"+str(self.osm_data[idx][2])+".png", cv2.IMREAD_COLOR)
 
         sample = {'anchor': anchor_image,
                   'positive': positive_image,
                   'negative': negative_image,
-                  'label': anchor_type}
+                  'label_anchor': anchor_type,
+                  'label_positive': positive_item[2],        # [2] is the type
+                  'label_negative': negative_item[2],        # [2] is the type
+                  'filename_anchor': self.osm_data[idx][0],  # [0] is the filename
+                  'filename_positive': positive_item[0],
+                  'filename_negative': negative_item[0],
+                  'ground_truth_image': ground_truth_img,    # for debugging purposes
+                  'anchor_oxts_lat': self.osm_data[idx][4],         # [4] lat
+                  'anchor_oxts_lon': self.osm_data[idx][5],         # [5] lon
+                  'positive_oxts_lat': positive_item[4],            # [4] lat
+                  'positive_oxts_lon': positive_item[5],            # [5] lon
+                  'negative_oxts_lat': negative_item[4],            # [4] lat
+                  'negative_oxts_lon': negative_item[5]             # [5] lon
+                  }
 
         return sample
 
