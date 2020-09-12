@@ -1,3 +1,19 @@
+"""
+
+THIS IS A TEST SCRIPT THAT ALLOWS US TO CREATE/VALIDATE THE CLASS THAT CREATES THE OSM-OG (OCCUPANCY GRID). THIS
+CODE IS PART OF THE ICRA 2019 WORK BY CATTANEO D./BALLARDINI A.
+
+PRIVATE ORIGINAL REPO can be found here:
+
+ballardini@projects.ira.disco.unimib.it:/repository/git/road_intersection_detector.git
+
+ballardini@johnny-i5:~/alvaro_ws/src/road_intersection_detector$ git log
+commit f27412db2f17ee45a531cda69f5c11cb2f635271
+Author: Daniele Cattaneo <daniele.cattaneo@disco.unimib.it>
+Date:   Wed Feb 13 11:57:58 2019 +0100
+On branch correlation_gpu
+
+"""
 
 from random import uniform
 
