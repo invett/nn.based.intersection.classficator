@@ -333,7 +333,8 @@ def create_og_hypotesis(howManyLanes, rotation_list, width_list, center=(14, 0),
     return crossing_image
 
 
-def test_crossing_pose(crossing_type=6, noise=True, save=True):
+def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_angle=0.4, noise=True, save=True,
+                       path="", filenumber=0):
     """
 
     Args:
@@ -345,8 +346,13 @@ def test_crossing_pose(crossing_type=6, noise=True, save=True):
                     4 [⊢]: straight + left
                     5 [⊤]: stop, left and right
                     6 [+]: full 4-ways intersection
-        noise:
-        save:
+        standard_width: standard width for intersection arms
+        rnd_width: parameter for uniform noise add (width);          uniform(-rnd_width, rnd_width)
+        rnd_angle: parameter for uniform noise add (rotation [rad]); uniform(-rnd_angle, rnd_angle)
+        noise: whether to add "noise" to the image or not. this wants to mimic the spatial "holes" in the BEV
+        save: if true, save the image in the PATH parameter
+        path: where to save the images
+        filenumber: name of the file; please pass a number.
 
     Returns:
 
@@ -358,64 +364,72 @@ def test_crossing_pose(crossing_type=6, noise=True, save=True):
     euler = np.array([0., 0., 0.])  # leave this fixed, is the rotation of the base centerpoint
     rotation = pi / 2 - euler[2]  # leave this fixed, is the rotation of the base centerpoint
 
-    if crossing_type==0:
-        print("0")
-    elif crossing_type==1:
-        print("1")
-    elif crossing_type==2:
-        print("2")
-    elif crossing_type==3:
-        print("3")
-    elif crossing_type==4:
-        print("4")
-    elif crossing_type==5:
-        print("5")
-    elif crossing_type==6:
-        print("6")
+    branches = 0
+    rotation_list = []
+    branch_widths = []
 
-        xx = 15.0 + uniform(-9., 9.)
-        yy = 0.0 + uniform(-9., 9.)
+    xx = 15.0 + uniform(-9., 9.)
+    yy = 0.0 + uniform(-9., 9.)
 
-        rot_a = uniform(-0.4, 0.4)
-        rot_b = uniform(-0.4, 0.4)
-        rot_c = uniform(-0.4, 0.4)
-        rot_d = uniform(-0.4, 0.4)
+    rot_a = uniform(-rnd_angle, rnd_angle)
+    rot_b = uniform(-rnd_angle, rnd_angle)
+    rot_c = uniform(-rnd_angle, rnd_angle)
+    rot_d = uniform(-rnd_angle, rnd_angle)
 
-        width_a = uniform(-2.0, 2.0)
-        width_b = uniform(-2.0, 2.0)
-        width_c = uniform(-2.0, 2.0)
-        width_d = uniform(-2.0, 2.0)
+    width_a = uniform(-rnd_width, rnd_width)
+    width_b = uniform(-rnd_width, rnd_width)
+    width_c = uniform(-rnd_width, rnd_width)
+    width_d = uniform(-rnd_width, rnd_width)
 
-        cross_pose = np.array([float(xx), float(yy), 0.])
-        translation = np.array([0., 0., 0.])
+    intersection_center = np.array([float(xx), float(yy), 0.])
+    translation = np.array([0., 0., 0.])
 
-        distance_x = cross_pose[0] - translation[0]
-        distance_y = cross_pose[1] - translation[1]
-        center_pose = [distance_x * cos(rotation) - distance_y * sin(rotation) - min_y,
-                       distance_y * cos(rotation) + distance_x * sin(rotation)]
+    distance_x = intersection_center[0] - translation[0]
+    distance_y = intersection_center[1] - translation[1]
 
-        tf_pose = to_rotation_matrix_XYZRPY(translation[0], translation[1], translation[2], euler[0], euler[1], euler[2])
+    crossing_pose = to_rotation_matrix_XYZRPY(translation[0], translation[1], translation[2], euler[0], euler[1],
+                                              euler[2])
 
+    if crossing_type == 0:
+        branches = 2
+        rotation_list = [0. + rot_a, pi + rot_b]
+        branch_widths = [6. + width_a, 6. + width_b]
+    elif crossing_type == 1:
+        branches = 2
+        rotation_list = [0. + rot_a, pi / 2 + rot_b]
+        branch_widths = [standard_width + width_a, standard_width + width_b]
+    elif crossing_type == 2:
+        branches = 2
+        rotation_list = [0. + rot_a, 3 / 2 * pi + rot_b]
+        branch_widths = [standard_width + width_a, standard_width + width_b]
+    elif crossing_type == 3:
+        branches = 3
+        rotation_list = [0. + rot_a,  pi + rot_c, 3 / 2 * pi + rot_d]
+        branch_widths = [standard_width + width_a, standard_width + width_b, standard_width + width_c]
+    elif crossing_type == 4:
+        branches = 3
+        rotation_list = [0. + rot_a, pi / 2 + rot_b, pi + rot_c]
+        branch_widths = [standard_width + width_a, standard_width + width_b, standard_width + width_c]
+    elif crossing_type == 5:
+        branches = 3
+        rotation_list = [0. + rot_a, pi / 2 + rot_b, 3 / 2 * pi + rot_d, ]
+        branch_widths = [standard_width + width_a, standard_width + width_b, standard_width + width_c]
+    elif crossing_type == 6:
+        branches = 4
+        rotation_list = [0. + rot_a, pi / 2 + rot_b, pi + rot_c, 3 / 2 * pi + rot_d]
+        branch_widths = [standard_width + width_a, standard_width + width_b, standard_width + width_c, standard_width + width_d]
 
-    singola_ipotesi = Crossing(copy(tf_pose),
-                               4,                   # how many arms in the intersection
-                               copy([0. + rot_a,
-                                     pi / 2 + rot_b,
-                                     pi + rot_c,
-                                     3/2 * pi + rot_d,
-                                     ]),  # rotation list (n# elements == n# arms)
-                               copy([6. + width_a,
-                                     6. + width_b,
-                                     6. + width_c,
-                                     6. + width_d
-                                     ]),  # width list (n# elements == n# arms)
-                               (cross_pose[0], cross_pose[1])  # global center
+    crossing_sample = Crossing(crossing_pose,  # matrix form... similar to intersection center, I won't change the code!
+                               branches,       # how many arms in the intersection
+                               rotation_list,  # rotation list (n# elements == n# arms)
+                               branch_widths,  # width list (n# elements == n# arms)
+                               (intersection_center[0], intersection_center[1])
                                )
 
-    og = singola_ipotesi.generate_og()
+    sample = crossing_sample.generate_og()
 
     if save:
-        cv2.imwrite("/tmp/minchioline-sborrilla/" + str(0).zfill(4) + ".png", og)
+        cv2.imwrite(str(path) + str(filenumber).zfill(10) + ".png", sample)
 
     if False:
 
@@ -437,18 +451,18 @@ def test_crossing_pose(crossing_type=6, noise=True, save=True):
 
 
             counter = 0
-            cross_pose = np.array([float(xx), float(yy), 0.])
+            intersection_center = np.array([float(xx), float(yy), 0.])
             translation = np.array([0., 0., 0.])
 
-            distance_x = cross_pose[0] - translation[0]
-            distance_y = cross_pose[1] - translation[1]
+            distance_x = intersection_center[0] - translation[0]
+            distance_y = intersection_center[1] - translation[1]
             center_pose = [distance_x * cos(rotation) - distance_y * sin(rotation) - min_y,
                            distance_y * cos(rotation) + distance_x * sin(rotation)]
 
-            tf_pose = to_rotation_matrix_XYZRPY(translation[0], translation[1], translation[2], euler[0], euler[1],
-                                                euler[2])
+            crossing_pose = to_rotation_matrix_XYZRPY(translation[0], translation[1], translation[2], euler[0], euler[1],
+                                                      euler[2])
 
-            singola_ipotesi = Crossing(copy(tf_pose),
+            crossing_sample = Crossing(copy(crossing_pose),
                                        4,                   # how many arms in the intersection
                                        copy([0. + rot_a,
                                              pi / 2 + rot_b,
@@ -460,10 +474,10 @@ def test_crossing_pose(crossing_type=6, noise=True, save=True):
                                              6. + width_c,
                                              6. + width_d
                                              ]),  # width list (n# elements == n# arms)
-                                       (cross_pose[0], cross_pose[1])  # global center
+                                       (intersection_center[0], intersection_center[1])  # global center
                                        )
 
-            og = singola_ipotesi.generate_og()
+            og = crossing_sample.generate_og()
 
             cv2.imwrite("/tmp/minchioline-sborrilla/" + str(i).zfill(4) + ".png", og)
 
@@ -474,28 +488,28 @@ def test_crossing_pose(crossing_type=6, noise=True, save=True):
         yy = 0.0
 
         counter = 0
-        cross_pose = np.array([float(xx), float(yy), 0.])
+        intersection_center = np.array([float(xx), float(yy), 0.])
         translation = np.array([0., 0., 0.])
 
         base_rotation = 0.0
         for i in range(360):
 
-            distance_x = cross_pose[0] - translation[0]
-            distance_y = cross_pose[1] - translation[1]
+            distance_x = intersection_center[0] - translation[0]
+            distance_y = intersection_center[1] - translation[1]
             center_pose = [distance_x * cos(rotation) - distance_y * sin(rotation) - min_y,
                            distance_y * cos(rotation) + distance_x * sin(rotation)]
 
 
-            tf_pose = to_rotation_matrix_XYZRPY(translation[0], translation[1], translation[2], euler[0], euler[1], euler[2])
+            crossing_pose = to_rotation_matrix_XYZRPY(translation[0], translation[1], translation[2], euler[0], euler[1], euler[2])
 
-            singola_ipotesi = Crossing(copy(tf_pose),
+            crossing_sample = Crossing(copy(crossing_pose),
                                        3,
                                        copy([0.+base_rotation, pi / 2 , pi]),        # rotation list
                                        copy([6., 6., 6.]),            # width list
-                                       (cross_pose[0], cross_pose[1]) # global center
+                                       (intersection_center[0], intersection_center[1]) # global center
                                        )
 
-            og = singola_ipotesi.generate_og()
+            og = crossing_sample.generate_og()
 
             cv2.imwrite("/tmp/minchioline-sborrilla/" + str(counter).zfill(4) + ".png", og)
             counter = counter + 1
@@ -506,32 +520,34 @@ def test_crossing_pose(crossing_type=6, noise=True, save=True):
         counter = 0
         for xx in range(0, 30):
             for yy in range(-15, 15):
-                cross_pose = np.array([float(xx), float(yy), 0.])
+                intersection_center = np.array([float(xx), float(yy), 0.])
                 translation = np.array([0., 0., 0.])
 
                 euler = np.array([0., 0., 0.0])  #leave this fixed, is the rotatino of the base centerpoint
                 rotation = pi / 2 - euler[2]     #leave this fixed, is the rotatino of the base centerpoint
 
-                distance_x = cross_pose[0] - translation[0]
-                distance_y = cross_pose[1] - translation[1]
+                distance_x = intersection_center[0] - translation[0]
+                distance_y = intersection_center[1] - translation[1]
                 center_pose = [distance_x * cos(rotation) - distance_y * sin(rotation) - min_y,
                                distance_y * cos(rotation) + distance_x * sin(rotation)]
 
 
-                tf_pose = to_rotation_matrix_XYZRPY(translation[0], translation[1], translation[2], euler[0], euler[1], euler[2])
+                crossing_pose = to_rotation_matrix_XYZRPY(translation[0], translation[1], translation[2], euler[0], euler[1], euler[2])
 
-                singola_ipotesi = Crossing(copy(tf_pose),
+                crossing_sample = Crossing(copy(crossing_pose),
                                            3,
                                            copy([0., pi / 2 - 0.4, pi]),        # rotation list
                                            copy([6., 6., 6.]),            # width list
-                                           (cross_pose[0], cross_pose[1]) # global center
+                                           (intersection_center[0], intersection_center[1]) # global center
                                            )
 
-                og = singola_ipotesi.generate_og()
+                og = crossing_sample.generate_og()
 
                 cv2.imwrite("/tmp/minchioline-sborrilla/" + str(counter).zfill(4) + ".png", og)
                 counter = counter + 1
 
 
 if __name__ == '__main__':
-    test_crossing_pose()
+
+    for i in range(0, 10):
+        test_crossing_pose(crossing_type=6, path="/tmp/minchioline-sborrilla/", filenumber=i)
