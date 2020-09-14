@@ -28,7 +28,7 @@ def main(args):
                         os.path.isdir(os.path.join(args.rootfolder, folder))])
 
     dataset = teacher_tripletloss(folders, args.distance, transform=[])
-    #dataset = teacher_tripletloss_generated(elements=3, transform=[])
+    # dataset = teacher_tripletloss_generated(elements=3, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True, transform=[])
 
     # num_workers starts from 0
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=args.workers)

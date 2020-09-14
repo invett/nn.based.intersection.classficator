@@ -163,9 +163,9 @@ class fromAANETandDualBisenet(Dataset):
                 alvarofile = file.replace("_pred.npz", "pred.png")
                 image_02_file = file.replace("_pred.npz", ".png")
 
-                if os.path.isfile(os.path.join(folder_aanet, file)) and \
-                        os.path.isfile(os.path.join(folder_alvaromask, alvarofile)) and \
-                        os.path.isfile(os.path.join(folder_image_02, image_02_file)):
+                if os.path.isfile(os.path.join(folder_aanet, file)) and os.path.isfile(
+                    os.path.join(folder_alvaromask, alvarofile)) and os.path.isfile(
+                    os.path.join(folder_image_02, image_02_file)):
                     aanet.append(os.path.join(folder_aanet, file))
                     alvaromask.append(os.path.join(folder_alvaromask, alvarofile))
                     image_02.append(os.path.join(folder_image_02, image_02_file))
@@ -209,10 +209,7 @@ class fromAANETandDualBisenet(Dataset):
         gtdata = pd.read_csv(gt_path, sep=';', header=None, dtype=str)
         gTruth = int(gtdata.loc[gtdata[0] == filename.replace("_pred", "")][2])
 
-        sample = {'aanet': aanet_image,
-                  'alvaromask': alvaromask_image,
-                  'image_02': image_02_image,
-                  'label': gTruth}
+        sample = {'aanet': aanet_image, 'alvaromask': alvaromask_image, 'image_02': image_02_image, 'label': gTruth}
 
         assert self.transform, "no transform list provided"
 
@@ -308,8 +305,8 @@ class fromGeneratedDataset(Dataset):
                     self.bev_labels.append(bev_label['label'])
         self.__filterdistance(distance)
         toc = time.time()
-        print("[fromGeneratedDataset] - " + str(len(self.bev_labels)) + " elements loaded in " +
-              str(time.strftime("%H:%M:%S", time.gmtime(toc - tic))))
+        print("[fromGeneratedDataset] - " + str(len(self.bev_labels)) + " elements loaded in " + str(
+            time.strftime("%H:%M:%S", time.gmtime(toc - tic))))
 
     def __len__(self):
 
@@ -320,8 +317,7 @@ class fromGeneratedDataset(Dataset):
         bev_image = cv2.imread(self.bev_images[idx], cv2.IMREAD_UNCHANGED)
         bev_label = self.bev_labels[idx]
 
-        sample = {'data': bev_image,
-                  'label': bev_label}
+        sample = {'data': bev_image, 'label': bev_label}
         if self.transform is not None:
             sample = self.transform(sample)
 
@@ -425,6 +421,9 @@ class teacher_tripletloss(Dataset):
                                 if include_insidecrossing or osm_data_insidecrossing == 0:
 
                                     if osm_data_distance < distance:
+                                        osm_data.append(
+                                            [os.path.join(folder, "OSM", file), osm_data_distance, osm_data_type,
+                                             osm_data_insidecrossing, oxts_lat, oxts_lon])
 
                                         osm_data.append([os.path.join(folder, "OSM", file),
                                                          osm_data_distance,
@@ -473,24 +472,22 @@ class teacher_tripletloss(Dataset):
         positive_image = cv2.imread(positive_item[0], cv2.IMREAD_UNCHANGED)
         negative_image = cv2.imread(negative_item[0], cv2.IMREAD_UNCHANGED)
 
-        ground_truth_img = cv2.imread(os.path.dirname(str(self.osm_data[idx][0])) + "_TYPES/"+str(self.osm_data[idx][2])+".png", cv2.IMREAD_COLOR)
+        ground_truth_img = cv2.imread(
+            os.path.dirname(str(self.osm_data[idx][0])) + "_TYPES/" + str(self.osm_data[idx][2]) + ".png",
+            cv2.IMREAD_COLOR)
 
-        sample = {'anchor': anchor_image,
-                  'positive': positive_image,
-                  'negative': negative_image,
-                  'label_anchor': anchor_type,
-                  'label_positive': positive_item[2],        # [2] is the type
-                  'label_negative': negative_item[2],        # [2] is the type
+        sample = {'anchor': anchor_image, 'positive': positive_image, 'negative': negative_image,
+                  'label_anchor': anchor_type, 'label_positive': positive_item[2],  # [2] is the type
+                  'label_negative': negative_item[2],  # [2] is the type
                   'filename_anchor': self.osm_data[idx][0],  # [0] is the filename
-                  'filename_positive': positive_item[0],
-                  'filename_negative': negative_item[0],
-                  'ground_truth_image': ground_truth_img,    # for debugging purposes
-                  'anchor_oxts_lat': self.osm_data[idx][4],         # [4] lat
-                  'anchor_oxts_lon': self.osm_data[idx][5],         # [5] lon
-                  'positive_oxts_lat': positive_item[4],            # [4] lat
-                  'positive_oxts_lon': positive_item[5],            # [5] lon
-                  'negative_oxts_lat': negative_item[4],            # [4] lat
-                  'negative_oxts_lon': negative_item[5]             # [5] lon
+                  'filename_positive': positive_item[0], 'filename_negative': negative_item[0],
+                  'ground_truth_image': ground_truth_img,  # for debugging purposes
+                  'anchor_oxts_lat': self.osm_data[idx][4],  # [4] lat
+                  'anchor_oxts_lon': self.osm_data[idx][5],  # [5] lon
+                  'positive_oxts_lat': positive_item[4],  # [4] lat
+                  'positive_oxts_lon': positive_item[5],  # [5] lon
+                  'negative_oxts_lat': negative_item[4],  # [4] lat
+                  'negative_oxts_lon': negative_item[5]  # [5] lon
                   }
 
         return sample
@@ -498,7 +495,7 @@ class teacher_tripletloss(Dataset):
 
 class teacher_tripletloss_generated(Dataset):
 
-    def __init__(self, elements=1000, transform=None):
+    def __init__(self, elements=1000, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True, transform=None):
         """
 
         This dataloader uses "RUNTIME-GENERATED" intersection (this differs from teacher_tripletloss dataloader that
@@ -513,6 +510,11 @@ class teacher_tripletloss_generated(Dataset):
             include_insidecrossing: whether include or not the frames in which the vehicle is almost inside the crossing
                                     by the definition of our dataset
         """
+
+        self.rnd_width = rnd_width
+        self.rnd_angle = rnd_angle
+        self.rnd_spatial = rnd_spatial
+        self.noise = noise
 
         self.transform = transform
 
@@ -550,36 +552,28 @@ class teacher_tripletloss_generated(Dataset):
         positive_item = random.choice(positive_list)
         negative_item = random.choice(negative_list)
 
-        anchor_image = test_crossing_pose(crossing_type=anchor_type, noise=True, rnd_width=1.0, save=False)
-        positive_image = test_crossing_pose(crossing_type=positive_item[0], noise=True, rnd_width=1.0, save=False)
-        negative_image = test_crossing_pose(crossing_type=negative_item[0], noise=True, rnd_width=1.0, save=False)
+        anchor_image = test_crossing_pose(crossing_type=anchor_type, save=False, rnd_width=self.rnd_width,
+                                          rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise)
+        positive_image = test_crossing_pose(crossing_type=positive_item[0], save=False, rnd_width=self.rnd_width,
+                                            rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise)
+        negative_image = test_crossing_pose(crossing_type=negative_item[0], save=False, rnd_width=self.rnd_width,
+                                            rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise)
 
-        #anchor_image = cv2.imread(self.samples[idx][0], cv2.IMREAD_UNCHANGED)
+        # anchor_image = cv2.imread(self.samples[idx][0], cv2.IMREAD_UNCHANGED)
 
-        sample = {'anchor': anchor_image[0],              # [0] is the image
-                  'positive': positive_image[0],
-                  'negative': negative_image[0],
-                  'label_anchor': anchor_type,
-                  'label_positive': positive_item[0],     # [0] is the type
-                  'label_negative': negative_item[0],     # [0] is the type
+        sample = {'anchor': anchor_image[0],  # [0] is the image
+                  'positive': positive_image[0], 'negative': negative_image[0], 'label_anchor': anchor_type,
+                  'label_positive': positive_item[0],  # [0] is the type
+                  'label_negative': negative_item[0],  # [0] is the type
                   'ground_truth_image': anchor_image[0],  # for debugging purposes | in this dataloader is = the anchor
-                  'anchor_xx': anchor_image[1],      # [1] is the xx coordinate
-                  'anchor_yy': anchor_image[2],      # [2] is the yy coordinate
-                  'positive_xx': positive_image[1],
-                  'positive_yy': positive_image[2],
-                  'negative_xx': negative_image[1],
+                  'anchor_xx': anchor_image[1],  # [1] is the xx coordinate
+                  'anchor_yy': anchor_image[2],  # [2] is the yy coordinate
+                  'positive_xx': positive_image[1], 'positive_yy': positive_image[2], 'negative_xx': negative_image[1],
                   'negative_yy': negative_image[2],
 
                   # the following are not used; are here to mantain the compatibility with "teacher_tripletloss" 
-                  'filename_anchor':   0,
-                  'filename_positive': 0,
-                  'filename_negative': 0,
-                  'anchor_oxts_lat':   0,
-                  'anchor_oxts_lon':   0,
-                  'positive_oxts_lat': 0,
-                  'positive_oxts_lon': 0,
-                  'negative_oxts_lat': 0,
-                  'negative_oxts_lon': 0
-                  }
+                  'filename_anchor': 0, 'filename_positive': 0, 'filename_negative': 0, 'anchor_oxts_lat': 0,
+                  'anchor_oxts_lon': 0, 'positive_oxts_lat': 0, 'positive_oxts_lon': 0, 'negative_oxts_lat': 0,
+                  'negative_oxts_lon': 0}
 
         return sample
