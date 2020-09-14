@@ -11,6 +11,8 @@ from miscellaneous.utils import write_ply
 import random
 import time
 
+from scripts.OSM_generator import Crossing, test_crossing_pose
+
 
 class BaseLine(Dataset):
     def __init__(self, folders, transform=None):
@@ -348,6 +350,9 @@ class teacher_tripletloss(Dataset):
     def __init__(self, folders, distance, include_insidecrossing=False, transform=None):
         """
 
+        This dataloader uses "REAL" intersection, using the OSM data; this data is pre-generated from the OSM and the
+        old software from ICRA 2019 by Cattaneo/Ballardini.
+
         Args:
             folders:    all the folders, like
                         /home/malvaro/Documentos/DualBiSeNet/data_raw
@@ -490,3 +495,84 @@ class teacher_tripletloss(Dataset):
 
         return sample
 
+
+class teacher_tripletloss_generated(Dataset):
+
+    def __init__(self, elements=1000, transform=None):
+        """
+
+        This dataloader uses "RUNTIME-GENERATED" intersection (this differs from teacher_tripletloss dataloader that
+        uses the OSM data).
+
+        Args:
+
+            elements:   how many elements do you want in this "generator"
+
+            transform:  transforms to the image
+
+            include_insidecrossing: whether include or not the frames in which the vehicle is almost inside the crossing
+                                    by the definition of our dataset
+        """
+
+        self.transform = transform
+
+        osm_types = []
+
+        for crossing_type in range(0, 7):
+            for image in range(0, elements):
+                # sample = test_crossing_pose(crossing_type=crossing_type, noise=True, rnd_width=1.0, save=False)
+                osm_types.append([crossing_type])
+
+        self.samples = osm_types
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+
+        """
+        0 filename
+        1 meters
+        2 typology
+        3 in crossing
+
+        """
+
+        # identify the typology for anchor item
+        anchor_type = self.samples[idx][0]
+
+        # create positive and negative list based on the anchor item typology
+        positive_list = [element for element in self.samples if element[0] == anchor_type]
+        negative_list = [element for element in self.samples if element[0] != anchor_type]
+
+        # remove the anchor item from the positive list
+        positive_list.remove(self.samples[idx])
+        positive_item = random.choice(positive_list)
+        negative_item = random.choice(negative_list)
+
+        anchor_image = test_crossing_pose(crossing_type=anchor_type, noise=True, rnd_width=1.0, save=False)
+        positive_image = test_crossing_pose(crossing_type=positive_item[0], noise=True, rnd_width=1.0, save=False)
+        negative_image = test_crossing_pose(crossing_type=negative_item[0], noise=True, rnd_width=1.0, save=False)
+
+        #anchor_image = cv2.imread(self.samples[idx][0], cv2.IMREAD_UNCHANGED)
+
+        sample = {'anchor': anchor_image,
+                  'positive': positive_image,
+                  'negative': negative_image,
+                  'label_anchor': anchor_type,
+                  'label_positive': positive_item[0],  # [0] is the type
+                  'label_negative': negative_item[0],  # [0] is the type
+                  'filename_anchor':   0,
+                  'filename_positive': 0,
+                  'filename_negative': 0,
+                  'ground_truth_image': anchor_image,    # for debugging purposes | in this dataloader this corresponds to anchor
+                  'anchor_oxts_lat':   0,
+                  'anchor_oxts_lon':   0,
+                  'positive_oxts_lat': 0,
+                  'positive_oxts_lon': 0,
+                  'negative_oxts_lat': 0,
+                  'negative_oxts_lon': 0
+                  }
+
+        return sample
+    
