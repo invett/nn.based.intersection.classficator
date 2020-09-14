@@ -92,9 +92,9 @@ def validation(args, model, criterion, dataloader_val):
 
         for sample in dataloader_val:
             if args.triplet:
-                anchor = sample['anchor']
-                positive = sample['positive']
-                negative = sample['negative']
+                anchor = sample['anchor']  # OSM Type X
+                positive = sample['positive']  # OSM Type X
+                negative = sample['negative']  # OSM Type Y
             else:
                 data = sample['data']
                 label = sample['label']
@@ -122,7 +122,11 @@ def validation(args, model, criterion, dataloader_val):
 
             loss_record += loss.item()
 
-            if not args.triplet:
+            if args.triplet:
+                cos = nn.CosineSimilarity(dim=1, eps=1e-6)
+                acc_record += cos(out_anchor, out_positive)
+
+            else:
                 predict = torch.argmax(output, 1)
                 label = label.cpu().numpy()
                 predict = predict.cpu().numpy()
@@ -131,9 +135,6 @@ def validation(args, model, criterion, dataloader_val):
                 predRecord = np.append(predRecord, predict)
 
                 acc_record += accuracy_score(label, predict)
-            else:
-                cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                acc_record += cos(out_anchor, out_positive)
 
     # Calculate validation metrics
     loss_val_mean = loss_record / len(dataloader_val)
