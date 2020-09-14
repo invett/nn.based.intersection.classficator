@@ -131,7 +131,7 @@ class TestDataset(Dataset):
             if float(gtdata.loc[gtdata[0] == name][1]) < distance:
                 images.append(file)
 
-        self.file_list = imagesè
+        self.file_list = images
 
 
 class fromAANETandDualBisenet(Dataset):
