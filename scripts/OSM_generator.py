@@ -337,8 +337,8 @@ class Crossing:
         return crossing_image
 
 
-def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_angle=0.4, noise=True, save=True,
-                       path="", filenumber=0):
+def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
+                       save=True, path="", filenumber=0):
     """
 
     Args:
@@ -353,6 +353,7 @@ def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_a
         standard_width: standard width for intersection arms
         rnd_width: parameter for uniform noise add (width);          uniform(-rnd_width, rnd_width)
         rnd_angle: parameter for uniform noise add (rotation [rad]); uniform(-rnd_angle, rnd_angle)
+        rnd_spatial: parameter for uniform spatial cross position (center of the crossing area)
         noise: whether to add "noise" to the image or not. this wants to mimic the spatial "holes" in the BEV
         save: if true, save the image in the PATH parameter
         path: where to save the images
@@ -372,8 +373,8 @@ def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_a
     rotation_list = []
     branch_widths = []
 
-    xx = 15.0 + uniform(-9., 9.)
-    yy = 0.0 + uniform(-9., 9.)
+    xx = 15.0 + uniform(-rnd_spatial, rnd_spatial)
+    yy = 0.0 + uniform(-rnd_spatial, rnd_spatial)
 
     rot_a = uniform(-rnd_angle, rnd_angle)
     rot_b = uniform(-rnd_angle, rnd_angle)
@@ -436,12 +437,12 @@ def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_a
         cv2.imwrite(str(path) + str(filenumber).zfill(10) + ".png", sample)
 
     # conversion to uint8 seems necessary for sending to telegram
-    #sample = np.dstack([np.array(sample / 1.0, dtype=np.uint8)]*3)
+    # sample = np.dstack([np.array(sample / 1.0, dtype=np.uint8)]*3)
 
     # create an 3-Channel image
     sample = np.dstack([sample]*3)
 
-    return sample
+    return [sample, xx, yy]
 
 
 if __name__ == '__main__':

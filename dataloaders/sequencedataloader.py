@@ -556,16 +556,24 @@ class teacher_tripletloss_generated(Dataset):
 
         #anchor_image = cv2.imread(self.samples[idx][0], cv2.IMREAD_UNCHANGED)
 
-        sample = {'anchor': anchor_image,
-                  'positive': positive_image,
-                  'negative': negative_image,
+        sample = {'anchor': anchor_image[0],              # [0] is the image
+                  'positive': positive_image[0],
+                  'negative': negative_image[0],
                   'label_anchor': anchor_type,
-                  'label_positive': positive_item[0],  # [0] is the type
-                  'label_negative': negative_item[0],  # [0] is the type
+                  'label_positive': positive_item[0],     # [0] is the type
+                  'label_negative': negative_item[0],     # [0] is the type
+                  'ground_truth_image': anchor_image[0],  # for debugging purposes | in this dataloader is = the anchor
+                  'anchor_xx': anchor_image[1],      # [1] is the xx coordinate
+                  'anchor_yy': anchor_image[2],      # [2] is the yy coordinate
+                  'positive_xx': positive_image[1],
+                  'positive_yy': positive_image[2],
+                  'negative_xx': negative_image[1],
+                  'negative_yy': negative_image[2],
+
+                  # the following are not used; are here to mantain the compatibility with "teacher_tripletloss" 
                   'filename_anchor':   0,
                   'filename_positive': 0,
                   'filename_negative': 0,
-                  'ground_truth_image': anchor_image,    # for debugging purposes | in this dataloader this corresponds to anchor
                   'anchor_oxts_lat':   0,
                   'anchor_oxts_lon':   0,
                   'positive_oxts_lat': 0,
@@ -575,4 +583,3 @@ class teacher_tripletloss_generated(Dataset):
                   }
 
         return sample
-    
