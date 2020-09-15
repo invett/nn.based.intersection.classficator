@@ -13,7 +13,6 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torch import nn
 
-
 from model.resnet_models import get_model_resnet, get_model_resnext, Personalized, Personalized_small
 from dropout_models import get_resnext, get_resnet
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
@@ -203,7 +202,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val):
 
             if args.triplet:
                 cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                result = (((cos(out_anchor, out_positive) + 1.0) - 0.0) * (1.0 / (2.0 - 0.0)))
+                result = (((cos(out_anchor.squeeze(), out_positive.squeeze()) + 1.0) - 0.0) * (1.0 / (2.0 - 0.0)))
                 acc_record += torch.sum(result).item()
             else:
                 predict = torch.argmax(output, 1)
