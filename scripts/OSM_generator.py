@@ -437,10 +437,10 @@ def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_a
         cv2.imwrite(str(path) + str(filenumber).zfill(10) + ".png", sample)
 
     # conversion to uint8 seems necessary for sending to telegram
-    # sample = np.dstack([np.array(sample / 1.0, dtype=np.uint8)]*3)
+    sample = np.dstack([np.array(sample / 1.0, dtype=np.uint8)]*3)
 
     # create an 3-Channel image
-    sample = np.dstack([sample]*3)
+    # sample = np.dstack([sample]*3)
 
     return [sample, xx, yy]
 

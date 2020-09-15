@@ -164,7 +164,7 @@ class fromAANETandDualBisenet(Dataset):
                 image_02_file = file.replace("_pred.npz", ".png")
 
                 if os.path.isfile(os.path.join(folder_aanet, file)) and os.path.isfile(
-                    os.path.join(folder_alvaromask, alvarofile)) and os.path.isfile(
+                        os.path.join(folder_alvaromask, alvarofile)) and os.path.isfile(
                     os.path.join(folder_image_02, image_02_file)):
                     aanet.append(os.path.join(folder_aanet, file))
                     alvaromask.append(os.path.join(folder_alvaromask, alvarofile))
@@ -521,7 +521,7 @@ class teacher_tripletloss_generated(Dataset):
         osm_types = []
 
         for crossing_type in range(0, 7):
-            for image in range(0, elements):
+            for _ in range(0, elements):
                 # sample = test_crossing_pose(crossing_type=crossing_type, noise=True, rnd_width=1.0, save=False)
                 osm_types.append([crossing_type])
 
@@ -575,5 +575,10 @@ class teacher_tripletloss_generated(Dataset):
                   'filename_anchor': 0, 'filename_positive': 0, 'filename_negative': 0, 'anchor_oxts_lat': 0,
                   'anchor_oxts_lon': 0, 'positive_oxts_lat': 0, 'positive_oxts_lon': 0, 'negative_oxts_lat': 0,
                   'negative_oxts_lon': 0}
+
+        if self.transform:
+            sample['anchor'] = self.transform(sample['anchor'])
+            sample['positive'] = self.transform(sample['positive'])
+            sample['negative'] = self.transform(sample['negative'])
 
         return sample

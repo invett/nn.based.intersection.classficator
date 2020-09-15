@@ -1,38 +1,35 @@
 import argparse
 import os
-import sys
-import time
 import numpy as np
 import tqdm
 
 import torchvision.transforms as transforms
-from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror, GenerateNewDataset, \
-    WriteDebugInfoOnNewDataset
-from dataloaders.sequencedataloader import fromAANETandDualBisenet, teacher_tripletloss
+from dataloaders.sequencedataloader import teacher_tripletloss_generated
 
 import warnings
 
 import torch
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
-from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror, GrayScale
-from torch.utils.data.sampler import SubsetRandomSampler
+from torch import nn
 
-from torch.optim.lr_scheduler import MultiStepLR
 
-from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet, BaseLine, fromGeneratedDataset
 from model.resnet_models import get_model_resnet, get_model_resnext, Personalized, Personalized_small
 from dropout_models import get_resnext, get_resnet
-from sklearn.model_selection import KFold
-from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 
 from miscellaneous.utils import send_telegram_message
 
+import wandb
+
 
 def main(args):
+    wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train",
+               job_type="training")
+    wandb.config.update(args)
+
     # Build Model
-    model = get_model_resnet(args.resnetmodel, args.num_classes, args.triplet)
+    model = get_model_resnet(args.resnetmodel, args.num_classes, greyscale=False, embedding=args.triplet)
 
     if torch.cuda.is_available() and args.use_gpu:
         model = model.cuda()
@@ -52,31 +49,23 @@ def main(args):
         print('not supported optimizer \n')
         exit()
 
-    data_path = args.dataset
+    dataset_train = teacher_tripletloss_generated(elements=2000,
+                                                  transform=transforms.Compose([transforms.ToPILImage(),
+                                                                                transforms.Resize((224, 224)),
+                                                                                transforms.ToTensor()
+                                                                                ]))
+    dataset_val = teacher_tripletloss_generated(elements=200,
+                                                transform=transforms.Compose([transforms.ToPILImage(),
+                                                                              transforms.Resize((224, 224)),
+                                                                              transforms.ToTensor(),
+                                                                              ]))
 
-    # All sequence folders
-    folders = np.array([os.path.join(data_path, folder) for folder in os.listdir(data_path) if
-                        os.path.isdir(os.path.join(data_path, folder))])
+    dataloader_train = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=True,
+                                  num_workers=args.num_workers)
+    dataloader_val = DataLoader(dataset_val, batch_size=4, shuffle=False,
+                                num_workers=args.num_workers)
 
-    # Exclude test samples
-    folders = folders[folders != os.path.join(data_path, '2011_09_30_drive_0028_sync')]
-    test_path = os.path.join(data_path, '2011_09_30_drive_0028_sync')
-
-    loo = LeaveOneOut()
-    for train_index, val_index in loo.split(folders):
-
-        train_path, val_path = folders[train_index], folders[val_index]
-
-        # create dataset and dataloader
-        if args.triplet:
-            dataloader_train = teacher_tripletloss(train_path, args.distance, transform=[])
-            dataloader_val = teacher_tripletloss(val_path, args.distance, transform=[])
-
-        else:
-            pass
-
-        # train model
-        train(args, model, optimizer, dataloader_train, dataloader_val)
+    train(args, model, optimizer, dataloader_train, dataloader_val)
 
 
 def validation(args, model, criterion, dataloader_val):
@@ -96,8 +85,8 @@ def validation(args, model, criterion, dataloader_val):
                 positive = sample['positive']  # OSM Type X
                 negative = sample['negative']  # OSM Type Y
             else:
-                data = sample['data']
-                label = sample['label']
+                data = sample['anchor']
+                label = sample['label_anchor']
 
             if torch.cuda.is_available() and args.use_gpu:
                 if args.triplet:
@@ -124,7 +113,8 @@ def validation(args, model, criterion, dataloader_val):
 
             if args.triplet:
                 cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                acc_record += cos(out_anchor, out_positive)
+                result = ((cos(out_anchor, out_positive) + 1.0) - 0.0) * (1.0 / (2.0 - 0.0))
+                acc_record += torch.sum(result).item()
 
             else:
                 predict = torch.argmax(output, 1)
@@ -162,6 +152,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val):
     model.zero_grad()
     model.train()
 
+    wandb.watch(model, log="all")
+
     for epoch in range(args.num_epochs):
         lr = optimizer.param_groups[0]['lr']
         tq = tqdm.tqdm(total=len(dataloader_train) * args.batch_size)
@@ -175,8 +167,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val):
                 positive = sample['positive']
                 negative = sample['negative']
             else:
-                data = sample['data']
-                label = sample['label']
+                data = sample['anchor']
+                label = sample['label_anchor']
 
             if torch.cuda.is_available() and args.use_gpu:
                 if args.triplet:
@@ -211,7 +203,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val):
 
             if args.triplet:
                 cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                acc_record += cos(out_anchor, out_positive)
+                result = (((cos(out_anchor, out_positive) + 1.0) - 0.0) * (1.0 / (2.0 - 0.0)))
+                acc_record += torch.sum(result).item()
             else:
                 predict = torch.argmax(output, 1)
                 label = label.cpu().numpy()
@@ -227,6 +220,10 @@ def train(args, model, optimizer, dataloader_train, dataloader_val):
         print('loss for train : %f' % loss_train_mean)
         print('acc for train : %f' % acc_train)
 
+        wandb.log({"Train/loss": loss_train_mean,
+                   "Train/acc": acc_train,
+                   "Train/lr": lr}, step=epoch)
+
         if epoch % args.validation_step == 0:
 
             acc_val, loss_val = validation(args, model, criterion, dataloader_val)
@@ -239,10 +236,11 @@ def train(args, model, optimizer, dataloader_train, dataloader_val):
                     loss_pre = loss_val
 
                 bestModel = model.state_dict()
-                if not args.triplet:
-                    print('Best global accuracy: {}'.format(acc_pre))
-                else:
-                    print('Best global loss: {}'.format(loss_pre))
+                print('Best global accuracy: {}'.format(acc_pre))
+
+                wandb.log({"Val/loss": loss_val,
+                           "Val/Acc": acc_val}, step=epoch)
+
                 print('Saving model: ', os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
                 torch.save(bestModel,
                            os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(args.resnetmodel)))
@@ -256,3 +254,32 @@ def train(args, model, optimizer, dataloader_train, dataloader_val):
 
         if patience >= args.patience > 0:
             break
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--resnetmodel', type=str, default="resnet18",
+                        help='The context path model you are using, resnet18, resnet50 or resnet101.')
+    parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
+    parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
+    parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
+                                                                       'checkpoint (epochs)')
+    parser.add_argument('--lr', type=float, default=0.0001, help='learning rate used for train')
+    parser.add_argument('--momentum', type=float, default=0.9, help='momentum used for train')
+    parser.add_argument('--num_workers', type=int, default=4, help='num of workers')
+    parser.add_argument('--num_classes', type=int, default=7, help='num of object classes')
+    parser.add_argument('--cuda', type=str, default='0', help='GPU is used for training')
+    parser.add_argument('--use_gpu', type=bool, default=True, help='whether to user gpu for training')
+    parser.add_argument('--save_model_path', type=str, default='./trainedmodels/teacher/', help='path to save model')
+    parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
+    parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
+    parser.add_argument('--patience_start', type=int, default=50,
+                        help='Starting epoch for patience of validation. Default, 50. ')
+    parser.add_argument('--margin', type=float, default=0.5, help='learning rate used for train')
+    parser.add_argument('--telegram', type=bool, default=True, help='Send info through Telegram')
+    parser.add_argument('--triplet', action='store_true', help='Triplet Loss')
+
+    args = parser.parse_args()
+
+    main(args)

@@ -15,6 +15,7 @@ from miscellaneous.utils import send_telegram_picture
 import matplotlib.pyplot as plt
 import torch
 
+
 # This script allows for evaluating the GT (frames_topology.txt files) with respect the OSM files.
 # execute this script then:
 #
@@ -23,12 +24,12 @@ import torch
 #   2. save this info in a folder (hard-coded here in the code)
 
 def main(args):
-
     folders = np.array([os.path.join(args.rootfolder, folder) for folder in os.listdir(args.rootfolder) if
                         os.path.isdir(os.path.join(args.rootfolder, folder))])
 
     dataset = teacher_tripletloss(folders, args.distance, transform=[])
-    # dataset = teacher_tripletloss_generated(elements=3, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True, transform=[])
+    # dataset = teacher_tripletloss_generated(elements=3, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
+    # transform=[])
 
     # num_workers starts from 0
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=args.workers)
@@ -52,16 +53,17 @@ def main(args):
             plt.savefig(image_name)
 
             textfile = open(text_name, "w")
-            textfile.write(str(sample['filename_anchor']) + " is type: " + str(sample['label_anchor'].numpy()[0]) + "\n" + str(
-                sample['filename_positive']) + " is type: " + str(sample['label_positive'].numpy()[0]) + "\n" + str(
-                sample['filename_negative']) + " is type: " + str(
-                sample['label_negative'].numpy()[0]) + "\n\nLast IMG is the GT of the ANCHOR\n" +
-                    "anchor lat: " + str(sample['anchor_oxts_lat'][0]) + "\n" +
-                    "anchor lon: " + str(sample['anchor_oxts_lon'][0]) + "\n" +
-                    "positive lat: " + str(sample['positive_oxts_lat'][0]) + "\n" +
-                    "positive lon: " + str(sample['positive_oxts_lon'][0]) + "\n" +
-                    "negative lat: " + str(sample['negative_oxts_lat'][0]) + "\n" +
-                    "negative lon: " + str(sample['negative_oxts_lon'][0]))
+            textfile.write(
+                str(sample['filename_anchor']) + " is type: " + str(sample['label_anchor'].numpy()[0]) + "\n" + str(
+                    sample['filename_positive']) + " is type: " + str(sample['label_positive'].numpy()[0]) + "\n" + str(
+                    sample['filename_negative']) + " is type: " + str(
+                    sample['label_negative'].numpy()[0]) + "\n\nLast IMG is the GT of the ANCHOR\n" +
+                "anchor lat: " + str(sample['anchor_oxts_lat'][0]) + "\n" +
+                "anchor lon: " + str(sample['anchor_oxts_lon'][0]) + "\n" +
+                "positive lat: " + str(sample['positive_oxts_lat'][0]) + "\n" +
+                "positive lon: " + str(sample['positive_oxts_lon'][0]) + "\n" +
+                "negative lat: " + str(sample['negative_oxts_lat'][0]) + "\n" +
+                "negative lon: " + str(sample['negative_oxts_lon'][0]))
             textfile.close()
 
         if args.telegram:
@@ -69,17 +71,16 @@ def main(args):
                 sample['label_anchor'].numpy()[0]) + "\n" + str(sample['filename_positive']) + " is type: " + str(
                 sample['label_positive'].numpy()[0]) + "\n" + str(sample['filename_negative']) + " is type: " + str(
                 sample['label_negative'].numpy()[0]) + "\n\nLast IMG is the GT of the ANCHOR\n" +
-                "anchor lat: " + str(sample['anchor_oxts_lat'][0]) + "\n" +
-                "anchor lon: " + str(sample['anchor_oxts_lon'][0]) + "\n" +
-                "positive lat: " + str(sample['positive_oxts_lat'][0]) + "\n" +
-                "positive lon: " + str(sample['positive_oxts_lon'][0]) + "\n" +
-                "negative lat: " + str(sample['negative_oxts_lat'][0]) + "\n" +
-                "negative lon: " + str(sample['negative_oxts_lon'][0]))
+                                  "anchor lat: " + str(sample['anchor_oxts_lat'][0]) + "\n" +
+                                  "anchor lon: " + str(sample['anchor_oxts_lon'][0]) + "\n" +
+                                  "positive lat: " + str(sample['positive_oxts_lat'][0]) + "\n" +
+                                  "positive lon: " + str(sample['positive_oxts_lon'][0]) + "\n" +
+                                  "negative lat: " + str(sample['negative_oxts_lat'][0]) + "\n" +
+                                  "negative lon: " + str(sample['negative_oxts_lon'][0]))
 
         plt.close('all')
 
     print("End.")
-        
 
     # for index in range(args.augmentation):
     #     print("Generating run {} ... ".format(index))
@@ -99,12 +100,16 @@ def main(args):
     #     if args.telegram:
     #         send_telegram_message("Run {} generated successfully".format(index))
 
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--rootfolder', default="/home/malvaro/Documentos/DualBiSeNet/data_raw", type=str, help='Root folder for all datasets')
-    parser.add_argument('--savefolder', default="/media/augusto/500GBDISK/nn.based.intersection.classficator.data/check_osm", type=str, help='Where to save the new data')
+    parser.add_argument('--rootfolder', default="/home/malvaro/Documentos/DualBiSeNet/data_raw", type=str,
+                        help='Root folder for all datasets')
+    parser.add_argument('--savefolder',
+                        default="/media/augusto/500GBDISK/nn.based.intersection.classficator.data/check_osm", type=str,
+                        help='Where to save the new data')
     parser.add_argument('--augmentation', type=int, default=50, help='How many files generate for each of the BEVs')
     parser.add_argument('--workers', type=int, default=0, help='How many workers for the dataloader')
     parser.add_argument('--telegram', action='store_true', help='Send info through Telegram')

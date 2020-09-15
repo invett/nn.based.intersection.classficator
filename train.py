@@ -126,11 +126,11 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None):
 
             if args.embedding:
                 cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                acc_record += cos(output, output_gt)
+                acc_record += torch.sum(cos(output, output_gt)).item()
 
             elif args.triplet:
                 cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                acc_record += cos(out_anchor, out_positive)
+                acc_record += torch.sum(cos(out_anchor, out_positive)).item()
             else:
                 predict = torch.argmax(output, 1)
                 label = label.cpu().numpy()
@@ -240,11 +240,11 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
             if args.embedding:
                 cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                acc_record += cos(output, output_gt)
+                acc_record += torch.sum(cos(output, output_gt)).item()
 
             elif args.triplet:
                 cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                acc_record += cos(out_anchor, out_positive)
+                acc_record += torch.sum(cos(out_anchor, out_positive)).item()
             else:
                 predict = torch.argmax(output, 1)
                 label = label.cpu().numpy()
