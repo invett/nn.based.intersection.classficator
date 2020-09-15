@@ -505,10 +505,12 @@ class teacher_tripletloss_generated(Dataset):
 
             elements:   how many elements do you want in this "generator"
 
+            rnd_width: parameter for uniform noise add (width);          uniform(-rnd_width, rnd_width)
+            rnd_angle: parameter for uniform noise add (rotation [rad]); uniform(-rnd_angle, rnd_angle)
+            rnd_spatial: parameter for uniform spatial cross position (center of the crossing area)
+
             transform:  transforms to the image
 
-            include_insidecrossing: whether include or not the frames in which the vehicle is almost inside the crossing
-                                    by the definition of our dataset
         """
 
         self.rnd_width = rnd_width
@@ -529,6 +531,68 @@ class teacher_tripletloss_generated(Dataset):
 
     def __len__(self):
         return len(self.samples)
+
+    def set_rnd_angle(self, rnd_angle):
+        """
+
+        Args:
+            rnd_angle: parameter for uniform noise add (rotation [rad]); uniform(-rnd_angle, rnd_angle)
+
+        Returns: the new self variable value
+
+        """
+        self.rnd_angle = rnd_angle
+        return self.rnd_angle
+
+    def set_rnd_width(self, rnd_width):
+        """
+
+        Args:
+            rnd_width: parameter for uniform noise add (width);          uniform(-rnd_width, rnd_width)
+
+        Returns: the new self variable value
+
+        """
+        self.rnd_width = rnd_width
+        return self.rnd_width
+
+    def set_rnd_spatial(self, rnd_spatial):
+        """
+
+        Args:
+            rnd_spatial: parameter for uniform spatial cross position (center of the crossing area)
+
+        Returns: the new self variable value
+
+        """
+        self.rnd_spatial = rnd_spatial
+        return self.rnd_spatial
+
+    def get_rnd_angle(self):
+
+        """
+
+        Returns: parameter for uniform noise add (rotation [rad]); uniform(-rnd_angle, rnd_angle)
+
+        """
+        return self.rnd_angle
+
+    def get_rnd_width(self):
+        """
+
+        Returns: parameter for uniform noise add (width);          uniform(-rnd_width, rnd_width)
+
+        """
+
+        return self.rnd_width
+
+    def get_rnd_spatial(self):
+        """
+
+        Returns: parameter for uniform spatial cross position (center of the crossing area)
+
+        """
+        return self.rnd_spatial
 
     def __getitem__(self, idx):
 
