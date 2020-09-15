@@ -61,7 +61,7 @@ def main(args):
 
     dataloader_train = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=True,
                                   num_workers=args.num_workers)
-    dataloader_val = DataLoader(dataset_val, batch_size=4, shuffle=False,
+    dataloader_val = DataLoader(dataset_val, batch_size=1, shuffle=False,
                                 num_workers=args.num_workers)
 
     train(args, model, optimizer, dataloader_train, dataloader_val)
@@ -215,7 +215,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val):
 
         # Calculate metrics
         loss_train_mean = loss_record / len(dataloader_train)
-        acc_train = acc_record / len(dataloader_train)
+        acc_train = acc_record / (len(dataloader_train) * args.batch_size)
         print('loss for train : %f' % loss_train_mean)
         print('acc for train : %f' % acc_train)
 
@@ -273,7 +273,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_model_path', type=str, default='./trainedmodels/teacher/', help='path to save model')
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
     parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
-    parser.add_argument('--patience_start', type=int, default=50,
+    parser.add_argument('--patience_start', type=int, default=5,
                         help='Starting epoch for patience of validation. Default, 50. ')
     parser.add_argument('--margin', type=float, default=0.5, help='learning rate used for train')
     parser.add_argument('--telegram', type=bool, default=True, help='Send info through Telegram')
