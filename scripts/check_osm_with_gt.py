@@ -27,7 +27,7 @@ def main(args):
     folders = np.array([os.path.join(args.rootfolder, folder) for folder in os.listdir(args.rootfolder) if
                         os.path.isdir(os.path.join(args.rootfolder, folder))])
 
-    dataset = teacher_tripletloss(folders, args.distance, transform=[])
+    dataset = teacher_tripletloss(folders, args.distance, transform=[], noise=True)
     # dataset = teacher_tripletloss_generated(elements=3, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
     # transform=[])
 

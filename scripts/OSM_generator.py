@@ -182,10 +182,14 @@ class Crossing:
         axes = (int(round(axes[0] * 2 ** shift)), int(round(axes[1] * 2 ** shift)))
         return cv2.ellipse(img, center, axes, angle, startAngle, endAngle, color, thickness, lineType, shift)
 
+    @staticmethod
     def add_noise(self, test, probability=1.0, elements_multiplier=1.0, distribution="normal"):
         """
+            This is a static method that can be used even outside this class, as in teacher_tripletloss class inside
+            sequencedataloader.py
 
         Args:
+            self: itself...
             test: the image to add noise with
             probability: probability of being set as noise (for the pixel)
             elements_multiplier: the number of elements increases from bottom to top; this parameter increases this "ratio"

@@ -343,7 +343,7 @@ class fromGeneratedDataset(Dataset):
 
 class teacher_tripletloss(Dataset):
 
-    def __init__(self, folders, distance, include_insidecrossing=False, transform=None):
+    def __init__(self, folders, distance, include_insidecrossing=False, transform=None, noise=False):
         """
 
         This dataloader uses "REAL" intersection, using the OSM data; this data is pre-generated from the OSM and the
@@ -361,13 +361,19 @@ class teacher_tripletloss(Dataset):
                                 ├── mkdir 2011_10_03_drive_0027_sync
                                 └── mkdir 2011_10_03_drive_0034_sync
 
-            distance:   distance to consider
+            distance:   distance to consider to add intersection images; only images withing this value will be included.
+                        This value was set to 20 in past ICRA works (with KITTI)
 
             transform:  transforms to the image
 
             include_insidecrossing: whether include or not the frames in which the vehicle is almost inside the crossing
                                     by the definition of our dataset
+
+            noise: if set, we'll add noise to the OSM-OG in a same way we've done in teacher_tripletloss_generated.
+
         """
+
+        self.noise = noise
 
         self.transform = transform
 
@@ -475,6 +481,12 @@ class teacher_tripletloss(Dataset):
         ground_truth_img = cv2.imread(
             os.path.dirname(str(self.osm_data[idx][0])) + "_TYPES/" + str(self.osm_data[idx][2]) + ".png",
             cv2.IMREAD_COLOR)
+
+        # adding noise
+        if self.noise:
+            anchor_image = Crossing.add_noise(self, anchor_image, elements_multiplier=3.0)
+            positive_image = Crossing.add_noise(self, positive_image, elements_multiplier=3.0)
+            negative_image = Crossing.add_noise(self, negative_image, elements_multiplier=3.0)
 
         sample = {'anchor': anchor_image, 'positive': positive_image, 'negative': negative_image,
                   'label_anchor': anchor_type, 'label_positive': positive_item[2],  # [2] is the type
