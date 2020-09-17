@@ -45,9 +45,9 @@ def main(args):
                               sample['negative'].squeeze(), emptyspace, sample['ground_truth_image'].squeeze()), 1))
 
         if args.savefile:
-            image_name = "/media/augusto/500GBDISK/nn.based.intersection.classficator.data/check_osm/" + \
-                         str(sample['filename_anchor'][0]).split(sep="/")[6] + "/" + \
-                         os.path.basename(str(sample['filename_anchor'][0]))
+            image_name = args.savefolder +  \
+                         str(sample['filename_anchor'][0]).split(sep="/")[6] + "/" + os.path.basename(
+                    str(sample['filename_anchor'][0]))
             text_name = str.replace(image_name, ".png", ".txt")
 
             plt.savefig(image_name)
@@ -108,7 +108,7 @@ if __name__ == '__main__':
     parser.add_argument('--rootfolder', default="/home/malvaro/Documentos/DualBiSeNet/data_raw", type=str,
                         help='Root folder for all datasets')
     parser.add_argument('--savefolder',
-                        default="/media/augusto/500GBDISK/nn.based.intersection.classficator.data/check_osm", type=str,
+                        default="/media/augusto/500GBDISK/nn.based.intersection.classficator.data/check_osm_again/", type=str,
                         help='Where to save the new data')
     parser.add_argument('--augmentation', type=int, default=50, help='How many files generate for each of the BEVs')
     parser.add_argument('--workers', type=int, default=0, help='How many workers for the dataloader')

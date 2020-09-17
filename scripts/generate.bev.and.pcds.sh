@@ -1,6 +1,8 @@
 # THIS SCRIPT SHOULD BE CALLED FROM THE FOLDER WHERE THE REPROJECT.PY IS LOCATED. ALL THE FOLDERS ARE THEN
 # HARD CODED IN THIS SCRIPT.
 
+# update: the reproject.py was copied in the miscellaneous folder of this project. see notes inside that script.
+
 # THIS SCRIPT CREATES THE PCDs AND THE BEVs USING 
 # 	1. THE NPZ FILES GENERATED WITH aanet 
 # 	2. THE ALVARO's MASKs
