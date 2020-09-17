@@ -74,7 +74,7 @@ def main(args):
                                                                                              transforms.Resize(
                                                                                                  (224, 224)),
                                                                                              transforms.ToTensor()
-                                                                                             ]))
+                                                                                             ]), noise=False)
 
     dataloader_train = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=True,
                                   num_workers=args.num_workers)
