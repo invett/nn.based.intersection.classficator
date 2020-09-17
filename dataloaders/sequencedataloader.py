@@ -490,6 +490,11 @@ class teacher_tripletloss(Dataset):
                   'negative_oxts_lon': negative_item[5]  # [5] lon
                   }
 
+        if self.transform:
+            sample['anchor'] = self.transform(sample['anchor'])
+            sample['positive'] = self.transform(sample['positive'])
+            sample['negative'] = self.transform(sample['negative'])
+
         return sample
 
 
