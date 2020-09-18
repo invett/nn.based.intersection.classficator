@@ -10,7 +10,6 @@ from dataloaders.sequencedataloader import teacher_tripletloss_generated, teache
 import warnings
 
 import torch
-import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torch import nn
 
@@ -90,7 +89,7 @@ def main(args):
 
     if args.test:
         # load Saved Model
-        savepath = './trainedmodels/teacher/teacher_model_{}.pth'.format(args.resnetmodel)
+        savepath = '/home/malvaro/Documentos/IntersectionClassifier/trainedmodels/teacher/teacher_model_{}.pth'.format(args.resnetmodel)
         print('load model from {} ...'.format(savepath))
         model.load_state_dict(torch.load(savepath))
         print('Done!')
@@ -142,6 +141,20 @@ def test(args, model, dataloader):
                 predict = label
             else:
                 predict = 7  # The prediction is wrong, but we don't know by now what label was predicted
+                if args.savedebug:
+                    emptyspace = 255 * torch.ones([224, 30, 3], dtype=torch.float32)
+                    a = plt.figure()
+                    plt.imshow(np.clip(torch.cat((sample['anchor'][0].transpose(0, 2).transpose(0, 1), emptyspace,
+                                                  sample['positive'][0].transpose(0, 2).transpose(0, 1), emptyspace,
+                                                  torch.nn.functional.interpolate(
+                                                      (sample['ground_truth_image'] / 255.0).float().transpose(1, 3),
+                                                      (224, 224)).squeeze().transpose(0, 2)), 1).squeeze(), 0, 1))
+                    savefilename="/media/augusto/500GBDISK/nn.based.intersection.classficator.data/debug/" + \
+                                 str(sample['filename_anchor'][0]).split(sep="/")[6]+"-" + \
+                                 str(sample['filename_anchor'][0]).split(sep="/")[8]
+                    plt.savefig(savefilename)
+                    print(savefilename)
+                    plt.close('all')
 
             labelRecord = np.append(labelRecord, label)
             predRecord = np.append(predRecord, predict)
@@ -399,6 +412,7 @@ if __name__ == '__main__':
     parser.add_argument('--triplet', action='store_true', help='Triplet Loss')
     parser.add_argument('--test', action='store_true', help='testing epochs')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
+    parser.add_argument('--savedebug', action='store_true', help='use this flag to ENABLE some log/debug :) see code!')
     args = parser.parse_args()
 
     main(args)
