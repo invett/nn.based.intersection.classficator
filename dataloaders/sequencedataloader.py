@@ -484,9 +484,10 @@ class teacher_tripletloss(Dataset):
 
         # adding noise
         if self.noise:
-            anchor_image = Crossing.add_noise(self, anchor_image, elements_multiplier=3.0)
-            positive_image = Crossing.add_noise(self, positive_image, elements_multiplier=3.0)
-            negative_image = Crossing.add_noise(self, negative_image, elements_multiplier=3.0)
+            # TODO change the default value to uniform and stop doing this shit; do something also 5 elements_multiplier
+            anchor_image = Crossing.add_noise(self, anchor_image, elements_multiplier=3.0, distribution="uniform")
+            positive_image = Crossing.add_noise(self, positive_image, elements_multiplier=3.0, distribution="uniform")
+            negative_image = Crossing.add_noise(self, negative_image, elements_multiplier=3.0, distribution="uniform")
 
         sample = {'anchor': anchor_image, 'positive': positive_image, 'negative': negative_image,
                   'label_anchor': anchor_type, 'label_positive': positive_item[2],  # [2] is the type
