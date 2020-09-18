@@ -405,7 +405,7 @@ if __name__ == '__main__':
     parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
     parser.add_argument('--patience_start', type=int, default=5,
                         help='Starting epoch for patience of validation. Default, 50. ')
-    parser.add_argument('--margin', type=float, default=0.5, help='margin in tripplet')
+    parser.add_argument('--margin', type=float, default=0.5, help='margin in triplet')
     parser.add_argument('--threshold', type=float, default=0.95, help='threshold to decide if the detection is correct')
     parser.add_argument('--distance', type=int, default=20, help='Distance to crossroads')
     parser.add_argument('--telegram', type=bool, default=True, help='Send info through Telegram')
