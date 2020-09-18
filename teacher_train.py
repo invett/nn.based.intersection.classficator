@@ -67,22 +67,24 @@ def main(args):
                                                                               transforms.ToTensor(),
                                                                               ]))
     # List all test folders
-    folders = np.array([os.path.join(args.dataset, folder) for folder in os.listdir(args.dataset) if
-                        os.path.isdir(os.path.join(args.dataset, folder))])
+    if args.test:
+        folders = np.array([os.path.join(args.dataset, folder) for folder in os.listdir(args.dataset) if
+                            os.path.isdir(os.path.join(args.dataset, folder))])
 
-    dataset_test = teacher_tripletloss(folders, args.distance, transform=transforms.Compose([transforms.ToPILImage(),
-                                                                                             transforms.Resize(
-                                                                                                 (224, 224)),
-                                                                                             transforms.ToTensor()
-                                                                                             ]), noise=False)
+        dataset_test = teacher_tripletloss(folders, args.distance,
+                                           transform=transforms.Compose([transforms.ToPILImage(),
+                                                                         transforms.Resize(
+                                                                             (224, 224)),
+                                                                         transforms.ToTensor()
+                                                                         ]), noise=True)
 
     dataloader_train = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=True,
                                   num_workers=args.num_workers)
     dataloader_val = DataLoader(dataset_val, batch_size=1, shuffle=False,
                                 num_workers=args.num_workers)
-
-    dataloader_test = DataLoader(dataset_test, batch_size=1, shuffle=False,
-                                 num_workers=args.num_workers)
+    if args.test:
+        dataloader_test = DataLoader(dataset_test, batch_size=1, shuffle=False,
+                                     num_workers=args.num_workers)
 
     if args.test:
         # load Saved Model
@@ -315,7 +317,10 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
 
         # Calculate metrics
         loss_train_mean = loss_record / len(dataloader_train)
-        acc_train = acc_record / (len(dataloader_train) * args.batch_size)
+        if args.triplet:
+            acc_train = acc_record / (len(dataloader_train) * args.batch_size)
+        else:
+            acc_train = acc_record / len(dataloader_train)
         print('loss for train : %f' % loss_train_mean)
         print('acc for train : %f' % acc_train)
 
@@ -341,9 +346,9 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
                            "Val/Acc": acc_val}, step=epoch)
 
                 print('Saving model: ',
-                      os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(args.resnetmodel)))
+                      os.path.join(args.save_model_path, 'teacher_model_class{}.pth'.format(args.resnetmodel)))
                 torch.save(bestModel,
-                           os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(args.resnetmodel)))
+                           os.path.join(args.save_model_path, 'teacher_model_class{}.pth'.format(args.resnetmodel)))
 
             elif epoch < args.patience_start:
                 patience = 0
@@ -360,7 +365,6 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
         # dataset_train.set_rnd_spatial()
         # dataset_train.set_rnd_width()
         # dataset_train.noise
-
 
 
 if __name__ == '__main__':
