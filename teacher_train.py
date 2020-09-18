@@ -27,13 +27,15 @@ import seaborn as sn
 
 
 def main(args):
-    if args.test:
-        wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train",
-                   job_type="eval")
-    else:
-        wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train",
-                   job_type="training")
-    wandb.config.update(args)
+
+    if not args.nowandb: # if nowandb flag was set, skip
+        if args.test:
+            wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train",
+                       job_type="eval")
+        else:
+            wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train",
+                       job_type="training")
+        wandb.config.update(args)
 
     # Build Model
     model = get_model_resnet(args.resnetmodel, args.num_classes, greyscale=False, embedding=args.triplet)
@@ -165,8 +167,8 @@ def test(args, model, dataloader):
     plt.figure(figsize=(10, 7))
     sn.heatmap(conf_matrix, annot=True)
 
-    wandb.log({"Test/Acc": acc,
-               "conf-matrix": wandb.Image(plt)})
+    if not args.nowandb:  # if nowandb flag was set, skip
+        wandb.log({"Test/Acc": acc, "conf-matrix": wandb.Image(plt)})
 
 
 def validation(args, model, criterion, dataloader_val):
@@ -253,7 +255,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
     model.zero_grad()
     model.train()
 
-    wandb.watch(model, log="all")
+    if not args.nowandb:  # if nowandb flag was set, skip
+        wandb.watch(model, log="all")
 
     for epoch in range(args.num_epochs):
         lr = optimizer.param_groups[0]['lr']
@@ -324,9 +327,10 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
         print('loss for train : %f' % loss_train_mean)
         print('acc for train : %f' % acc_train)
 
-        wandb.log({"Train/loss": loss_train_mean,
-                   "Train/acc": acc_train,
-                   "Train/lr": lr}, step=epoch)
+        if not args.nowandb:  # if nowandb flag was set, skip
+            wandb.log({"Train/loss": loss_train_mean,
+                       "Train/acc": acc_train,
+                       "Train/lr": lr}, step=epoch)
 
         if epoch % args.validation_step == 0:
 
@@ -342,8 +346,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
                 bestModel = model.state_dict()
                 print('Best global accuracy: {}'.format(acc_pre))
 
-                wandb.log({"Val/loss": loss_val,
-                           "Val/Acc": acc_val}, step=epoch)
+                if not args.nowandb:  # if nowandb flag was set, skip
+                    wandb.log({"Val/loss": loss_val, "Val/Acc": acc_val}, step=epoch)
 
                 print('Saving model: ',
                       os.path.join(args.save_model_path, 'teacher_model_class{}.pth'.format(args.resnetmodel)))
@@ -394,6 +398,7 @@ if __name__ == '__main__':
     parser.add_argument('--telegram', type=bool, default=True, help='Send info through Telegram')
     parser.add_argument('--triplet', action='store_true', help='Triplet Loss')
     parser.add_argument('--test', action='store_true', help='testing epochs')
+    parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     args = parser.parse_args()
 
     main(args)
