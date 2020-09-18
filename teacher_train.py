@@ -92,7 +92,7 @@ def main(args):
         print('Done!')
         test(args, model, dataloader_test)
     else:
-        train(args, model, optimizer, dataloader_train, dataloader_val)
+        train(args, model, optimizer, dataloader_train, dataloader_val, dataset_train, dataset_val)
 
 
 def test(args, model, dataloader):
@@ -234,7 +234,7 @@ def validation(args, model, criterion, dataloader_val):
     return acc, loss_val_mean
 
 
-def train(args, model, optimizer, dataloader_train, dataloader_val):
+def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_train, dataset_val):
     if not os.path.isdir(args.save_model_path):
         os.mkdir(args.save_model_path)
 
@@ -354,6 +354,13 @@ def train(args, model, optimizer, dataloader_train, dataloader_val):
 
         if patience >= args.patience > 0:
             break
+
+        # optionally chance this values during training. Consider to add these values to wandb
+        # dataset_train.set_rnd_angle(VALUE)
+        # dataset_train.set_rnd_spatial()
+        # dataset_train.set_rnd_width()
+        # dataset_train.noise
+
 
 
 if __name__ == '__main__':

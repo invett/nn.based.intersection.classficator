@@ -336,7 +336,8 @@ class Crossing:
                             pass
 
         if with_noise:
-            crossing_image = self.add_noise(crossing_image, elements_multiplier=3., distribution="uniform")
+            #crossing_image = self.add_noise(crossing_image, elements_multiplier=3., distribution="uniform") TODO check this out, there's an issue with the staticmethod
+            crossing_image = self.add_noise(self=self, test=crossing_image, elements_multiplier=3., distribution="uniform")
 
         return crossing_image
 
