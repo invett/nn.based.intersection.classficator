@@ -89,9 +89,9 @@ def main(args):
 
     if args.test:
         # load Saved Model
-        savepath = '/home/malvaro/Documentos/IntersectionClassifier/trainedmodels/teacher/teacher_model_{}.pth'.format(args.resnetmodel)
-        print('load model from {} ...'.format(savepath))
-        model.load_state_dict(torch.load(savepath))
+        loadpath = '/home/malvaro/Documentos/IntersectionClassifier/trainedmodels/teacher/teacher_model_{}.pth'.format(args.resnetmodel)
+        print('load model from {} ...'.format(loadpath))
+        model.load_state_dict(torch.load(loadpath))
         print('Done!')
         test(args, model, dataloader_test)
     else:
@@ -107,6 +107,8 @@ def test(args, model, dataloader):
     tq = tqdm.tqdm(total=len(dataloader))
     with torch.no_grad():
         model.eval()
+
+    all_embedding_matrix = []
 
     for sample in dataloader:
 
@@ -137,11 +139,17 @@ def test(args, model, dataloader):
             result = ((cos(out_anchor, out_positive) + 1.0) - 0.0) * (1.0 / (2.0 - 0.0))
             probability = torch.sum(result).item()
 
+            all_embedding_matrix.append(np.asarray(model(anchor)[0].squeeze().cpu().detach().numpy()))
+
             if probability >= args.threshold:
+                # The prediction
                 predict = label
             else:
-                predict = 7  # The prediction is wrong, but we don't know by now what label was predicted
-                if args.savedebug:
+                # The prediction is wrong, but we don't know by now what label was predicted
+                predict = 7
+
+                # Code to save the PNGs for debugging purposes
+                if args.saveTestCouplesForDebug:
                     emptyspace = 255 * torch.ones([224, 30, 3], dtype=torch.float32)
                     a = plt.figure()
                     plt.imshow(np.clip(torch.cat((sample['anchor'][0].transpose(0, 2).transpose(0, 1), emptyspace,
@@ -149,17 +157,17 @@ def test(args, model, dataloader):
                                                   torch.nn.functional.interpolate(
                                                       (sample['ground_truth_image'] / 255.0).float().transpose(1, 3),
                                                       (224, 224)).squeeze().transpose(0, 2)), 1).squeeze(), 0, 1))
-                    savefilename="/media/augusto/500GBDISK/nn.based.intersection.classficator.data/debug/" + \
-                                 str(sample['filename_anchor'][0]).split(sep="/")[6]+"-" + \
-                                 str(sample['filename_anchor'][0]).split(sep="/")[8]
-                    plt.savefig(savefilename)
-                    print(savefilename)
+                    filename = os.path.join(args.saveTestCouplesForDebugPath,
+                                                str(sample['filename_anchor'][0]).split(sep="/")[6]+"-",
+                                                str(sample['filename_anchor'][0]).split(sep="/")[8])
+                    plt.savefig(filename)
+                    print(filename)
                     plt.close('all')
 
             labelRecord = np.append(labelRecord, label)
             predRecord = np.append(predRecord, predict)
 
-        else:
+        else: # ie, not triplet
             predict = torch.argmax(output, 1)
             label = label.cpu().numpy()
             predict = predict.cpu().numpy()
@@ -182,6 +190,12 @@ def test(args, model, dataloader):
 
     if not args.nowandb:  # if nowandb flag was set, skip
         wandb.log({"Test/Acc": acc, "conf-matrix": wandb.Image(plt)})
+
+    if args.saveEmbeddings:
+        all_embedding_matrix = np.asarray(all_embedding_matrix)
+        np.savetxt(os.path.join(args.saveEmbeddingsPath + "all_embedding_matrix.txt"), np.asarray(all_embedding_matrix),
+                   delimiter='\t')
+        np.savetxt(os.path.join(args.saveEmbeddingsPath + "all_label_embedding_matrix.txt"), predRecord, delimiter='\t')
 
 
 def validation(args, model, criterion, dataloader_val):
@@ -412,7 +426,28 @@ if __name__ == '__main__':
     parser.add_argument('--triplet', action='store_true', help='Triplet Loss')
     parser.add_argument('--test', action='store_true', help='testing epochs')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
-    parser.add_argument('--savedebug', action='store_true', help='use this flag to ENABLE some log/debug :) see code!')
+    parser.add_argument('--saveTestCouplesForDebug', action='store_true',
+                        help='use this flag to ENABLE some log/debug :) see code!')
+    parser.add_argument('--saveTestCouplesForDebugPath', type=str,
+                        help='Where to save the saveTestCouplesForDebug PNGs. Required when --saveTestCouplesForDebug '
+                             'is set')
+
+    parser.add_argument('--saveEmbeddings', action='store_true', help='Save all the embeddings for debug')
+    parser.add_argument('--saveEmbeddingsPath', type=str,
+                        help='Where to save the Embeddings. Required when --saveEmbeddings is set')
+
     args = parser.parse_args()
 
+    if args.saveEmbeddings and not args.saveEmbeddingsPath:
+        print("Parameter --saveEmbeddingsPath is REQUIRED when --saveEmbeddings is set")
+        exit(-1)
+
+    if args.saveTestCouplesForDebug and not args.saveTestCouplesForDebugPath:
+        print("Parameter --saveTestCouplesForDebugPath is REQUIRED when --saveTestCouplesForDebug is set")
+        exit(-1)
+
     main(args)
+
+# Used paths:
+# --saveEmbeddingsPath /media/augusto/500GBDISK/nn.based.intersection.classficator.data/debug
+# --saveTestCouplesForDebugPath /media/augusto/500GBDISK/nn.based.intersection.classficator.data/debug/
