@@ -158,7 +158,7 @@ def test(args, model, dataloader):
                                                       (sample['ground_truth_image'] / 255.0).float().transpose(1, 3),
                                                       (224, 224)).squeeze().transpose(0, 2)), 1).squeeze(), 0, 1))
                     filename = os.path.join(args.saveTestCouplesForDebugPath,
-                                                str(sample['filename_anchor'][0]).split(sep="/")[6]+"-",
+                                                str(sample['filename_anchor'][0]).split(sep="/")[6] + "-" +
                                                 str(sample['filename_anchor'][0]).split(sep="/")[8])
                     plt.savefig(filename)
                     print(filename)
@@ -193,9 +193,9 @@ def test(args, model, dataloader):
 
     if args.saveEmbeddings:
         all_embedding_matrix = np.asarray(all_embedding_matrix)
-        np.savetxt(os.path.join(args.saveEmbeddingsPath + "all_embedding_matrix.txt"), np.asarray(all_embedding_matrix),
+        np.savetxt(os.path.join(args.saveEmbeddingsPath, "all_embedding_matrix.txt"), np.asarray(all_embedding_matrix),
                    delimiter='\t')
-        np.savetxt(os.path.join(args.saveEmbeddingsPath + "all_label_embedding_matrix.txt"), predRecord, delimiter='\t')
+        np.savetxt(os.path.join(args.saveEmbeddingsPath, "all_label_embedding_matrix.txt"), predRecord, delimiter='\t')
 
 
 def validation(args, model, criterion, dataloader_val):
