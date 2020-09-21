@@ -10,6 +10,7 @@ import json
 from miscellaneous.utils import write_ply
 import random
 import time
+import numpy as np
 
 from scripts.OSM_generator import Crossing, test_crossing_pose
 
@@ -354,17 +355,22 @@ class fromGeneratedDataset(Dataset):
     def __filterdistance(self, distance):
         images = []
         labels = []
+        datapath = ""
+        datapath_last = ""
         for file, label in zip(self.bev_images, self.bev_labels):
             head, filename = os.path.split(file)
             head = head.replace('data_raw_bev', 'data_raw')
             datapath = os.path.join(head, 'frames_topology.txt')
             name, _ = os.path.splitext(filename)
             name = name.split('.')[0]
-            gtdata = pd.read_csv(datapath, sep=';', header=None, dtype=str)
-            if float(gtdata.loc[gtdata[0] == name][1]) < distance:
+            if datapath != datapath_last:
+                gtdata = pd.read_csv(datapath, sep=';', header=None, dtype=str)
+                datapath_last = datapath
+            panda_to_numpy = np.asarray(gtdata)
+            at = np.where(panda_to_numpy[:, 0] == np.asarray([name]))[0][0]
+            if float(panda_to_numpy[at, 1]) < distance:
                 images.append(file)
                 labels.append(label)
-
         self.bev_images = images
         self.bev_labels = labels
 
