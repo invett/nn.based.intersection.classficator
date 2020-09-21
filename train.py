@@ -336,12 +336,14 @@ def main(args, model=None):
     test_path = os.path.join(data_path, '2011_09_30_drive_0028_sync')
 
     if args.grayscale:
-        aanetTransforms = transforms.Compose(
-            [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), GrayScale(), ToTensor()])
+        aanetTransforms = transforms.Compose([GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)),
+                                              Normalize(), GrayScale(), ToTensor()])
+
         generateTransforms = transforms.Compose([Normalize(), GrayScale(), ToTensor()])
     else:
-        aanetTransforms = transforms.Compose(
-            [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), ToTensor()])
+        aanetTransforms = transforms.Compose([GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)),
+                                              Normalize(), ToTensor()])
+
         generateTransforms = transforms.Compose([Normalize(), ToTensor()])
 
     if not args.test:
@@ -356,12 +358,12 @@ def main(args, model=None):
 
             if args.dataloader == "fromAANETandDualBisenet":
                 val_dataset = fromAANETandDualBisenet(val_path, args.distance, transform=aanetTransforms)
-
                 train_dataset = fromAANETandDualBisenet(train_path, args.distance, transform=aanetTransforms)
+
             elif args.dataloader == "generatedDataset":
                 val_dataset = fromGeneratedDataset(val_path, args.distance, transform=generateTransforms)
-
                 train_dataset = fromGeneratedDataset(train_path, args.distance, transform=generateTransforms)
+
             elif args.dataloader == "BaseLine":
                 val_dataset = BaseLine(val_path, transform=transforms.Compose([transforms.Resize((224, 224)),
                                                                                transforms.ToTensor(),
@@ -411,7 +413,7 @@ def main(args, model=None):
 
             if args.embedding:
                 gt_model = copy.deepcopy(model)
-                gt_model.load_state_dict(torch.load(teacher_path))
+                gt_model.load_state_dict(torch.load(args.teacher_path))
                 gt_model.eval()
 
             if torch.cuda.is_available() and args.use_gpu:
@@ -520,7 +522,10 @@ if __name__ == '__main__':
     parser.add_argument('--scheduler', action='store_true', help='scheduling lr')
     parser.add_argument('--test', action='store_true', help='scheduling lr')
     parser.add_argument('--grayscale', action='store_true', help='Use Grayscale Images')
+
+    # to enable the STUDENT training, set --embedding and provide the teacher path
     parser.add_argument('--embedding', action='store_true', help='Use embedding matching')
+    parser.add_argument('--teacher_path', type=str, help='Insert teacher path (for student training)')
 
     # different data loaders, use one from choices; a description is provided in the documentation of each dataloader
     parser.add_argument('--dataloader', type=str, default='BaseLine', choices=['fromAANETandDualBisenet',
@@ -545,6 +550,11 @@ if __name__ == '__main__':
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
 
     args = parser.parse_args()
+
+    # check whether --embedding was set but with no teacher path
+    if args.embedding and not args.teacher_path:
+        print("Parameter --teacher_path is REQUIRED when --embedding is set")
+        exit(-1)
 
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
