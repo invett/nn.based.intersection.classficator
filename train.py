@@ -333,11 +333,11 @@ def main(args, model=None):
     if args.grayscale:
         aanetTransforms = transforms.Compose(
             [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), GrayScale(), ToTensor()])
-        generateTransforms = transforms.Compose([Normalize(), GrayScale(), ToTensor()])
+        generateTransforms = transforms.Compose([Rescale((224, 224)), Normalize(), GrayScale(), ToTensor()])
     else:
         aanetTransforms = transforms.Compose(
             [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), ToTensor()])
-        generateTransforms = transforms.Compose([Normalize(), ToTensor()])
+        generateTransforms = transforms.Compose([Rescale((224, 224)), Normalize(), ToTensor()])
 
     if not args.test:
         loo = LeaveOneOut()
