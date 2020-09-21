@@ -96,7 +96,17 @@ class ToTensor(object):
         # torch image: C X H X W
         image = image.transpose((2, 0, 1))
 
-        return {'data': torch.from_numpy(image), 'label': label}
+        # generated_osm might be optional, let's handle this
+        if sample['generated_osm']:
+            generated_osm = sample['generated_osm']
+            generated_osm = generated_osm.transpose((2, 0, 1))
+
+            return {'data': torch.from_numpy(image),
+                    'generated_osm': torch.from_numpy(generated_osm),
+                    'label': label}
+        else:
+            return {'data': torch.from_numpy(image),
+                    'label': label}
 
 
 class Normalize(object):
