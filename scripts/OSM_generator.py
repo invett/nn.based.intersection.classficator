@@ -343,7 +343,7 @@ class Crossing:
 
 
 def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
-                       save=True, path="", filenumber=0):
+                       save=True, path="", filenumber=0, sampling=True):
     """
 
     Args:
@@ -363,6 +363,8 @@ def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_a
         save: if true, save the image in the PATH parameter
         path: where to save the images
         filenumber: name of the file; please pass a number.
+        sampling: whether or not add noise to intersection arms/branches; default True; set false to generate a
+                  "canonical" intersection
 
     Returns:
 
@@ -378,18 +380,33 @@ def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_a
     rotation_list = []
     branch_widths = []
 
-    xx = 15.0 + uniform(-rnd_spatial, rnd_spatial)
-    yy = 0.0 + uniform(-rnd_spatial, rnd_spatial)
+    xx = 15.0
+    yy = 0.0
 
-    rot_a = uniform(-rnd_angle, rnd_angle)
-    rot_b = uniform(-rnd_angle, rnd_angle)
-    rot_c = uniform(-rnd_angle, rnd_angle)
-    rot_d = uniform(-rnd_angle, rnd_angle)
+    rot_a = 0.0
+    rot_b = 0.0
+    rot_c = 0.0
+    rot_d = 0.0
 
-    width_a = uniform(-rnd_width, rnd_width)
-    width_b = uniform(-rnd_width, rnd_width)
-    width_c = uniform(-rnd_width, rnd_width)
-    width_d = uniform(-rnd_width, rnd_width)
+    width_a = 0.0
+    width_b = 0.0
+    width_c = 0.0
+    width_d = 0.0
+
+    # add noise to the sample; default behaviour
+    if sampling:
+        xx = 15.0 + uniform(-rnd_spatial, rnd_spatial)
+        yy = 0.0 + uniform(-rnd_spatial, rnd_spatial)
+
+        rot_a = uniform(-rnd_angle, rnd_angle)
+        rot_b = uniform(-rnd_angle, rnd_angle)
+        rot_c = uniform(-rnd_angle, rnd_angle)
+        rot_d = uniform(-rnd_angle, rnd_angle)
+
+        width_a = uniform(-rnd_width, rnd_width)
+        width_b = uniform(-rnd_width, rnd_width)
+        width_c = uniform(-rnd_width, rnd_width)
+        width_d = uniform(-rnd_width, rnd_width)
 
     intersection_center = np.array([float(xx), float(yy), 0.])
     translation = np.array([0., 0., 0.])

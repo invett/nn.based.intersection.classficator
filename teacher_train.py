@@ -61,12 +61,14 @@ def main(args):
                                                   transform=transforms.Compose([transforms.ToPILImage(),
                                                                                 transforms.Resize((224, 224)),
                                                                                 transforms.ToTensor()
-                                                                                ]))
+                                                                                ]),
+                                                  canonical=False)
     dataset_val = teacher_tripletloss_generated(elements=200,
                                                 transform=transforms.Compose([transforms.ToPILImage(),
                                                                               transforms.Resize((224, 224)),
                                                                               transforms.ToTensor(),
-                                                                              ]))
+                                                                              ]),
+                                                canonical=False)
     # List all test folders
     if args.test:
         folders = np.array([os.path.join(args.dataset, folder) for folder in os.listdir(args.dataset) if
@@ -77,7 +79,9 @@ def main(args):
                                                                          transforms.Resize(
                                                                              (224, 224)),
                                                                          transforms.ToTensor()
-                                                                         ]), noise=True)
+                                                                         ]),
+                                           noise=True,
+                                           canonical=True)
 
     dataloader_train = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=True,
                                   num_workers=args.num_workers)
@@ -116,6 +120,7 @@ def test(args, model, dataloader):
             anchor = sample['anchor']  # OSM Type X
             positive = sample['positive']  # OSM Type X
             label = sample['label_anchor']
+            canonical = sample['canonical']  # OSM Type X but without sampling noise (ie. angles of branches w/o noise)
         else:
             data = sample['anchor']
             label = sample['label_anchor']
@@ -123,7 +128,8 @@ def test(args, model, dataloader):
         if torch.cuda.is_available() and args.use_gpu:
             if args.triplet:
                 anchor = anchor.cuda()
-                positive = positive.cuda()
+                # positive = positive.cuda()
+                positive = canonical.cuda()
             else:
                 data = data.cuda()
                 label = label.cuda()
@@ -451,3 +457,10 @@ if __name__ == '__main__':
 # Used paths:
 # --saveEmbeddingsPath /media/augusto/500GBDISK/nn.based.intersection.classficator.data/debug
 # --saveTestCouplesForDebugPath /media/augusto/500GBDISK/nn.based.intersection.classficator.data/debug/
+
+# --saveEmbeddings
+# --saveEmbeddingsPath
+# /media/augusto/500GBDISK/nn.based.intersection.classficator.data/debug
+# --saveTestCouplesForDebug
+# --saveTestCouplesForDebugPath
+# /media/augusto/500GBDISK/nn.based.intersection.classficator.data/debug/

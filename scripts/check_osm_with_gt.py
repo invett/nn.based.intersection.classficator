@@ -27,8 +27,9 @@ def main(args):
     folders = np.array([os.path.join(args.rootfolder, folder) for folder in os.listdir(args.rootfolder) if
                         os.path.isdir(os.path.join(args.rootfolder, folder))])
 
-    dataset = teacher_tripletloss(folders, args.distance, transform=[], noise=True)
-    # dataset = teacher_tripletloss_generated(elements=3, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True, transform=[])
+    #dataset = teacher_tripletloss(folders, args.distance, transform=[], noise=True, canonical=True)
+    dataset = teacher_tripletloss_generated(elements=3, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
+                                            transform=[], canonical=True)
 
     # num_workers starts from 0
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=args.workers)
@@ -41,7 +42,8 @@ def main(args):
         emptyspace = 255 * torch.ones([300, 30, 3], dtype=torch.uint8)
         a = plt.figure()
         plt.imshow(torch.cat((sample['anchor'].squeeze(), emptyspace, sample['positive'].squeeze(), emptyspace,
-                              sample['negative'].squeeze(), emptyspace, sample['ground_truth_image'].squeeze()), 1))
+                              sample['negative'].squeeze(), emptyspace, sample['ground_truth_image'].squeeze(),
+                              emptyspace, sample['canonical'].squeeze()), 1))
 
         if args.savefile:
             image_name = args.savefolder +  \
@@ -66,7 +68,8 @@ def main(args):
             textfile.close()
 
         if args.telegram:
-            send_telegram_picture(a, str(sample['filename_anchor']) + " is type: " + str(
+            send_telegram_picture(a, "Anchor | Positive | Negative | GT | Canonical\n" + str(sample['filename_anchor'])
+                                  + " is type: " + str(
                 sample['label_anchor'].numpy()[0]) + "\n" + str(sample['filename_positive']) + " is type: " + str(
                 sample['label_positive'].numpy()[0]) + "\n" + str(sample['filename_negative']) + " is type: " + str(
                 sample['label_negative'].numpy()[0]) + "\n\nLast IMG is the GT of the ANCHOR\n" +

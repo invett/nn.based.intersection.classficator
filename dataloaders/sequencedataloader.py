@@ -343,7 +343,7 @@ class fromGeneratedDataset(Dataset):
 
 class teacher_tripletloss(Dataset):
 
-    def __init__(self, folders, distance, include_insidecrossing=False, transform=None, noise=False):
+    def __init__(self, folders, distance, include_insidecrossing=False, transform=None, noise=False, canonical=True):
         """
 
         This dataloader uses "REAL" intersection, using the OSM data; this data is pre-generated from the OSM and the
@@ -371,9 +371,12 @@ class teacher_tripletloss(Dataset):
 
             noise: if set, we'll add noise to the OSM-OG in a same way we've done in teacher_tripletloss_generated.
 
+            canonical: set false to avoid generating the "canonical" crossings
+
         """
 
         self.noise = noise
+        self.canonical = canonical
 
         self.transform = transform
 
@@ -477,6 +480,11 @@ class teacher_tripletloss(Dataset):
         anchor_image = cv2.imread(self.osm_data[idx][0], cv2.IMREAD_UNCHANGED)
         positive_image = cv2.imread(positive_item[0], cv2.IMREAD_UNCHANGED)
         negative_image = cv2.imread(negative_item[0], cv2.IMREAD_UNCHANGED)
+        if self.canonical:  # set canonical to False to speedup this dataloader
+            canonical_image = test_crossing_pose(crossing_type=anchor_type, save=False, noise=self.noise,
+                                                 sampling=False)
+        else:
+            canonical_image = [0]
 
         ground_truth_img = cv2.imread(
             os.path.dirname(str(self.osm_data[idx][0])) + "_TYPES/" + str(self.osm_data[idx][2]) + ".png",
@@ -484,12 +492,16 @@ class teacher_tripletloss(Dataset):
 
         # adding noise
         if self.noise:
-            # TODO change the default value to uniform and stop doing this shit; do something also 5 elements_multiplier
+            # TODO change the default value to uniform and stop doing this shit; do something also for
+            #      elements_multiplier, it's current default value is 1.0 but we always used 3.0!
             anchor_image = Crossing.add_noise(self, anchor_image, elements_multiplier=3.0, distribution="uniform")
             positive_image = Crossing.add_noise(self, positive_image, elements_multiplier=3.0, distribution="uniform")
             negative_image = Crossing.add_noise(self, negative_image, elements_multiplier=3.0, distribution="uniform")
 
-        sample = {'anchor': anchor_image, 'positive': positive_image, 'negative': negative_image,
+        sample = {'anchor': anchor_image,
+                  'positive': positive_image,
+                  'negative': negative_image,
+                  'canonical': canonical_image[0],
                   'label_anchor': anchor_type, 'label_positive': positive_item[2],  # [2] is the type
                   'label_negative': negative_item[2],  # [2] is the type
                   'filename_anchor': self.osm_data[idx][0],  # [0] is the filename
@@ -507,13 +519,15 @@ class teacher_tripletloss(Dataset):
             sample['anchor'] = self.transform(sample['anchor'])
             sample['positive'] = self.transform(sample['positive'])
             sample['negative'] = self.transform(sample['negative'])
+            sample['canonical'] = self.transform(sample['canonical'])
 
         return sample
 
 
 class teacher_tripletloss_generated(Dataset):
 
-    def __init__(self, elements=1000, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True, transform=None):
+    def __init__(self, elements=1000, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True, canonical=True,
+                 transform=None):
         """
 
         This dataloader uses "RUNTIME-GENERATED" intersection (this differs from teacher_tripletloss dataloader that
@@ -526,6 +540,7 @@ class teacher_tripletloss_generated(Dataset):
             rnd_width: parameter for uniform noise add (width);          uniform(-rnd_width, rnd_width)
             rnd_angle: parameter for uniform noise add (rotation [rad]); uniform(-rnd_angle, rnd_angle)
             rnd_spatial: parameter for uniform spatial cross position (center of the crossing area)
+            canonical: set false to avoid generating the "canonical" crossings
 
             transform:  transforms to the image
 
@@ -535,6 +550,7 @@ class teacher_tripletloss_generated(Dataset):
         self.rnd_angle = rnd_angle
         self.rnd_spatial = rnd_spatial
         self.noise = noise
+        self.canonical = canonical
 
         self.transform = transform
 
@@ -640,17 +656,27 @@ class teacher_tripletloss_generated(Dataset):
                                             rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise)
         negative_image = test_crossing_pose(crossing_type=negative_item[0], save=False, rnd_width=self.rnd_width,
                                             rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise)
+        if self.canonical:  # set canonical to False to speedup this dataloader
+            canonical_image = test_crossing_pose(crossing_type=anchor_type, save=False, noise=self.noise,
+                                                 sampling=False)
+        else:
+            canonical_image = [0]
 
         # anchor_image = cv2.imread(self.samples[idx][0], cv2.IMREAD_UNCHANGED)
 
         sample = {'anchor': anchor_image[0],  # [0] is the image
-                  'positive': positive_image[0], 'negative': negative_image[0], 'label_anchor': anchor_type,
+                  'positive': positive_image[0],
+                  'negative': negative_image[0],
+                  'canonical': canonical_image[0],
+                  'label_anchor': anchor_type,
                   'label_positive': positive_item[0],  # [0] is the type
                   'label_negative': negative_item[0],  # [0] is the type
                   'ground_truth_image': anchor_image[0],  # for debugging purposes | in this dataloader is = the anchor
                   'anchor_xx': anchor_image[1],  # [1] is the xx coordinate
                   'anchor_yy': anchor_image[2],  # [2] is the yy coordinate
-                  'positive_xx': positive_image[1], 'positive_yy': positive_image[2], 'negative_xx': negative_image[1],
+                  'positive_xx': positive_image[1],
+                  'positive_yy': positive_image[2],
+                  'negative_xx': negative_image[1],
                   'negative_yy': negative_image[2],
 
                   # the following are not used; are here to mantain the compatibility with "teacher_tripletloss" 
