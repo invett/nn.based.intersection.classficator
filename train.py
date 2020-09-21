@@ -11,6 +11,7 @@ import warnings
 
 import torch
 import torchvision.transforms as transforms
+from torch import nn
 from torch.utils.data import DataLoader
 from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror, GrayScale
 from torch.utils.data.sampler import SubsetRandomSampler
@@ -128,7 +129,8 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None):
                 output = model(data)
 
             if args.embedding:
-                loss = criterion(output, output_gt, torch.ones(output.shape).cuda())
+                mask = torch.ones((64, 512)).cuda()
+                loss = traincriterion(output, output_gt, mask)
             elif args.triplet:
                 loss = criterion(out_anchor, out_positive, out_negative)
             else:
@@ -187,11 +189,11 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         traincriterion = torch.nn.CrossEntropyLoss(weight=class_weights)
         valcriterion = torch.nn.CrossEntropyLoss()
     elif args.embedding:
-        traincriterion = torch.nn.CosineEmbeddingLoss()
-        valcriterion = torch.nn.CosineEmbeddingLoss()
+        traincriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin)
+        valcriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin)
     elif args.triplet:
         traincriterion = torch.nn.TripletMarginLoss(margin=args.margin)
-        valcriterion = torch.nn.CosineEmbeddingLoss()
+        valcriterion = torch.nn.TripletMarginLoss(margin=args.margin)
     else:
         traincriterion = torch.nn.CrossEntropyLoss()
         valcriterion = torch.nn.CrossEntropyLoss()
@@ -250,7 +252,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
                 output = model(data)
 
             if args.embedding:
-                loss = traincriterion(output, output_gt, torch.ones(output.shape).cuda())
+                mask = torch.ones((64, 512)).cuda()
+                loss = traincriterion(output, output_gt, mask)
             elif args.triplet:
                 loss = traincriterion(out_anchor, out_positive, out_negative)
             else:
@@ -552,6 +555,7 @@ if __name__ == '__main__':
     parser.add_argument('--embedding', action='store_true', help='Use embedding matching')
     parser.add_argument('--triplet', action='store_true', help='Use triplet learing')
     parser.add_argument('--teacher_path', type=str, help='Insert teacher path (for student training)')
+    parser.add_argument('--margin', type=float, default=0.5, help='margin in triplet and embedding')
 
     # different data loaders, use one from choices; a description is provided in the documentation of each dataloader
     parser.add_argument('--dataloader', type=str, default='BaseLine', choices=['fromAANETandDualBisenet',
