@@ -126,11 +126,14 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None):
 
             if args.embedding:
                 cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                acc_record += torch.sum(cos(output, output_gt)).item()
+                result = (((cos(output.squeeze(), output_gt.squeeze()) + 1.0) - 0.0) * (1.0 / (2.0 - 0.0)))
+                acc_record += torch.sum(result).item()
 
             elif args.triplet:
                 cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                acc_record += torch.sum(cos(out_anchor, out_positive)).item()
+                result = (((cos(out_anchor.squeeze(), out_positive.squeeze()) + 1.0) - 0.0) * (1.0 / (2.0 - 0.0)))
+                acc_record += torch.sum(result).item()
+
             else:
                 predict = torch.argmax(output, 1)
                 label = label.cpu().numpy()
@@ -240,11 +243,13 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
             if args.embedding:
                 cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                acc_record += torch.sum(cos(output, output_gt)).item()
+                result = (((cos(output.squeeze(), output_gt.squeeze()) + 1.0) - 0.0) * (1.0 / (2.0 - 0.0)))
+                acc_record += torch.sum(result).item()
 
             elif args.triplet:
                 cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                acc_record += torch.sum(cos(out_anchor, out_positive)).item()
+                result = (((cos(out_anchor.squeeze(), out_positive.squeeze()) + 1.0) - 0.0) * (1.0 / (2.0 - 0.0)))
+                acc_record += torch.sum(result).item()
             else:
                 predict = torch.argmax(output, 1)
                 label = label.cpu().numpy()
