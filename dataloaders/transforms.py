@@ -50,6 +50,8 @@ class Rescale(object):
 
     def __call__(self, sample):
         image = sample['data']
+        if sample['generated_osm'] is not None:
+            osm = sample['generated_osm']
 
         h, w = image.shape[:2]
         if isinstance(self.output_size, int):
@@ -63,8 +65,12 @@ class Rescale(object):
         new_h, new_w = int(new_h), int(new_w)
 
         image = resize(image, (new_h, new_w), anti_aliasing=True)
+        if sample['generated_osm'] is not None:
+            osm = resize(osm, (new_h, new_w), anti_aliasing=True)
 
         sample['data'] = image
+        if sample['generated_osm'] is not None:
+            sample['generated_osm'] = osm
 
         return sample
 

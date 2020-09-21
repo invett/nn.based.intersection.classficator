@@ -65,8 +65,8 @@ def test(args, dataloader_test):
     # Start testing
     if args.embedding or args.triplet:
         acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gtmodel=gt_model)
-        wandb.log({"Val/loss": loss_val,
-                   "Val/Acc": acc_val}, step=epoch)
+        wandb.log({"Test/loss": loss_val,
+                   "Test/Acc": acc_val}, step=epoch)
     else:
         confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test)
 
@@ -404,7 +404,7 @@ def main(args, model=None):
 
             if args.embedding:
                 gt_model = copy.deepcopy(model)
-                gt_model.load_state_dict(torch.load(teacher_path))
+                gt_model.load_state_dict(torch.load(args.teacher_path))
                 gt_model.eval()
 
             if torch.cuda.is_available() and args.use_gpu:
