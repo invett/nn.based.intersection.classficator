@@ -522,7 +522,7 @@ if __name__ == '__main__':
     parser.add_argument('--grayscale', action='store_true', help='Use Grayscale Images')
     parser.add_argument('--embedding', action='store_true', help='Use embedding matching')
 
-    # different data loaders, use one from choises; a description is provided in the documentation of each dataloader
+    # different data loaders, use one from choices; a description is provided in the documentation of each dataloader
     parser.add_argument('--dataloader', type=str, default='BaseLine', choices=['fromAANETandDualBisenet',
                                                                                'generatedDataset',
                                                                                'BaseLine',
