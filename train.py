@@ -360,12 +360,10 @@ def main(args, model=None):
                 val_dataset = fromAANETandDualBisenet(val_path, args.distance, transform=aanetTransforms)
                 train_dataset = fromAANETandDualBisenet(train_path, args.distance, transform=aanetTransforms)
 
-                train_dataset = fromAANETandDualBisenet(train_path, args.distance, transform=aanetTransforms)
             elif args.dataloader == "generatedDataset":
                 val_dataset = fromGeneratedDataset(val_path, args.distance, transform=generateTransforms)
                 train_dataset = fromGeneratedDataset(train_path, args.distance, transform=generateTransforms)
 
-                train_dataset = fromGeneratedDataset(train_path, args.distance, transform=generateTransforms)
             elif args.dataloader == "BaseLine":
                 val_dataset = BaseLine(val_path, transform=transforms.Compose([transforms.Resize((224, 224)),
                                                                                transforms.ToTensor(),
