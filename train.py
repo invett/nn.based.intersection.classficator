@@ -65,16 +65,16 @@ def test(args, dataloader_test):
     # Start testing
     if args.embedding or args.triplet:
         acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gtmodel=gt_model)
-        wandb.log({"Val/loss": loss_val,
-                   "Val/Acc": acc_val}, step=epoch)
+        if not args.nowandb:  # if nowandb flag was set, skip
+            wandb.log({"Val/loss": loss_val, "Val/Acc": acc_val}, step=epoch)
     else:
         confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test)
 
         plt.figure(figsize=(10, 7))
         sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
 
-        wandb.log({"Test/Acc": acc,
-                   "conf-matrix_test": wandb.Image(plt)})
+        if not args.nowandb:  # if nowandb flag was set, skip
+            wandb.log({"Test/Acc": acc, "conf-matrix_test": wandb.Image(plt)})
 
 
 def validation(args, model, criterion, dataloader_val, gtmodel=None):
@@ -188,7 +188,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
     model.train()
     scheduler = MultiStepLR(optimizer, milestones=[10, 40, 80], gamma=0.5)
 
-    wandb.watch(model, log="all")
+    if not args.nowandb:  # if nowandb flag was set, skip
+        wandb.watch(model, log="all")
 
     for epoch in range(args.num_epochs):
         lr = optimizer.param_groups[0]['lr']
@@ -267,15 +268,16 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         print('loss for train : %f' % loss_train_mean)
         acc_train = acc_record / len(dataloader_train)
         print('acc for train : %f' % acc_train)
-        wandb.log({"Train/loss": loss_train_mean,
-                   "Train/acc": acc_train,
-                   "Train/lr": lr}, step=epoch)
+        if not args.nowandb:  # if nowandb flag was set, skip
+            wandb.log({"Train/loss": loss_train_mean,
+                       "Train/acc": acc_train,
+                       "Train/lr": lr}, step=epoch)
 
         if epoch % args.validation_step == 0:
             if args.embedding or args.triplet:
                 acc_val, loss_val = validation(args, model, valcriterion, dataloader_val)
-                wandb.log({"Val/loss": loss_val,
-                           "Val/Acc": acc_val}, step=epoch)
+                if not args.nowandb:  # if nowandb flag was set, skip
+                    wandb.log({"Val/loss": loss_val, "Val/Acc": acc_val}, step=epoch)
             else:
                 confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val)
                 plt.figure(figsize=(10, 7))
@@ -284,9 +286,10 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
                 if args.telegram:
                     send_telegram_picture(plt, "Epoch:" + str(epoch))
 
-                wandb.log({"Val/loss": loss_val,
-                           "Val/Acc": acc_val,
-                           "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)}, step=epoch)
+                if not args.nowandb:  # if nowandb flag was set, skip
+                    wandb.log({"Val/loss": loss_val,
+                               "Val/Acc": acc_val,
+                               "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)}, step=epoch)
 
             if kfold_acc < acc_val or kfold_loss > loss_val:
                 patience = 0
@@ -300,7 +303,9 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
                     print('Best global accuracy: {}'.format(kfold_acc))
                     print('Saving model: ', os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
                     torch.save(bestModel, os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
-                    wandb.save(os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
+
+                    if not args.nowandb:  # if nowandb flag was set, skip
+                        wandb.save(os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
 
             elif epoch < args.patience_start:
                 patience = 0
@@ -343,8 +348,10 @@ def main(args, model=None):
         loo = LeaveOneOut()
         for train_index, val_index in loo.split(folders):
 
-            wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="training", reinit=True)
-            wandb.config.update(args)
+            if not args.nowandb:  # if nowandb flag was set, skip
+                wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="training", reinit=True)
+                wandb.config.update(args)
+
             train_path, val_path = folders[train_index], folders[val_index]
 
             if args.dataloader == "fromAANETandDualBisenet":
@@ -438,7 +445,8 @@ def main(args, model=None):
             if args.telegram:
                 send_telegram_message("K-Fold finished")
 
-            wandb.join()
+            if not args.nowandb:  # if nowandb flag was set, skip
+                wandb.join()
 
     # Final Test on 2011_10_03_drive_0027_sync
     if args.dataloader == "fromAANETandDualBisenet":
@@ -465,9 +473,13 @@ def main(args, model=None):
 
     dataloader_test = DataLoader(test_dataset, batch_size=4, shuffle=False, num_workers=args.num_workers)
 
-    wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="eval", reinit=True)
+    if not args.nowandb:  # if nowandb flag was set, skip
+        wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="eval", reinit=True)
+
     test(args, dataloader_test)
-    wandb.join()
+
+    if not args.nowandb:  # if nowandb flag was set, skip
+        wandb.join()
 
     if args.telegram:
         send_telegram_message("Finish successfully")
@@ -530,6 +542,7 @@ if __name__ == '__main__':
                              help='0-drop-neuron, 1-drop-channel, 2-drop-path, 3-drop-layer')
     parser_drop.add_argument('--drop_rate', default=0.0, type=float, help='dropout rate')
     parser_drop.add_argument('--report_ratio ', action='store_true', help='Cardinality of the net')
+    parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
 
     args = parser.parse_args()
 

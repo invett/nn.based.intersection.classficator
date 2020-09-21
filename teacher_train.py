@@ -27,7 +27,7 @@ import seaborn as sn
 
 def main(args):
 
-    if not args.nowandb: # if nowandb flag was set, skip
+    if not args.nowandb:  # if nowandb flag was set, skip
         if args.test:
             wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train",
                        job_type="eval")
