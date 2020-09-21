@@ -338,11 +338,11 @@ def main(args, model=None):
     if args.grayscale:
         aanetTransforms = transforms.Compose(
             [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), GrayScale(), ToTensor()])
-        generateTransforms = transforms.Compose([Normalize(), GrayScale(), ToTensor()])
+        generateTransforms = transforms.Compose([Rescale((224, 224)), Normalize(), GrayScale(), ToTensor()])
     else:
         aanetTransforms = transforms.Compose(
             [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), ToTensor()])
-        generateTransforms = transforms.Compose([Normalize(), ToTensor()])
+        generateTransforms = transforms.Compose([Rescale((224, 224)), Normalize(), ToTensor()])
 
     if not args.test:
         loo = LeaveOneOut()
@@ -411,7 +411,7 @@ def main(args, model=None):
 
             if args.embedding:
                 gt_model = copy.deepcopy(model)
-                gt_model.load_state_dict(torch.load(teacher_path))
+                gt_model.load_state_dict(torch.load(args.teacher_path))
                 gt_model.eval()
 
             if torch.cuda.is_available() and args.use_gpu:
