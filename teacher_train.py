@@ -383,9 +383,9 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
                     wandb.log({"Val/loss": loss_val, "Val/Acc": acc_val}, step=epoch)
 
                 print('Saving model: ',
-                      os.path.join(args.save_model_path, 'teacher_model_class{}.pth'.format(args.resnetmodel)))
+                      os.path.join(args.save_model_path, 'teacher_model_class_{}.pth'.format(args.resnetmodel)))
                 torch.save(bestModel,
-                           os.path.join(args.save_model_path, 'teacher_model_class{}.pth'.format(args.resnetmodel)))
+                           os.path.join(args.save_model_path, 'teacher_model_class_{}.pth'.format(args.resnetmodel)))
 
             elif epoch < args.patience_start:
                 patience = 0

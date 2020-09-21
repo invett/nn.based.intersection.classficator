@@ -340,7 +340,7 @@ class fromGeneratedDataset(Dataset):
                                                rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise)
             sample = {'data': bev_image,
                       'label': bev_label,
-                      'generated_osm': generated_osm}
+                      'generated_osm': generated_osm[0]}
         else:
             sample = {'data': bev_image,
                       'label': bev_label,

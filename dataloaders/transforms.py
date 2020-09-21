@@ -97,7 +97,7 @@ class ToTensor(object):
         image = image.transpose((2, 0, 1))
 
         # generated_osm might be optional, let's handle this
-        if sample['generated_osm']:
+        if sample['generated_osm'] is not None:
             generated_osm = sample['generated_osm']
             generated_osm = generated_osm.transpose((2, 0, 1))
 
