@@ -277,7 +277,7 @@ class fromAANETandDualBisenet(Dataset):
 class fromGeneratedDataset(Dataset):
 
     def __init__(self, folders, distance, transform=None,
-                 rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True, canonical=True):
+                 rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True, canonical=True, addGeneratedOSM=True):
         """
         Args:
             root_dir (string): Directory with all the images.
@@ -288,6 +288,8 @@ class fromGeneratedDataset(Dataset):
             rnd_spatial: parameter for uniform spatial cross position (center of the crossing area)
             canonical: set false to avoid generating the "canonical" crossings
             noise: whether to add or not noise in the image (pixel level)
+
+            addGeneratedOSM: whether to add the generated OSM intersection (to train as student)
 
         """
 
@@ -301,6 +303,7 @@ class fromGeneratedDataset(Dataset):
         self.rnd_spatial = rnd_spatial
         self.noise = noise
         self.canonical = canonical
+        self.addGeneratedOSM = addGeneratedOSM
 
         tic = time.time()
         for folder in folders:
@@ -332,12 +335,16 @@ class fromGeneratedDataset(Dataset):
         bev_label = self.bev_labels[idx]
 
         # Sample an intersection given a label; this is used in the STUDENT training
-        generated_osm = test_crossing_pose(crossing_type=bev_label, save=False, rnd_width=self.rnd_width,
-                                           rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise)
-
-        sample = {'data': bev_image,
-                  'label': bev_label,
-                  'generated_osm': generated_osm}
+        if self.addGeneratedOSM:
+            generated_osm = test_crossing_pose(crossing_type=bev_label, save=False, rnd_width=self.rnd_width,
+                                               rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise)
+            sample = {'data': bev_image,
+                      'label': bev_label,
+                      'generated_osm': generated_osm}
+        else:
+            sample = {'data': bev_image,
+                      'label': bev_label,
+                      }
 
         if self.transform is not None:
             sample = self.transform(sample)
