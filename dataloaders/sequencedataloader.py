@@ -355,7 +355,6 @@ class fromGeneratedDataset(Dataset):
     def __filterdistance(self, distance):
         images = []
         labels = []
-        datapath = ""
         datapath_last = ""
         for file, label in zip(self.bev_images, self.bev_labels):
             head, filename = os.path.split(file)

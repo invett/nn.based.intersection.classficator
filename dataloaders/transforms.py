@@ -102,7 +102,7 @@ class ToTensor(object):
             generated_osm = generated_osm.transpose((2, 0, 1))
 
             return {'data': torch.from_numpy(image),
-                    'generated_osm': torch.from_numpy(generated_osm),
+                    'generated_osm': torch.from_numpy(generated_osm).float(),
                     'label': label}
         else:
             return {'data': torch.from_numpy(image),

@@ -90,7 +90,7 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None):
         model.eval()
 
         for sample in dataloader_val:
-            if args.triplet and gtmodel is None:
+            if args.triplet:
                 anchor = sample['anchor']
                 positive = sample['positive']
                 negative = sample['negative']
@@ -98,6 +98,16 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None):
                     anchor = anchor.cuda()
                     positive = positive.cuda()
                     negative = negative.cuda()
+
+            elif args.embedding:
+                data = sample['data']
+                label = sample['label']
+                osm = sample['generated_osm']
+                if torch.cuda.is_available() and args.use_gpu:
+                    data = data.cuda()
+                    label = label.cuda()
+                    osm = osm.cuda()
+
             else:
                 data = sample['data']
                 label = sample['label']
@@ -105,8 +115,9 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None):
                     data = data.cuda()
                     label = label.cuda()
 
-            if args.embedding or gtmodel is not None:
-                output_gt = gtmodel(label)  # (Batch x 512) Tensor
+            if args.embedding:
+                output = model(data)
+                output_gt = gtmodel(osm)  # (Batch x 512) Tensor
 
             elif args.triplet:
                 out_anchor = model(anchor)
@@ -117,7 +128,7 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None):
                 output = model(data)
 
             if args.embedding:
-                loss = criterion(output, output_gt, torch.ones(output.shape))
+                loss = criterion(output, output_gt, torch.ones(output.shape).cuda())
             elif args.triplet:
                 loss = criterion(out_anchor, out_positive, out_negative)
             else:
@@ -208,6 +219,16 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
                     anchor = anchor.cuda()
                     positive = positive.cuda()
                     negative = negative.cuda()
+
+            elif args.embedding:
+                data = sample['data']
+                label = sample['label']
+                osm = sample['generated_osm']
+                if torch.cuda.is_available() and args.use_gpu:
+                    data = data.cuda()
+                    label = label.cuda()
+                    osm = osm.cuda()
+
             else:
                 data = sample['data']
                 label = sample['label']
@@ -219,15 +240,17 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
                 out_anchor = model(anchor)
                 out_positive = model(positive)
                 out_negative = model(negative)
+
             elif args.embedding:
+                output = model(data)
                 with torch.no_grad():
-                    output_gt = gtmodel(label)  # (Batch x 512) Tensor
+                    output_gt = gtmodel(osm)  # (Batch x 512) Tensor
 
             else:
                 output = model(data)
 
             if args.embedding:
-                loss = traincriterion(output, output_gt, torch.ones(output.shape))
+                loss = traincriterion(output, output_gt, torch.ones(output.shape).cuda())
             elif args.triplet:
                 loss = traincriterion(out_anchor, out_positive, out_negative)
             else:
@@ -527,6 +550,7 @@ if __name__ == '__main__':
 
     # to enable the STUDENT training, set --embedding and provide the teacher path
     parser.add_argument('--embedding', action='store_true', help='Use embedding matching')
+    parser.add_argument('--triplet', action='store_true', help='Use triplet learing')
     parser.add_argument('--teacher_path', type=str, help='Insert teacher path (for student training)')
 
     # different data loaders, use one from choices; a description is provided in the documentation of each dataloader
