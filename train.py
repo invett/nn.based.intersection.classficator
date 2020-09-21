@@ -5,6 +5,7 @@ import time
 import numpy as np
 import tqdm
 import pandas as pd
+import copy
 
 import warnings
 
@@ -349,7 +350,8 @@ def main(args, model=None):
         for train_index, val_index in loo.split(folders):
 
             if not args.nowandb:  # if nowandb flag was set, skip
-                wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="training", reinit=True)
+                wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito',
+                           job_type="training", reinit=True)
                 wandb.config.update(args)
 
             train_path, val_path = folders[train_index], folders[val_index]
@@ -476,7 +478,8 @@ def main(args, model=None):
     dataloader_test = DataLoader(test_dataset, batch_size=4, shuffle=False, num_workers=args.num_workers)
 
     if not args.nowandb:  # if nowandb flag was set, skip
-        wandb.init(project="nn-based-intersection-classficator", group=group_id, job_type="eval", reinit=True)
+        wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito', job_type="eval",
+                   reinit=True)
 
     test(args, dataloader_test)
 
@@ -515,7 +518,7 @@ if __name__ == '__main__':
     parser.add_argument('--decimate', type=float, default=1.0, help='How much of the points will remain after '
                                                                     'decimation')
     parser.add_argument('--distance', type=float, default=20.0, help='Distance from the cross')
-    parser.add_argument('--telegram', type=bool, default=True, help='Send info through Telegram')
+    parser.add_argument('--telegram', action='store_true', help='Send info through Telegram')
 
     parser.add_argument('--weighted', action='store_true', help='Weighted losses')
     parser.add_argument('--pretrained', action='store_true', help='pretrained net')
