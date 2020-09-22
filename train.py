@@ -598,7 +598,7 @@ if __name__ == '__main__':
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
     # group_id = wandb.util.generate_id()
-    group_id = 'Resnet18_runtime_WD'
+    group_id = 'Teacher_Student_embedding'
     print(args)
     warnings.filterwarnings("ignore")
 
