@@ -130,7 +130,7 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None):
 
             if args.embedding:
                 mask = torch.ones((64, 512)).cuda()
-                loss = traincriterion(output, output_gt, mask)
+                loss = criterion(output, output_gt, mask)
             elif args.triplet:
                 loss = criterion(out_anchor, out_positive, out_negative)
             else:
@@ -302,7 +302,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
         if epoch % args.validation_step == 0:
             if args.embedding or args.triplet:
-                acc_val, loss_val = validation(args, model, valcriterion, dataloader_val)
+                acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gtmodel=gtmodel)
                 if not args.nowandb:  # if nowandb flag was set, skip
                     wandb.log({"Val/loss": loss_val, "Val/Acc": acc_val}, step=epoch)
             else:
@@ -357,7 +357,8 @@ def main(args, model=None):
     # All sequence folders
     folders = np.array([os.path.join(data_path, folder) for folder in os.listdir(data_path) if
                         os.path.isdir(os.path.join(data_path, folder))])
-
+    # lista = [str(folders[5]), str(folders[5])]  # TODO SAFE TO DELETE this was jusst to speedup a debug phase
+    # folders = np.asarray(lista)  # TODO SAFE TO DELETE this was jusst to speedup a debug phase
     # Exclude test samples
     folders = folders[folders != os.path.join(data_path, '2011_09_30_drive_0028_sync')]
     test_path = os.path.join(data_path, '2011_09_30_drive_0028_sync')

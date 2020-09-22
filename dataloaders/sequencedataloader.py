@@ -347,6 +347,13 @@ class fromGeneratedDataset(Dataset):
                       'label': bev_label,
                       }
 
+        # debug code to send the sample over telegram
+        # a = plt.figure()
+        # plt.imshow(np.asarray(sample['data'], dtype=np.uint8))
+        # send_telegram_picture(a, "data")
+        # plt.imshow(np.asarray(sample['generated_osm'], dtype=np.uint8))
+        # send_telegram_picture(a, "generated_osm")
+
         if self.transform is not None:
             sample = self.transform(sample)
 

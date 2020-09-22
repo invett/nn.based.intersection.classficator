@@ -20,12 +20,16 @@ from random import uniform
 import argparse
 from copy import copy, deepcopy
 from math import cos, pi, sin, sqrt, fabs
-
+from datetime import datetime
 import numpy as np
 
 import cv2
 
 from miscellaneous.utils import bearing, degrees, radians, rotate_point, to_rotation_matrix_XYZRPY, npto_XYZRPY
+
+from miscellaneous.utils import send_telegram_message
+from miscellaneous.utils import send_telegram_picture
+import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser(description='Crossing Localization')
 
@@ -199,28 +203,62 @@ class Crossing:
             same image with noise
 
         """
+        # Old method with nested for cycles .. how to write a deamon!
+        # tic = datetime.now()
+        # for line in range(300, 0, -1):
+        #
+        #     num_elements = (300 - line) * elements_multiplier
+        #
+        #     if distribution == "normal":
+        #         elements = np.trunc(np.random.normal(150.0, 50.0, int(num_elements))).tolist()  # i started with 10
+        #     elif distribution == "uniform":
+        #         elements = np.trunc(np.random.uniform(0.0, 300.0, int(num_elements))).tolist()  # i started with 10
+        #     else:
+        #         assert 1
+        #
+        #     for element in elements:
+        #         if element > 299:
+        #             element = 299
+        #         if element < 0:
+        #             element = 0
+        #
+        #         r = uniform(0.0, 1.0)
+        #         t = probability  # (line / 300.)
+        #
+        #         if r < t:
+        #             test[line-1, int(element)] = 0.0 # 255.0
+        # toc = datetime.now()
+        # delta = toc - tic
+        # a = plt.figure()
+        # plt.imshow(test)
+        # send_telegram_picture(a, "OLD method: [sec:microsec] " + str(delta.seconds) + ":" + str(delta.microseconds))
+
+        # tic = datetime.now()
+        noise = np.ones((300, 300), np.float32)
         for line in range(300, 0, -1):
-
             num_elements = (300 - line) * elements_multiplier
+            result = list(np.random.randint(0, 300, int(num_elements)))
+            if line != 300:
+                noise[np.arange(noise.shape[0])[line, None], result] = 0
+        test = test * noise
+        # toc = datetime.now()
+        # delta = toc - tic
+        # a = plt.figure()
+        # plt.imshow(test)
+        # send_telegram_picture(a, "NEW method: [sec:microsec] " + str(delta.seconds) + ":" + str(delta.microseconds))
 
-            if distribution == "normal":
-                elements = np.trunc(np.random.normal(150.0, 50.0, int(num_elements))).tolist()  # i started with 10
-            elif distribution == "uniform":
-                elements = np.trunc(np.random.uniform(0.0, 300.0, int(num_elements))).tolist()  # i started with 10
-            else:
-                assert 1
-
-            for element in elements:
-                if element > 299:
-                    element = 299
-                if element < 0:
-                    element = 0
-
-                r = uniform(0.0, 1.0)
-                t = probability  # (line / 300.)
-
-                if r < t:
-                    test[line-1, int(element)] = 0.0 # 255.0
+        # third method, untested; this is slightly different from the original with the for-cycles and the replacement
+        # noise = np.empty((0, 300), np.float32)
+        # upperbound = 0.8
+        # height = 300
+        # normalizer = height / upperbound
+        # for line in range(300, 0, -1):
+        #     num_elements = (300 - line) / normalizer
+        #     print(num_elements)
+        #     line = np.random.uniform(0, 1, 300)
+        #     check = line < num_elements
+        #     line = np.where(check.all(), line, check)
+        #     noise = np.append(noise, np.expand_dims(line, 0), axis=0)
 
         return test
 
