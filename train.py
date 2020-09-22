@@ -162,7 +162,10 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None):
     loss_val_mean = loss_record / len(dataloader_val)
     print('loss for test/validation : %f' % loss_val_mean)
 
-    acc = acc_record / len(dataloader_val)
+    if args.triplet or args.embedding:
+    	acc = acc_record / (len(dataloader_val) * args.batch_size)
+    else:
+    	acc = acc_record / len(dataloader_val)
     print('Accuracy for test/validation : %f\n' % acc)
 
     if not (args.embedding or args.triplet):
@@ -293,8 +296,13 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         # Calculate metrics
         loss_train_mean = loss_record / len(dataloader_train)
         print('loss for train : %f' % loss_train_mean)
-        acc_train = acc_record / len(dataloader_train)
+
+        if args.triplet or args.embedding:
+        	acc_train = acc_record / (len(dataloader_train) * args.batch_size)
+        else:
+        	acc_train = acc_record / len(dataloader_train)
         print('acc for train : %f' % acc_train)
+        
         if not args.nowandb:  # if nowandb flag was set, skip
             wandb.log({"Train/loss": loss_train_mean,
                        "Train/acc": acc_train,
