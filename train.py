@@ -163,9 +163,9 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None):
     print('loss for test/validation : %f' % loss_val_mean)
 
     if args.triplet or args.embedding:
-    	acc = acc_record / (len(dataloader_val) * args.batch_size)
+        acc = acc_record / (len(dataloader_val) * args.batch_size)
     else:
-    	acc = acc_record / len(dataloader_val)
+        acc = acc_record / len(dataloader_val)
     print('Accuracy for test/validation : %f\n' % acc)
 
     if not (args.embedding or args.triplet):
@@ -298,11 +298,11 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         print('loss for train : %f' % loss_train_mean)
 
         if args.triplet or args.embedding:
-        	acc_train = acc_record / (len(dataloader_train) * args.batch_size)
+            acc_train = acc_record / (len(dataloader_train) * args.batch_size)
         else:
-        	acc_train = acc_record / len(dataloader_train)
+            acc_train = acc_record / len(dataloader_train)
         print('acc for train : %f' % acc_train)
-        
+
         if not args.nowandb:  # if nowandb flag was set, skip
             wandb.log({"Train/loss": loss_train_mean,
                        "Train/acc": acc_train,
@@ -365,8 +365,7 @@ def main(args, model=None):
     # All sequence folders
     folders = np.array([os.path.join(data_path, folder) for folder in os.listdir(data_path) if
                         os.path.isdir(os.path.join(data_path, folder))])
-    # lista = [str(folders[5]), str(folders[5])]  # TODO SAFE TO DELETE this was jusst to speedup a debug phase
-    # folders = np.asarray(lista)  # TODO SAFE TO DELETE this was jusst to speedup a debug phase
+
     # Exclude test samples
     folders = folders[folders != os.path.join(data_path, '2011_09_30_drive_0028_sync')]
     test_path = os.path.join(data_path, '2011_09_30_drive_0028_sync')
@@ -427,7 +426,7 @@ def main(args, model=None):
 
             dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                           num_workers=args.num_workers)
-            dataloader_val = DataLoader(val_dataset, batch_size=4, shuffle=False,
+            dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False,
                                         num_workers=args.num_workers)
 
             # Build model
