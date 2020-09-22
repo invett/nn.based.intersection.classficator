@@ -36,7 +36,12 @@ from miscellaneous.utils import send_telegram_picture, send_telegram_message, Pr
 def test(args, dataloader_test):
     print('start Test!')
 
-    criterion = torch.nn.CrossEntropyLoss()
+    if args.triplet:
+        criterion = torch.nn.TripletMarginLoss(margin=args.margin)
+    elif args.embedding:
+        criterion = torch.nn.CosineEmbeddingLoss(margin=args.margin)
+    else:
+        criterion = torch.nn.CrossEntropyLoss()
 
     # Build model
     if args.resnetmodel[0:6] == 'resnet':
@@ -66,9 +71,9 @@ def test(args, dataloader_test):
 
     # Start testing
     if args.embedding or args.triplet:
-        acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gtmodel=gt_model)
+        acc_val, loss_val = validation(args, model, criterion, dataloader_test, gtmodel=gt_model)
         if not args.nowandb:  # if nowandb flag was set, skip
-            wandb.log({"Val/loss": loss_val, "Val/Acc": acc_val}, step=epoch)
+            wandb.log({"Test/loss": loss_val, "Test/Acc": acc_val}, step=epoch)
     else:
         confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test)
 
