@@ -381,7 +381,7 @@ class Crossing:
 
 
 def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
-                       save=True, path="", filenumber=0, sampling=True):
+                       save=True, path="", filenumber=0, sampling=True, return3CHimages=False):
     """
 
     Args:
@@ -403,6 +403,8 @@ def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_a
         filenumber: name of the file; please pass a number.
         sampling: whether or not add noise to intersection arms/branches; default True; set false to generate a
                   "canonical" intersection
+
+        return3CHimages: if set, the 300x300 image will be changed to 300x300x3
 
     Returns:
 
@@ -499,8 +501,9 @@ def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_a
     # conversion to uint8 seems necessary for sending to telegram
     sample = np.dstack([np.array(sample / 1.0, dtype=np.uint8)]*3)
 
-    # create an 3-Channel image
-    # sample = np.dstack([sample]*3)
+    if return3CHimages:
+        # create an 3-Channel image
+        sample = np.dstack([sample]*3)
 
     return [sample, xx, yy]
 

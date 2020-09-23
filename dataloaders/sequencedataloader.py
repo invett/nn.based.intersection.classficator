@@ -524,7 +524,7 @@ class teacher_tripletloss(Dataset):
         negative_image = cv2.imread(negative_item[0], cv2.IMREAD_UNCHANGED)
         if self.canonical:  # set canonical to False to speedup this dataloader
             canonical_image = test_crossing_pose(crossing_type=anchor_type, save=False, noise=self.noise,
-                                                 sampling=False)
+                                                 sampling=False, return3CHimages=True)
         else:
             canonical_image = [0]
 
