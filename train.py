@@ -74,7 +74,7 @@ def test(args, dataloader_test, gt_model=None):
     if args.embedding:
         acc_val, loss_val = validation(args, model, criterion, dataloader_test, gtmodel=gt_model)
         if not args.nowandb:  # if nowandb flag was set, skip
-            wandb.log({"Test/loss": loss_val, "Test/Acc": acc_val}, step=epoch)
+            wandb.log({"Test/loss": loss_val, "Test/Acc": acc_val})
     else:
         confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test)
 
