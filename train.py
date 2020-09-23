@@ -33,7 +33,7 @@ import seaborn as sn
 from miscellaneous.utils import send_telegram_picture, send_telegram_message, PrintException
 
 
-def test(args, dataloader_test):
+def test(args, dataloader_test, gt_model=None):
     print('start Test!')
 
     if args.triplet:
@@ -60,17 +60,13 @@ def test(args, dataloader_test):
     model.load_state_dict(torch.load(savepath))
     print('Done!')
 
-    if args.embedding or args.triplet:
-        gt_model = copy.deepcopy(model)
-        gt_model.eval()
-
     if torch.cuda.is_available() and args.use_gpu:
         model = model.cuda()
-        if args.embedding or args.triplet:
+        if args.embedding:
             gt_model = gt_model.cuda()
 
     # Start testing
-    if args.embedding or args.triplet:
+    if args.embedding:
         acc_val, loss_val = validation(args, model, criterion, dataloader_test, gtmodel=gt_model)
         if not args.nowandb:  # if nowandb flag was set, skip
             wandb.log({"Test/loss": loss_val, "Test/Acc": acc_val}, step=epoch)
@@ -505,21 +501,21 @@ def main(args, model=None):
                                                                                                 (0.229, 0.224, 0.225))
                                                                            ]))
     elif args.dataloader == 'generatedDataset':
-        test_path = test_path.replace('data_raw_bev', 'data_raw')
-        test_dataset = TestDataset(test_path, args.distance,
-                                   transform=transforms.Compose([transforms.Resize((224, 224)),
-                                                                 transforms.ToTensor(),
-                                                                 transforms.Normalize((0.062, 0.063, 0.064),
-                                                                                      (0.157, 0.156, 0.157))
-                                                                 ]))
+        if args.embedding:
+            fromGeneratedDataset([test_path], args.distance, transform=generateTransforms)
+        else:
+            test_path = test_path.replace('data_raw_bev', 'data_raw')
+            test_dataset = TestDataset(test_path, args.distance, transform=generateTransforms)
 
-    dataloader_test = DataLoader(test_dataset, batch_size=4, shuffle=False, num_workers=args.num_workers)
+    dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
     if not args.nowandb:  # if nowandb flag was set, skip
         wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito', job_type="eval",
                    reinit=True)
-
-    test(args, dataloader_test)
+    if args.embedding:
+        test(args, dataloader_test, gt_model=gt_model)
+    else:
+        test(args, dataloader_test)
 
     if not args.nowandb:  # if nowandb flag was set, skip
         wandb.join()
