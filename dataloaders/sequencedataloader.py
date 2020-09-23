@@ -429,7 +429,7 @@ class teacher_tripletloss(Dataset):
         osm_data = []
 
         try:
-
+            tic = time.time()
             # create the list of elements in all folders
             for folder in folders:
                 folder_osm = os.path.join(folder, 'OSM')
@@ -486,6 +486,11 @@ class teacher_tripletloss(Dataset):
                                         # osm_files.append(os.path.join(folder, "OSM", file))
                                         # osm_types.append(osm_data_type)
                                         # osm_distances.append(osm_data_distance)
+
+            toc = time.time()
+            print("[teacher_tripletloss] - " + str(len(osm_data)) + " elements loaded in " +
+                  str(time.strftime("%H:%M:%S", time.gmtime(toc - tic))))
+
         except Exception as e:
             if isinstance(e, SystemExit):
                 exit()

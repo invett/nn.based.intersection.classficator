@@ -240,6 +240,10 @@ class Crossing:
             result = list(np.random.randint(0, 300, int(num_elements)))
             if line != 300:
                 noise[np.arange(noise.shape[0])[line, None], result] = 0
+
+        if len(test.shape) == 3:  # check whether we're using a 3-channel image; in this case, 3-channelize the noise
+            noise = np.dstack([noise]*3)
+
         test = test * noise
         # toc = datetime.now()
         # delta = toc - tic
