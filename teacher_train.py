@@ -27,6 +27,10 @@ import seaborn as sn
 
 def main(args):
 
+    addnoise = True
+    if args.no_noise:
+        addnoise = False
+
     if not args.nowandb:  # if nowandb flag was set, skip
         if args.test:
             wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train",
@@ -57,18 +61,29 @@ def main(args):
         print('not supported optimizer \n')
         exit()
 
-    dataset_train = teacher_tripletloss_generated(elements=2000,
-                                                  transform=transforms.Compose([transforms.ToPILImage(),
-                                                                                transforms.Resize((224, 224)),
-                                                                                transforms.ToTensor()
-                                                                                ]),
-                                                  canonical=False)
-    dataset_val = teacher_tripletloss_generated(elements=200,
-                                                transform=transforms.Compose([transforms.ToPILImage(),
-                                                                              transforms.Resize((224, 224)),
-                                                                              transforms.ToTensor(),
-                                                                              ]),
-                                                canonical=False)
+    if args.train:
+        # In both, set canonical to False to speedup the process; canonical won't be used for train/validate.
+        dataset_train = teacher_tripletloss_generated(elements=2000,
+                                                      transform=transforms.Compose([transforms.ToPILImage(),
+                                                                                    transforms.Resize((224, 224)),
+                                                                                    transforms.ToTensor()
+                                                                                    ]),
+                                                      canonical=args.canonical,
+                                                      noise=addnoise)
+        dataset_val = teacher_tripletloss_generated(elements=200,
+                                                    transform=transforms.Compose([transforms.ToPILImage(),
+                                                                                  transforms.Resize((224, 224)),
+                                                                                  transforms.ToTensor(),
+                                                                                  ]),
+                                                    canonical=args.canonical,
+                                                    noise=addnoise)
+
+        dataloader_train = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=True,
+                                      num_workers=args.num_workers)
+        dataloader_val = DataLoader(dataset_val, batch_size=1, shuffle=False, num_workers=args.num_workers)
+
+        train(args, model, optimizer, dataloader_train, dataloader_val, dataset_train, dataset_val)
+
     # List all test folders
     if args.test:
         folders = np.array([os.path.join(args.dataset, folder) for folder in os.listdir(args.dataset) if
@@ -80,26 +95,18 @@ def main(args):
                                                                              (224, 224)),
                                                                          transforms.ToTensor()
                                                                          ]),
-                                           noise=True,
-                                           canonical=True)
+                                           noise=addnoise,
+                                           canonical=args.canonical)
 
-    dataloader_train = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=True,
-                                  num_workers=args.num_workers)
-    dataloader_val = DataLoader(dataset_val, batch_size=1, shuffle=False,
-                                num_workers=args.num_workers)
-    if args.test:
-        dataloader_test = DataLoader(dataset_test, batch_size=1, shuffle=False,
-                                     num_workers=args.num_workers)
+        dataloader_test = DataLoader(dataset_test, batch_size=1, shuffle=False, num_workers=args.num_workers)
 
-    if args.test:
         # load Saved Model
         loadpath = '/home/malvaro/Documentos/IntersectionClassifier/trainedmodels/teacher/teacher_model_{}.pth'.format(args.resnetmodel)
         print('load model from {} ...'.format(loadpath))
         model.load_state_dict(torch.load(loadpath))
         print('Done!')
+
         test(args, model, dataloader_test)
-    else:
-        train(args, model, optimizer, dataloader_train, dataloader_val, dataset_train, dataset_val)
 
 
 def test(args, model, dataloader):
@@ -407,31 +414,20 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--resnetmodel', type=str, default="resnet18",
-                        help='The context path model you are using, resnet18, resnet50 or resnet101.')
-    parser.add_argument('--dataset', type=str, help='path to the dataset you are using.')
-    parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
-    parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
-    parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
-                                                                       'checkpoint (epochs)')
-    parser.add_argument('--lr', type=float, default=0.0001, help='learning rate used for train')
-    parser.add_argument('--momentum', type=float, default=0.9, help='momentum used for train')
-    parser.add_argument('--num_workers', type=int, default=4, help='num of workers')
-    parser.add_argument('--num_classes', type=int, default=7, help='num of object classes')
-    parser.add_argument('--cuda', type=str, default='0', help='GPU is used for training')
-    parser.add_argument('--use_gpu', type=bool, default=True, help='whether to user gpu for training')
-    parser.add_argument('--save_model_path', type=str, default='./trainedmodels/teacher/', help='path to save model')
-    parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
-    parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
-    parser.add_argument('--patience_start', type=int, default=5,
-                        help='Starting epoch for patience of validation. Default, 50. ')
-    parser.add_argument('--margin', type=float, default=0.5, help='margin in triplet')
-    parser.add_argument('--threshold', type=float, default=0.95, help='threshold to decide if the detection is correct')
-    parser.add_argument('--distance', type=int, default=20, help='Distance to crossroads')
-    parser.add_argument('--telegram', type=bool, default=True, help='Send info through Telegram')
-    parser.add_argument('--triplet', action='store_true', help='Triplet Loss')
-    parser.add_argument('--test', action='store_true', help='testing epochs')
+    # Script modalities
+    parser.add_argument('--train', action='store_true', help='Train/Validate the model')
+    parser.add_argument('--test', action='store_true', help='Test the model')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
+    parser.add_argument('--telegram', type=bool, default=True, help='Send info through Telegram')
+
+    parser.add_argument('--triplet', action='store_true', help='Triplet Loss')
+    parser.add_argument('--no_noise', action='store_true', help='In case you want to disable the nois injection in '
+                                                                'the OSM images')
+
+    # Script configuration / paths
+    parser.add_argument('--dataset', type=str, help='path to the dataset you are using.')
+    parser.add_argument('--save_model_path', type=str, default='./trainedmodels/teacher/', help='path to save model')
+
     parser.add_argument('--saveTestCouplesForDebug', action='store_true',
                         help='use this flag to ENABLE some log/debug :) see code!')
     parser.add_argument('--saveTestCouplesForDebugPath', type=str,
@@ -442,7 +438,39 @@ if __name__ == '__main__':
     parser.add_argument('--saveEmbeddingsPath', type=str,
                         help='Where to save the Embeddings. Required when --saveEmbeddings is set')
 
+    # Network behaviors
+    parser.add_argument('--canonical', action='store_true', help='Used in TESTING to enable the creation of '
+                                                                 'canonical images; this is used to level the test'
+                                                                 'accuracy through different iterations, ie, '
+                                                                 'having the same comparison images every run')
+
+    # Newwork parameters
+    parser.add_argument('--resnetmodel', type=str, default="resnet18",
+                        help='The context path model you are using, resnet18, resnet50 or resnet101.')
+    parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
+    parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
+    parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
+                                                                       'checkpoint (epochs)')
+    parser.add_argument('--lr', type=float, default=0.0001, help='learning rate used for train')
+    parser.add_argument('--momentum', type=float, default=0.9, help='momentum used for train')
+    parser.add_argument('--num_workers', type=int, default=4, help='num of workers')
+    parser.add_argument('--num_classes', type=int, default=7, help='num of object classes')
+    parser.add_argument('--cuda', type=str, default='0', help='GPU is used for training')
+    parser.add_argument('--use_gpu', type=bool, default=True, help='whether to user gpu for training')
+    parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
+    parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
+    parser.add_argument('--patience_start', type=int, default=5,
+                        help='Starting epoch for patience of validation. Default, 50. ')
+    parser.add_argument('--margin', type=float, default=0.5, help='margin in triplet')
+    parser.add_argument('--threshold', type=float, default=0.95, help='threshold to decide if the detection is correct')
+    parser.add_argument('--distance', type=int, default=20, help='Distance to crossroads')
+
     args = parser.parse_args()
+
+    if args.train and args.canonical:
+        print("Mmmmm... please consider to change your mind! Creating the canonical images can speed-down the "
+              "process. use --train without --canonical")
+        exit(-1)
 
     if args.saveEmbeddings and not args.saveEmbeddingsPath:
         print("Parameter --saveEmbeddingsPath is REQUIRED when --saveEmbeddings is set")

@@ -385,7 +385,7 @@ class fromGeneratedDataset(Dataset):
 
 class teacher_tripletloss(Dataset):
 
-    def __init__(self, folders, distance, include_insidecrossing=False, transform=None, noise=False, canonical=True):
+    def __init__(self, folders, distance, include_insidecrossing=False, transform=None, noise=True, canonical=True):
         """
 
         This dataloader uses "REAL" intersection, using the OSM data; this data is pre-generated from the OSM and the
