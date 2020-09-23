@@ -45,22 +45,22 @@ def main(args):
     if torch.cuda.is_available() and args.use_gpu:
         model = model.cuda()
 
-    # build optimizer
-    if args.optimizer == 'rmsprop':
-        optimizer = torch.optim.RMSprop(model.parameters(), args.lr, momentum=args.momentum)
-    elif args.optimizer == 'sgd':
-        optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum)
-    elif args.optimizer == 'adam':
-        optimizer = torch.optim.Adam(model.parameters(), args.lr)
-    elif args.optimizer == 'ASGD':
-        optimizer = torch.optim.ASGD(model.parameters(), args.lr)
-    elif args.optimizer == 'Adamax':
-        optimizer = torch.optim.Adamax(model.parameters(), args.lr)
-    else:
-        print('not supported optimizer \n')
-        exit()
-
     if args.train:
+        # build optimizer
+        if args.optimizer == 'rmsprop':
+            optimizer = torch.optim.RMSprop(model.parameters(), args.lr, momentum=args.momentum)
+        elif args.optimizer == 'sgd':
+            optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum)
+        elif args.optimizer == 'adam':
+            optimizer = torch.optim.Adam(model.parameters(), args.lr)
+        elif args.optimizer == 'ASGD':
+            optimizer = torch.optim.ASGD(model.parameters(), args.lr)
+        elif args.optimizer == 'Adamax':
+            optimizer = torch.optim.Adamax(model.parameters(), args.lr)
+        else:
+            print('not supported optimizer \n')
+            exit()
+
         # In both, set canonical to False to speedup the process; canonical won't be used for train/validate.
         dataset_train = teacher_tripletloss_generated(elements=2000,
                                                       transform=transforms.Compose([transforms.ToPILImage(),
@@ -100,8 +100,13 @@ def main(args):
         dataloader_test = DataLoader(dataset_test, batch_size=1, shuffle=False, num_workers=args.num_workers)
 
         # load Saved Model
-        loadpath = '/home/malvaro/Documentos/IntersectionClassifier/trainedmodels/teacher/teacher_model_{}.pth'.format(
-            args.resnetmodel)
+        if args.triplet:
+            loadpath = '/home/malvaro/Documentos/IntersectionClassifier/trainedmodels/teacher/teacher_model_{}.pth'.format(
+                args.resnetmodel)
+        else:
+            loadpath = '/home/malvaro/Documentos/IntersectionClassifier/trainedmodels/teacher/teacher_model_class_{' \
+                       '}.pth'.format(
+                args.resnetmodel)
         print('load model from {} ...'.format(loadpath))
         model.load_state_dict(torch.load(loadpath))
         print('Done!')

@@ -521,6 +521,7 @@ def main(args, model=None):
 
     if not args.nowandb:  # if nowandb flag was set, skip
         wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito', job_type="eval")
+        wandb.config.update(args)
 
     test(args, dataloader_test)
 
