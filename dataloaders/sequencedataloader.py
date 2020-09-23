@@ -13,7 +13,8 @@ import time
 import numpy as np
 
 from scripts.OSM_generator import Crossing, test_crossing_pose
-
+from miscellaneous.utils import send_telegram_picture
+import matplotlib.pyplot as plt
 
 class BaseLine(Dataset):
     def __init__(self, folders, transform=None):
@@ -529,9 +530,9 @@ class teacher_tripletloss(Dataset):
         negative_image = cv2.imread(negative_item[0], cv2.IMREAD_UNCHANGED)
         if self.canonical:  # set canonical to False to speedup this dataloader
             canonical_image = test_crossing_pose(crossing_type=anchor_type, save=False, noise=self.noise,
-                                                 sampling=False, return3CHimages=True)
+                                                 sampling=False)[0]
         else:
-            canonical_image = [0]
+            canonical_image = 0
 
         ground_truth_img = cv2.imread(
             os.path.dirname(str(self.osm_data[idx][0])) + "_TYPES/" + str(self.osm_data[idx][2]) + ".png",
@@ -545,10 +546,15 @@ class teacher_tripletloss(Dataset):
             positive_image = Crossing.add_noise(self, positive_image, elements_multiplier=3.0, distribution="uniform")
             negative_image = Crossing.add_noise(self, negative_image, elements_multiplier=3.0, distribution="uniform")
 
+        # a = plt.figure()
+        # plt.imshow(positive_image)
+        # send_telegram_picture(a, "positive_image")
+        # plt.close('all')
+
         sample = {'anchor': anchor_image,
                   'positive': positive_image,
                   'negative': negative_image,
-                  'canonical': canonical_image[0],
+                  'canonical': canonical_image,
                   'label_anchor': anchor_type, 'label_positive': positive_item[2],  # [2] is the type
                   'label_negative': negative_item[2],  # [2] is the type
                   'filename_anchor': self.osm_data[idx][0],  # [0] is the filename

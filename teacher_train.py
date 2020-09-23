@@ -18,6 +18,8 @@ from dropout_models import get_resnext, get_resnet
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 
 from miscellaneous.utils import send_telegram_message
+from miscellaneous.utils import send_telegram_picture
+import time
 
 import matplotlib.pyplot as plt
 
@@ -115,7 +117,9 @@ def main(args):
 
 
 def test(args, model, dataloader):
-    print('\nstart test!')
+
+    tic = time.time()
+    print('\nstart test!' + str(time.strftime("%H:%M:%S", time.gmtime(tic))))
 
     labelRecord = np.array([], dtype=np.uint8)
     predRecord = np.array([], dtype=np.uint8)
@@ -136,6 +140,17 @@ def test(args, model, dataloader):
         else:
             data = sample['anchor']
             label = sample['label_anchor']
+
+        #if args.canonical:
+        #    a = plt.figure()
+        #    plt.imshow(canonical.squeeze().numpy().transpose((1, 2, 0)))
+        #    send_telegram_picture(a, "canonical")
+        #    plt.close('all')
+
+        # a = plt.figure()
+        # plt.imshow(sample['anchor'].squeeze().numpy().transpose((1, 2, 0)))
+        # send_telegram_picture(a, "anchor")
+        # plt.close('all')
 
         if torch.cuda.is_available() and args.use_gpu:
             if args.triplet:
@@ -206,20 +221,33 @@ def test(args, model, dataloader):
     conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6, 7], columns=[0, 1, 2, 3, 4, 5, 6, 7],
                                       fill_value=0)
     plt.figure(figsize=(10, 7))
-    sn.heatmap(conf_matrix, annot=True)
+    heatmap = sn.heatmap(conf_matrix, annot=True, fmt='d')  # give a name to the heatmap, so u can call telegram
 
     if not args.nowandb:  # if nowandb flag was set, skip
         wandb.log({"Test/Acc": acc, "conf-matrix": wandb.Image(plt)})
 
+    # This was used to show the vector in https://projector.tensorflow.org/
     if args.saveEmbeddings:
         all_embedding_matrix = np.asarray(all_embedding_matrix)
         np.savetxt(os.path.join(args.saveEmbeddingsPath, "all_embedding_matrix.txt"), np.asarray(all_embedding_matrix),
                    delimiter='\t')
         np.savetxt(os.path.join(args.saveEmbeddingsPath, "all_label_embedding_matrix.txt"), predRecord, delimiter='\t')
 
+    toc = time.time()
+
+    if args.telegram:
+        send_telegram_picture(heatmap.get_figure(), "Test executed in " + str(time.strftime("%H:%M:%S",
+                                                                                            time.gmtime(toc - tic))) +
+                              "\nAccuracy: " + "{:.4f}".format(acc) + "\nTriplet: " + str(args.triplet) +
+                              "\nCanonical: " + str(args.canonical) +
+                              "\nThreshold: " + str(args.threshold))
+        plt.close('all')
+
 
 def validation(args, model, criterion, dataloader_val):
-    print('\nstart val!')
+
+    tic = time.time()
+    print('\nstart val!' + str(time.strftime("%H:%M:%S", time.gmtime(tic))))
 
     loss_record = 0.0
     acc_record = 0.0
@@ -278,7 +306,7 @@ def validation(args, model, criterion, dataloader_val):
 
     # Calculate validation metrics
     loss_val_mean = loss_record / len(dataloader_val)
-    print('loss for test/validation : %f' % loss_val_mean)
+    print('Loss for test/validation : %f' % loss_val_mean)
     acc = acc_record / len(dataloader_val)
     print('Accuracy for test/validation : %f\n' % acc)
 

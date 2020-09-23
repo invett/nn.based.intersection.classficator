@@ -234,7 +234,7 @@ class Crossing:
         # send_telegram_picture(a, "OLD method: [sec:microsec] " + str(delta.seconds) + ":" + str(delta.microseconds))
 
         # tic = datetime.now()
-        noise = np.ones((300, 300), np.uint8)
+        noise = np.ones((300, 300), test.dtype)
         for line in range(300, 0, -1):
             num_elements = (300 - line) * elements_multiplier
             result = list(np.random.randint(0, 300, int(num_elements)))
@@ -385,7 +385,7 @@ class Crossing:
 
 
 def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
-                       save=True, path="", filenumber=0, sampling=True, return3CHimages=False):
+                       save=True, path="", filenumber=0, sampling=True):
     """
 
     Args:
@@ -408,9 +408,7 @@ def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_a
         sampling: whether or not add noise to intersection arms/branches; default True; set false to generate a
                   "canonical" intersection
 
-        return3CHimages: if set, the 300x300 image will be changed to 300x300x3
-
-    Returns:
+    Returns: 300x300x3 uint8
 
     """
 
@@ -503,11 +501,10 @@ def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_a
         cv2.imwrite(str(path) + str(filenumber).zfill(10) + ".png", sample)
 
     # conversion to uint8 seems necessary for sending to telegram
+    # and
+    # create 3-channel image
     sample = np.dstack([np.array(sample / 1.0, dtype=np.uint8)]*3)
 
-    if return3CHimages:
-        # create an 3-Channel image
-        sample = np.dstack([sample]*3)
 
     return [sample, xx, yy]
 
