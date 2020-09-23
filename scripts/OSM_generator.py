@@ -234,7 +234,7 @@ class Crossing:
         # send_telegram_picture(a, "OLD method: [sec:microsec] " + str(delta.seconds) + ":" + str(delta.microseconds))
 
         # tic = datetime.now()
-        noise = np.ones((300, 300), np.float32)
+        noise = np.ones((300, 300), np.uint8)
         for line in range(300, 0, -1):
             num_elements = (300 - line) * elements_multiplier
             result = list(np.random.randint(0, 300, int(num_elements)))
