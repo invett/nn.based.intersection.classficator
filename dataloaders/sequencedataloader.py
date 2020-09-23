@@ -279,6 +279,8 @@ class fromGeneratedDataset(Dataset):
 
     def __init__(self, folders, distance, transform=None,
                  rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True, canonical=True, addGeneratedOSM=True):
+        # TODO addGeneratedOSM should not be the default behavior; set FALSE here anc call with TRUE as needed
+
         """
         Args:
             root_dir (string): Directory with all the images.
@@ -335,8 +337,8 @@ class fromGeneratedDataset(Dataset):
         bev_image = cv2.imread(self.bev_images[idx], cv2.IMREAD_UNCHANGED)
         bev_label = self.bev_labels[idx]
 
-        # Sample an intersection given a label; this is used in the STUDENT training
         if self.addGeneratedOSM:
+            # Sample an intersection given a label; this is used in the STUDENT training
             generated_osm = test_crossing_pose(crossing_type=bev_label, save=False, rnd_width=self.rnd_width,
                                                rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise)
             sample = {'data': bev_image,
