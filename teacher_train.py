@@ -26,7 +26,6 @@ import seaborn as sn
 
 
 def main(args):
-
     addnoise = True
     if args.no_noise:
         addnoise = False
@@ -101,7 +100,8 @@ def main(args):
         dataloader_test = DataLoader(dataset_test, batch_size=1, shuffle=False, num_workers=args.num_workers)
 
         # load Saved Model
-        loadpath = '/home/malvaro/Documentos/IntersectionClassifier/trainedmodels/teacher/teacher_model_{}.pth'.format(args.resnetmodel)
+        loadpath = '/home/malvaro/Documentos/IntersectionClassifier/trainedmodels/teacher/teacher_model_{}.pth'.format(
+            args.resnetmodel)
         print('load model from {} ...'.format(loadpath))
         model.load_state_dict(torch.load(loadpath))
         print('Done!')
@@ -173,8 +173,8 @@ def test(args, model, dataloader):
                                                       (sample['ground_truth_image'] / 255.0).float().transpose(1, 3),
                                                       (224, 224)).squeeze().transpose(0, 2)), 1).squeeze(), 0, 1))
                     filename = os.path.join(args.saveTestCouplesForDebugPath,
-                                                str(sample['filename_anchor'][0]).split(sep="/")[6] + "-" +
-                                                str(sample['filename_anchor'][0]).split(sep="/")[8])
+                                            str(sample['filename_anchor'][0]).split(sep="/")[6] + "-" +
+                                            str(sample['filename_anchor'][0]).split(sep="/")[8])
                     plt.savefig(filename)
                     print(filename)
                     plt.close('all')
@@ -182,7 +182,7 @@ def test(args, model, dataloader):
             labelRecord = np.append(labelRecord, label)
             predRecord = np.append(predRecord, predict)
 
-        else: # ie, not triplet
+        else:  # ie, not triplet
             predict = torch.argmax(output, 1)
             label = label.cpu().numpy()
             predict = predict.cpu().numpy()
@@ -378,7 +378,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
 
             acc_val, loss_val = validation(args, model, criterion, dataloader_val)
 
-            if acc_pre < acc_val or loss_pre > loss_val:
+            if (acc_pre < acc_val) or (loss_pre > loss_val):
                 patience = 0
                 if acc_pre < acc_val:
                     acc_pre = acc_val

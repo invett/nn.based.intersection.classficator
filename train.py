@@ -60,6 +60,11 @@ def test(args, dataloader_test, gt_model=None):
     model.load_state_dict(torch.load(savepath))
     print('Done!')
 
+    if args.embedding:
+        gt_model = copy.deepcopy(model)
+        gt_model.load_state_dict(torch.load(args.teacher_path))
+        gt_model.eval()
+
     if torch.cuda.is_available() and args.use_gpu:
         model = model.cuda()
         if args.embedding:
@@ -327,12 +332,16 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
                                "Val/Acc": acc_val,
                                "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)}, step=epoch)
 
-            if kfold_acc < acc_val or kfold_loss > loss_val:
+            if (kfold_acc < acc_val) or (kfold_loss > loss_val):
+
                 patience = 0
+                print('Patience restart')
+
                 if kfold_acc < acc_val:
                     kfold_acc = acc_val
                 else:
                     kfold_loss = loss_val
+
                 if acc_pre < kfold_acc:
                     bestModel = model.state_dict()
                     acc_pre = kfold_acc
@@ -345,6 +354,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
             elif epoch < args.patience_start:
                 patience = 0
+                print('Patience start not reached')
 
             else:
                 patience += 1
@@ -502,7 +512,7 @@ def main(args, model=None):
                                                                            ]))
     elif args.dataloader == 'generatedDataset':
         if args.embedding:
-            fromGeneratedDataset([test_path], args.distance, transform=generateTransforms)
+            test_dataset = fromGeneratedDataset([test_path], args.distance, transform=generateTransforms)
         else:
             test_path = test_path.replace('data_raw_bev', 'data_raw')
             test_dataset = TestDataset(test_path, args.distance, transform=generateTransforms)
@@ -510,15 +520,9 @@ def main(args, model=None):
     dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
     if not args.nowandb:  # if nowandb flag was set, skip
-        wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito', job_type="eval",
-                   reinit=True)
-    if args.embedding:
-        test(args, dataloader_test, gt_model=gt_model)
-    else:
-        test(args, dataloader_test)
+        wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito', job_type="eval")
 
-    if not args.nowandb:  # if nowandb flag was set, skip
-        wandb.join()
+    test(args, dataloader_test)
 
     if args.telegram:
         send_telegram_message("Finish successfully")
