@@ -566,6 +566,8 @@ class teacher_tripletloss(Dataset):
             sample['anchor'] = self.transform(sample['anchor'])
             sample['positive'] = self.transform(sample['positive'])
             sample['negative'] = self.transform(sample['negative'])
+
+        if self.canonical:
             sample['canonical'] = self.transform(sample['canonical'])
 
         return sample
