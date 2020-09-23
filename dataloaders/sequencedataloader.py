@@ -572,7 +572,7 @@ class teacher_tripletloss_generated(Dataset):
                  transform=None):
         """
 
-        This dataloader uses "RUNTIME-GENERATED" intersection (this differs from teacher_tripletloss dataloader that
+        This dataloader uses "RUNTIME-GENERATED" intersections (this differs from teacher_tripletloss dataloader that
         uses the OSM data).
 
         Args:

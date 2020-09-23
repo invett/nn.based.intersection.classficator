@@ -135,8 +135,10 @@ def test(args, model, dataloader):
         if torch.cuda.is_available() and args.use_gpu:
             if args.triplet:
                 anchor = anchor.cuda()
-                # positive = positive.cuda()
-                positive = canonical.cuda()
+                if args.canonical:
+                    positive = canonical.cuda()
+                else:
+                    positive = positive.cuda()
             else:
                 data = data.cuda()
                 label = label.cuda()
