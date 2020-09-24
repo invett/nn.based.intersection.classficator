@@ -460,7 +460,7 @@ def main(args, model=None):
             if args.embedding:
                 gt_model = copy.deepcopy(model)
                 gt_model.load_state_dict(torch.load(args.teacher_path))
-                if args.embedding_class: # if I'm using the teacher trained with FC I need to get rid of it before.
+                if args.embedding_class:  # if I'm using the teacher trained with FC I need to get rid of it before.
                     model = torch.nn.Sequential(*(list(model.children())[:-1]))
                     gt_model = torch.nn.Sequential(*(list(gt_model.children())[:-1]))
                 gt_model.eval()
