@@ -117,7 +117,6 @@ def main(args):
 
 
 def test(args, model, dataloader):
-
     tic = time.time()
     print('\nstart test!' + str(time.strftime("%H:%M:%S", time.gmtime(tic))))
 
@@ -141,7 +140,7 @@ def test(args, model, dataloader):
             data = sample['anchor']
             label = sample['label_anchor']
 
-        #if args.canonical:
+        # if args.canonical:
         #    a = plt.figure()
         #    plt.imshow(canonical.squeeze().numpy().transpose((1, 2, 0)))
         #    send_telegram_picture(a, "canonical")
@@ -245,9 +244,8 @@ def test(args, model, dataloader):
 
 
 def validation(args, model, criterion, dataloader_val):
-
     tic = time.time()
-    print('\nstart val!' + str(time.strftime("%H:%M:%S", time.gmtime(tic))))
+    print('\nstart val!\n' + str(time.strftime("%H:%M:%S", time.gmtime(tic))))
 
     loss_record = 0.0
     acc_record = 0.0
@@ -323,7 +321,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
 
     # Build criterion
     if args.triplet:
-        criterion = torch.nn.TripletMarginLoss(margin=args.margin)
+        criterion = torch.nn.TripletMarginLoss(margin=args.margin, swap=args.swap)
     else:
         criterion = torch.nn.CrossEntropyLoss()
 
@@ -423,11 +421,16 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
 
                 if not args.nowandb:  # if nowandb flag was set, skip
                     wandb.log({"Val/loss": loss_val, "Val/Acc": acc_val}, step=epoch)
-
-                print('Saving model: ',
-                      os.path.join(args.save_model_path, 'teacher_model_class_{}.pth'.format(args.resnetmodel)))
-                torch.save(bestModel,
-                           os.path.join(args.save_model_path, 'teacher_model_class_{}.pth'.format(args.resnetmodel)))
+                if args.triplet:
+                    print('Saving model: ',
+                          os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(args.resnetmodel)))
+                    torch.save(bestModel, os.path.join(args.save_model_path,
+                                                       'teacher_model_{}.pth'.format(args.resnetmodel)))
+                else:
+                    print('Saving model: ',
+                          os.path.join(args.save_model_path, 'teacher_model_class_{}.pth'.format(args.resnetmodel)))
+                    torch.save(bestModel, os.path.join(args.save_model_path,
+                                                       'teacher_model_class_{}.pth'.format(args.resnetmodel)))
 
             elif epoch < args.patience_start:
                 patience = 0
@@ -436,7 +439,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
                 patience += 1
                 print('Patience: {}\n'.format(patience))
 
-        if patience >= args.patience > 0:
+        if patience >= args.patience > 0 or acc_val == 1:
             break
 
         # optionally chance this values during training. Consider to add these values to wandb
@@ -456,6 +459,7 @@ if __name__ == '__main__':
     parser.add_argument('--telegram', type=bool, default=True, help='Send info through Telegram')
 
     parser.add_argument('--triplet', action='store_true', help='Triplet Loss')
+    parser.add_argument('--swap', action='store_true', help='Triplet Loss swap')
     parser.add_argument('--no_noise', action='store_true', help='In case you want to disable the nois injection in '
                                                                 'the OSM images')
 
@@ -496,7 +500,7 @@ if __name__ == '__main__':
     parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
     parser.add_argument('--patience_start', type=int, default=5,
                         help='Starting epoch for patience of validation. Default, 50. ')
-    parser.add_argument('--margin', type=float, default=0.5, help='margin in triplet')
+    parser.add_argument('--margin', type=float, default=1, help='margin in triplet')
     parser.add_argument('--threshold', type=float, default=0.95, help='threshold to decide if the detection is correct')
     parser.add_argument('--distance', type=int, default=20, help='Distance to crossroads')
 
@@ -515,6 +519,9 @@ if __name__ == '__main__':
         print("Parameter --saveTestCouplesForDebugPath is REQUIRED when --saveTestCouplesForDebug is set")
         exit(-1)
 
+    if args.swap and not args.triplet:
+        print("Parameter --swap is not necessary for classification")
+        exit(-1)
     main(args)
 
 # Used paths:

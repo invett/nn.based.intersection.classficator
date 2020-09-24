@@ -444,7 +444,7 @@ def main(args, model=None):
             if args.resnetmodel[0:6] == 'resnet':
                 model = get_model_resnet(args.resnetmodel, args.num_classes, transfer=args.transfer,
                                          pretrained=args.pretrained,
-                                         embedding=(args.embedding or args.triplet))
+                                         embedding=(args.embedding or args.triplet) and not args.embedding_class)
             elif args.resnetmodel[0:7] == 'resnext':
                 model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
             elif args.resnetmodel == 'personalized':
@@ -460,6 +460,9 @@ def main(args, model=None):
             if args.embedding:
                 gt_model = copy.deepcopy(model)
                 gt_model.load_state_dict(torch.load(args.teacher_path))
+                if args.embedding_class: # if I'm using the teacher trained with FC I need to get rid of it before.
+                    model = torch.nn.Sequential(*(list(model.children())[:-1]))
+                    gt_model = torch.nn.Sequential(*(list(gt_model.children())[:-1]))
                 gt_model.eval()
 
             if torch.cuda.is_available() and args.use_gpu:
@@ -567,6 +570,7 @@ if __name__ == '__main__':
 
     # to enable the STUDENT training, set --embedding and provide the teacher path
     parser.add_argument('--embedding', action='store_true', help='Use embedding matching')
+    parser.add_argument('--embedding_class', action='store_true', help='Use embedding matching with classification')
     parser.add_argument('--triplet', action='store_true', help='Use triplet learing')
     parser.add_argument('--teacher_path', type=str, help='Insert teacher path (for student training)')
     parser.add_argument('--margin', type=float, default=0.5, help='margin in triplet and embedding')

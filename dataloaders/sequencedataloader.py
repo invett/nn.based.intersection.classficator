@@ -427,9 +427,9 @@ class teacher_tripletloss(Dataset):
 
         self.transform = transform
 
-        osm_files = []
-        osm_types = []
-        osm_distances = []
+        # osm_files = []
+        # osm_types = []
+        # osm_distances = []
 
         osm_data = []
 
