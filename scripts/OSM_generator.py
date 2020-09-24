@@ -237,7 +237,8 @@ class Crossing:
         noise = np.ones((300, 300), test.dtype)
         for line in range(300, 0, -1):
             num_elements = (300 - line) * elements_multiplier
-            result = list(np.random.randint(0, 300, int(num_elements)))
+            # result = list(np.random.randint(0, 300, int(num_elements))) #takes much longer ... list+ randint++++
+            result = (np.random.rand(1, int(num_elements)).squeeze() * 300.0).astype(np.int)
             if line != 300:
                 noise[np.arange(noise.shape[0])[line, None], result] = 0
 
