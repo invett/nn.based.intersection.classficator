@@ -60,7 +60,8 @@ class BaseLine(Dataset):
         gtdata = pd.read_csv(gt_path, sep=';', header=None, dtype=str)
         gTruth = int(gtdata.loc[gtdata[0] == filename][2])
 
-        sample = {'data': image, 'label': gTruth}
+        sample = {'data': image,
+                  'label': gTruth}
 
         if self.transform:
             sample['data'] = self.transform(sample['data'])
@@ -211,7 +212,10 @@ class fromAANETandDualBisenet(Dataset):
         gtdata = pd.read_csv(gt_path, sep=';', header=None, dtype=str)
         gTruth = int(gtdata.loc[gtdata[0] == filename.replace("_pred", "")][2])
 
-        sample = {'aanet': aanet_image, 'alvaromask': alvaromask_image, 'image_02': image_02_image, 'label': gTruth}
+        sample = {'aanet': aanet_image,
+                  'alvaromask': alvaromask_image,
+                  'image_02': image_02_image,
+                  'label': gTruth}
 
         assert self.transform, "no transform list provided"
 
@@ -344,7 +348,7 @@ class fromGeneratedDataset(Dataset):
                                                rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise)
             sample = {'data': bev_image,
                       'label': bev_label,
-                      'generated_osm': generated_osm[0]}
+                      'generated_osm': generated_osm[0]}  # TODO this [0] might be a bug
         else:
             sample = {'data': bev_image,
                       'label': bev_label,
