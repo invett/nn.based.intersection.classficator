@@ -272,7 +272,7 @@ def teacher_network_pass(args, sample, model, criterion):
         result = (cos_sim(out_anchor, out_positive) + 1.0) * 0.5
         acc = torch.sum(result).item()
 
-    else: # classification
+    else:  # classification
         # Obtain sample values
         data = sample['anchor']
         label = sample['label_anchor']
@@ -299,13 +299,12 @@ def teacher_network_pass(args, sample, model, criterion):
 
 
 def student_network_pass(args, sample, criterion, model, gtmodel=None):
-
     cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
 
     if args.triplet:
-        anchor = sample['anchor']
-        positive = sample['positive']
-        negative = sample['negative']
+        anchor = sample['anchor']  # BEV Image / OSM Anchor
+        positive = sample['positive']  # OSM Positive / BEV Positive
+        negative = sample['negative']  # OSM Negative / BEV Negative
         if torch.cuda.is_available() and args.use_gpu:
             anchor = anchor.cuda()
             positive = positive.cuda()
