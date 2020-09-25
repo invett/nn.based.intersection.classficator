@@ -291,6 +291,9 @@ def main(args, model=None):
                 val_dataset = fromGeneratedDataset(val_path, args.distance, transform=generateTransforms)
                 train_dataset = fromGeneratedDataset(train_path, args.distance, transform=generateTransforms)
 
+            elif args.dataloader == 'triplet_OBB':
+                pass
+                # TODO Implement validation and train dataset for OBS triplet loss
             elif args.dataloader == "BaseLine":
                 val_dataset = BaseLine(val_path, transform=transforms.Compose([transforms.Resize((224, 224)),
                                                                                transforms.ToTensor(),
@@ -461,6 +464,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataloader', type=str, default='BaseLine', choices=['fromAANETandDualBisenet',
                                                                                'generatedDataset',
                                                                                'BaseLine',
+                                                                               'triplet_OBB',
                                                                                'TestDataset'],
                         help='One of the supported datasets')
 

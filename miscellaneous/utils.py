@@ -302,9 +302,9 @@ def student_network_pass(args, sample, criterion, model, gtmodel=None):
     cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
 
     if args.triplet:
-        anchor = sample['anchor']  # BEV Image / OSM Anchor
-        positive = sample['positive']  # OSM Positive / BEV Positive
-        negative = sample['negative']  # OSM Negative / BEV Negative
+        anchor = sample['OSM_anchor']  # BEV Image / OSM Anchor
+        positive = sample['BEV_positive']  # OSM Positive / BEV Positive
+        negative = sample['BEV_negative']  # OSM Negative / BEV Negative
         if torch.cuda.is_available() and args.use_gpu:
             anchor = anchor.cuda()
             positive = positive.cuda()
