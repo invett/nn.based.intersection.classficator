@@ -3,6 +3,7 @@ import os
 import glob
 from PIL import Image
 from torch.utils.data import Dataset
+import torch
 import pandas as pd
 from numpy import load
 import cv2
@@ -369,7 +370,6 @@ class fromGeneratedDataset(Dataset):
         self.bev_images = self.bev_images[::decimateStep]
         self.bev_labels = self.bev_labels[::decimateStep]
 
-
         toc = time.time()
         print("[fromGeneratedDataset] - " + str(len(self.bev_labels)) + " elements loaded in " + str(
             time.strftime("%H:%M:%S", time.gmtime(toc - tic))))
@@ -389,10 +389,12 @@ class fromGeneratedDataset(Dataset):
                                                rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise)
             sample = {'data': bev_image,
                       'label': bev_label,
+                      'image_path': self.bev_images[idx],
                       'generated_osm': generated_osm[0]}  # TODO this [0] might be a bug
         else:
             sample = {'data': bev_image,
                       'label': bev_label,
+                      'image_path': self.bev_images[idx]
                       }
 
         # debug code to send the sample over telegram
@@ -402,7 +404,7 @@ class fromGeneratedDataset(Dataset):
         # plt.imshow(np.asarray(sample['generated_osm'], dtype=np.uint8))
         # send_telegram_picture(a, "generated_osm")
 
-        if self.transform is not None:
+        if self.transform:
             sample = self.transform(sample)
 
         return sample
@@ -815,4 +817,72 @@ class teacher_tripletloss_generated(Dataset):
             sample['positive'] = self.transform(sample['positive'])
             sample['negative'] = self.transform(sample['negative'])
 
+        return sample
+
+
+class triplet_OBB(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
+
+    def __init__(self, folders, distance, elements=1000, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
+                 canonical=True, transform=None, random_rate=1.0, loadlist=True, savelist=False, decimateStep=1):
+
+        teacher_tripletloss_generated.__init__(self, elements=elements, rnd_width=rnd_width, rnd_angle=rnd_angle,
+                                               rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
+                                               transform=transform, random_rate=random_rate)
+
+        fromGeneratedDataset.__init__(self, folders, distance, transform=transform, rnd_width=rnd_width,
+                                      rnd_angle=rnd_angle, rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
+                                      addGeneratedOSM=True, decimateStep=decimateStep,
+                                      savelist=savelist, loadlist=loadlist)
+
+    def __len__(self):
+        # In this multi inherit class we have both [teacher_tripletloss_generated] and [fromGeneratedDataset] items.
+        # in OBB , OSM + BEV + BEV we want that our list of elements is like the teacher_tripletloss_generated one.
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+
+        # OBB ... so to get the OSM we can simply get the anchor from the teacher_tripletloss_generated triplet
+        sample_ttg = teacher_tripletloss_generated.__getitem__(self, idx)
+
+        OSM = sample_ttg['anchor']
+
+        # for the POSITIVE and NEGATIVE, we can extract the indices from the self.bev_labels using the OSM anchor label
+        positive_list = [idx for idx, element in enumerate(self.bev_labels) if element == sample_ttg['label_anchor']]
+        negative_list = [idx for idx, element in enumerate(self.bev_labels) if element != sample_ttg['label_anchor']]
+
+        positive_item = random.choice(positive_list)
+        negative_item = random.choice(negative_list)
+
+        # once you have the items, simply call teh getitem of fromGeneratedDataset! this will return a sample.
+        SAMPLE_POSITIVE = fromGeneratedDataset.__getitem__(self, positive_item)
+        SAMPLE_NEGATIVE = fromGeneratedDataset.__getitem__(self, negative_item)
+
+        # get the data!
+        BEV_POSITIVE = SAMPLE_POSITIVE['data']
+        BEV_NEGATIVE = SAMPLE_NEGATIVE['data']
+
+        sample = {'OSM_anchor': OSM,
+                  'BEV_positive': BEV_POSITIVE,
+                  'BEV_negative': BEV_NEGATIVE,
+                  'label_anchor': sample_ttg['label_anchor'],
+                  'label_positive': SAMPLE_POSITIVE['label'],
+                  'label_negative': SAMPLE_NEGATIVE['label'],
+                  'filename_positive': SAMPLE_POSITIVE['image_path'],
+                  'filename_negative': SAMPLE_NEGATIVE['image_path']}
+
+        # DEBUG -- send in telegram. Little HACK for the ANCHOR, get a sub-part of image ...
+        emptyspace = 255 * torch.ones([224, 30, 3], dtype=torch.uint8)
+        a = plt.figure()
+        plt.imshow(torch.cat((torch.tensor(sample['OSM_anchor'])[38:262, 38:262, :], emptyspace,
+                              torch.tensor(sample['BEV_positive']), emptyspace, torch.tensor(sample['BEV_negative'])),
+                             1))
+        send_telegram_picture(a, "OSM | BEV(positive) | BEV(negative)" +
+                              "\n __image of OSM_anchor is CROPPED__\n" +
+                              "\nlabel_anchor: " + str(sample['label_anchor']) +
+                              "\nlabel_positive: " + str(sample['label_positive']) +
+                              "\nlabel_negative: " + str(sample['label_negative']) +
+                              "\nfilename positive: " + str(sample['filename_positive']) +
+                              "\nfilename negative: " + str(sample['filename_negative'])
+                              )
+        
         return sample
