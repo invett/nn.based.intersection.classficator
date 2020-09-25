@@ -10,7 +10,6 @@ import warnings
 
 import torch
 import torchvision.transforms as transforms
-from torch import nn
 from torch.utils.data import DataLoader
 from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror, GrayScale
 
@@ -20,7 +19,6 @@ from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet,
 from model.resnet_models import get_model_resnet, get_model_resnext, Personalized, Personalized_small
 from dropout_models import get_resnext, get_resnet
 from sklearn.model_selection import LeaveOneOut
-from sklearn.metrics import accuracy_score
 
 import matplotlib.pyplot as plt
 
