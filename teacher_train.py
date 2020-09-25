@@ -335,7 +335,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
                 patience = 0
                 if acc_pre < acc_val:
                     acc_pre = acc_val
-                else:
+                if loss_pre > loss_val:
                     loss_pre = loss_val
 
                 bestModel = model.state_dict()
