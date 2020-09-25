@@ -64,14 +64,14 @@ def main(args):
             exit()
 
         # In both, set canonical to False to speedup the process; canonical won't be used for train/validate.
-        dataset_train = teacher_tripletloss_generated(elements=2000,
+        dataset_train = teacher_tripletloss_generated(elements=args.dataset_train_elements,
                                                       transform=transforms.Compose([transforms.ToPILImage(),
                                                                                     transforms.Resize((224, 224)),
                                                                                     transforms.ToTensor()
                                                                                     ]),
                                                       canonical=args.canonical,
                                                       noise=addnoise)
-        dataset_val = teacher_tripletloss_generated(elements=200,
+        dataset_val = teacher_tripletloss_generated(elements=args.dataset_val_elements,
                                                     transform=transforms.Compose([transforms.ToPILImage(),
                                                                                   transforms.Resize((224, 224)),
                                                                                   transforms.ToTensor(),
@@ -243,7 +243,7 @@ def test(args, model, dataloader):
         plt.close('all')
 
 
-def validation(args, model, criterion, dataloader_val):
+def validation(args, model, criterion, dataloader_val, random_rate):
     tic = time.time()
     print('\nstart val!\n' + str(time.strftime("%H:%M:%S", time.gmtime(tic))))
 
@@ -251,9 +251,14 @@ def validation(args, model, criterion, dataloader_val):
     acc_record = 0.0
     labelRecord = np.array([], dtype=np.uint8)
     predRecord = np.array([], dtype=np.uint8)
+    random_rate = random_rate  # the random rate of the teacher_tripletloss_generated
 
     with torch.no_grad():
         model.eval()
+
+        # Optionally update the random rate for teacher_tripletloss_generated
+        if args.enable_random_rate:
+            dataloader_val.set_random_rate(random_rate)  # variable is wandb-tracked in train routine
 
         for sample in dataloader_val:
             if args.triplet:
@@ -318,6 +323,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
     # starting values
     acc_pre = 0.0
     loss_pre = np.inf
+    random_rate = 1.0  # the random rate of the teacher_tripletloss_generated
 
     # Build criterion
     if args.triplet:
@@ -337,6 +343,10 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
         tq.set_description('epoch %d, lr %f' % (epoch, lr))
         loss_record = 0.0
         acc_record = 0.0
+
+        # Optionally update the random rate for teacher_tripletloss_generated
+        if args.enable_random_rate:
+            random_rate = dataloader_train.set_random_rate(1.0)
 
         for sample in dataloader_train:
             if args.triplet:
@@ -403,11 +413,12 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
         if not args.nowandb:  # if nowandb flag was set, skip
             wandb.log({"Train/loss": loss_train_mean,
                        "Train/acc": acc_train,
-                       "Train/lr": lr}, step=epoch)
+                       "Train/lr": lr,
+                       "random_rate": random_rate}, step=epoch)
 
         if epoch % args.validation_step == 0:
 
-            acc_val, loss_val = validation(args, model, criterion, dataloader_val)
+            acc_val, loss_val = validation(args, model, criterion, dataloader_val, random_rate=random_rate)
 
             if (acc_pre < acc_val) or (loss_pre > loss_val):
                 patience = 0
@@ -420,7 +431,9 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
                 print('Best global accuracy: {}'.format(acc_pre))
 
                 if not args.nowandb:  # if nowandb flag was set, skip
-                    wandb.log({"Val/loss": loss_val, "Val/Acc": acc_val}, step=epoch)
+                    wandb.log({"Val/loss": loss_val,
+                               "Val/Acc": acc_val,
+                               "random_rate": random_rate}, step=epoch)
                 if args.triplet:
                     print('Saving model: ',
                           os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(args.resnetmodel)))
@@ -442,17 +455,12 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
         if patience >= args.patience > 0 or acc_val == 1:
             break
 
-        # optionally chance this values during training. Consider to add these values to wandb
-        # dataset_train.set_rnd_angle(VALUE)
-        # dataset_train.set_rnd_spatial()
-        # dataset_train.set_rnd_width()
-        # dataset_train.noise
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    # Script modalities
+    # Script modalities and Network behaviors
     parser.add_argument('--train', action='store_true', help='Train/Validate the model')
     parser.add_argument('--test', action='store_true', help='Test the model')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
@@ -460,8 +468,22 @@ if __name__ == '__main__':
 
     parser.add_argument('--triplet', action='store_true', help='Triplet Loss')
     parser.add_argument('--swap', action='store_true', help='Triplet Loss swap')
-    parser.add_argument('--no_noise', action='store_true', help='In case you want to disable the nois injection in '
+    parser.add_argument('--margin', type=float, default=1, help='margin in triplet')
+    parser.add_argument('--no_noise', action='store_true', help='In case you want to disable the noise injection in '
                                                                 'the OSM images')
+
+    parser.add_argument('--canonical', action='store_true', help='Used in TESTING to enable the creation of '
+                                                                 'canonical images; this is used to level the test'
+                                                                 'accuracy through different iterations, ie, '
+                                                                 'having the same comparison images every run')
+
+    parser.add_argument('--dataset_train_elements', type=int, default=2000, help='see teacher_tripletloss_generated')
+    parser.add_argument('--dataset_val_elements', type=int, default=200, help='see teacher_tripletloss_generated')
+
+    parser.add_argument('--training_rnd_width',   type=float, default=2.0, help='see teacher_tripletloss_generated')
+    parser.add_argument('--training_rnd_angle',   type=float, default=0.4, help='see teacher_tripletloss_generated')
+    parser.add_argument('--training_rnd_spatial', type=float, default=9.0, help='see teacher_tripletloss_generated')
+    parser.add_argument('--enable_random_rate', action='store_true', help='see teacher_tripletloss_generated')
 
     # Script configuration / paths
     parser.add_argument('--dataset', type=str, help='path to the dataset you are using.')
@@ -477,13 +499,8 @@ if __name__ == '__main__':
     parser.add_argument('--saveEmbeddingsPath', type=str,
                         help='Where to save the Embeddings. Required when --saveEmbeddings is set')
 
-    # Network behaviors
-    parser.add_argument('--canonical', action='store_true', help='Used in TESTING to enable the creation of '
-                                                                 'canonical images; this is used to level the test'
-                                                                 'accuracy through different iterations, ie, '
-                                                                 'having the same comparison images every run')
 
-    # Newwork parameters
+    # Network parameters (for backbone)
     parser.add_argument('--resnetmodel', type=str, default="resnet18",
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
@@ -500,7 +517,7 @@ if __name__ == '__main__':
     parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
     parser.add_argument('--patience_start', type=int, default=5,
                         help='Starting epoch for patience of validation. Default, 50. ')
-    parser.add_argument('--margin', type=float, default=1, help='margin in triplet')
+
     parser.add_argument('--threshold', type=float, default=0.95, help='threshold to decide if the detection is correct')
     parser.add_argument('--distance', type=int, default=20, help='Distance to crossroads')
 

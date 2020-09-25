@@ -586,7 +586,7 @@ class teacher_tripletloss(Dataset):
 class teacher_tripletloss_generated(Dataset):
 
     def __init__(self, elements=1000, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True, canonical=True,
-                 transform=None):
+                 transform=None, random_rate=1.0):
         """
 
         This dataloader uses "RUNTIME-GENERATED" intersections (this differs from teacher_tripletloss dataloader that
@@ -601,6 +601,7 @@ class teacher_tripletloss_generated(Dataset):
             rnd_spatial: parameter for uniform spatial cross position (center of the crossing area)
             canonical: set false to avoid generating the "canonical" crossings
             noise: whether to add or not noise in the image (pixel level)
+            random_rate: this parameter multiplies all the rnd_xxxxx values; used to create such as "learning rate"
 
             transform:  transforms to the image
 
@@ -611,6 +612,7 @@ class teacher_tripletloss_generated(Dataset):
         self.rnd_spatial = rnd_spatial
         self.noise = noise
         self.canonical = canonical
+        self.random_rate = random_rate
 
         self.transform = transform
 
@@ -663,6 +665,19 @@ class teacher_tripletloss_generated(Dataset):
         self.rnd_spatial = rnd_spatial
         return self.rnd_spatial
 
+    def set_random_rate(self, random_rate):
+        """
+
+        Args:
+            random_rate: this parameter multiplies all the rnd_xxxxx values; used to create such as "learning rate"
+                         typically used through the epochs
+
+        Returns: the new self variable value
+
+        """
+        self.random_rate = random_rate
+        return self.random_rate
+
     def get_rnd_angle(self):
 
         """
@@ -688,6 +703,15 @@ class teacher_tripletloss_generated(Dataset):
 
         """
         return self.rnd_spatial
+
+    def get_random_rate(self):
+        """
+
+        Returns: parameter for random_rate
+
+        """
+
+        return self.random_rate
 
     def __getitem__(self, idx):
 
