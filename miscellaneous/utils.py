@@ -272,7 +272,7 @@ def teacher_network_pass(args, sample, model, criterion):
         result = (cos_sim(out_anchor, out_positive) + 1.0) * 0.5
         acc = torch.sum(result).item()
 
-    else:
+    else: # classification
         # Obtain sample values
         data = sample['anchor']
         label = sample['label_anchor']

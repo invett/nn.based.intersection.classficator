@@ -60,7 +60,8 @@ class BaseLine(Dataset):
         gtdata = pd.read_csv(gt_path, sep=';', header=None, dtype=str)
         gTruth = int(gtdata.loc[gtdata[0] == filename][2])
 
-        sample = {'data': image, 'label': gTruth}
+        sample = {'data': image,
+                  'label': gTruth}
 
         if self.transform:
             sample['data'] = self.transform(sample['data'])
@@ -211,7 +212,10 @@ class fromAANETandDualBisenet(Dataset):
         gtdata = pd.read_csv(gt_path, sep=';', header=None, dtype=str)
         gTruth = int(gtdata.loc[gtdata[0] == filename.replace("_pred", "")][2])
 
-        sample = {'aanet': aanet_image, 'alvaromask': alvaromask_image, 'image_02': image_02_image, 'label': gTruth}
+        sample = {'aanet': aanet_image,
+                  'alvaromask': alvaromask_image,
+                  'image_02': image_02_image,
+                  'label': gTruth}
 
         assert self.transform, "no transform list provided"
 
@@ -344,7 +348,7 @@ class fromGeneratedDataset(Dataset):
                                                rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise)
             sample = {'data': bev_image,
                       'label': bev_label,
-                      'generated_osm': generated_osm[0]}
+                      'generated_osm': generated_osm[0]}  # TODO this [0] might be a bug
         else:
             sample = {'data': bev_image,
                       'label': bev_label,
@@ -582,7 +586,7 @@ class teacher_tripletloss(Dataset):
 class teacher_tripletloss_generated(Dataset):
 
     def __init__(self, elements=1000, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True, canonical=True,
-                 transform=None):
+                 transform=None, random_rate=1.0):
         """
 
         This dataloader uses "RUNTIME-GENERATED" intersections (this differs from teacher_tripletloss dataloader that
@@ -597,6 +601,7 @@ class teacher_tripletloss_generated(Dataset):
             rnd_spatial: parameter for uniform spatial cross position (center of the crossing area)
             canonical: set false to avoid generating the "canonical" crossings
             noise: whether to add or not noise in the image (pixel level)
+            random_rate: this parameter multiplies all the rnd_xxxxx values; used to create such as "learning rate"
 
             transform:  transforms to the image
 
@@ -607,6 +612,7 @@ class teacher_tripletloss_generated(Dataset):
         self.rnd_spatial = rnd_spatial
         self.noise = noise
         self.canonical = canonical
+        self.random_rate = random_rate
 
         self.transform = transform
 
@@ -659,6 +665,19 @@ class teacher_tripletloss_generated(Dataset):
         self.rnd_spatial = rnd_spatial
         return self.rnd_spatial
 
+    def set_random_rate(self, random_rate):
+        """
+
+        Args:
+            random_rate: this parameter multiplies all the rnd_xxxxx values; used to create such as "learning rate"
+                         typically used through the epochs
+
+        Returns: the new self variable value
+
+        """
+        self.random_rate = random_rate
+        return self.random_rate
+
     def get_rnd_angle(self):
 
         """
@@ -684,6 +703,15 @@ class teacher_tripletloss_generated(Dataset):
 
         """
         return self.rnd_spatial
+
+    def get_random_rate(self):
+        """
+
+        Returns: parameter for random_rate
+
+        """
+
+        return self.random_rate
 
     def __getitem__(self, idx):
 
