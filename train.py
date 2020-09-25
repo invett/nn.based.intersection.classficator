@@ -1,6 +1,5 @@
 import argparse
 import os
-import sys
 import time
 import numpy as np
 import tqdm
@@ -14,23 +13,21 @@ import torchvision.transforms as transforms
 from torch import nn
 from torch.utils.data import DataLoader
 from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror, GrayScale
-from torch.utils.data.sampler import SubsetRandomSampler
 
 from torch.optim.lr_scheduler import MultiStepLR
 
 from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet, BaseLine, fromGeneratedDataset
 from model.resnet_models import get_model_resnet, get_model_resnext, Personalized, Personalized_small
 from dropout_models import get_resnext, get_resnet
-from sklearn.model_selection import KFold
 from sklearn.model_selection import LeaveOneOut
-from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
+from sklearn.metrics import accuracy_score
 
 import matplotlib.pyplot as plt
 
 import wandb
 import seaborn as sn
 
-from miscellaneous.utils import send_telegram_picture, send_telegram_message, PrintException
+from miscellaneous.utils import send_telegram_picture, send_telegram_message, student_network_pass
 
 
 def test(args, dataloader_test, gt_model=None):
@@ -97,72 +94,15 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None):
         model.eval()
 
         for sample in dataloader_val:
-            if args.triplet:
-                anchor = sample['anchor']
-                positive = sample['positive']
-                negative = sample['negative']
-                if torch.cuda.is_available() and args.use_gpu:
-                    anchor = anchor.cuda()
-                    positive = positive.cuda()
-                    negative = negative.cuda()
-
-            elif args.embedding:
-                data = sample['data']
-                label = sample['label']
-                osm = sample['generated_osm']
-                if torch.cuda.is_available() and args.use_gpu:
-                    data = data.cuda()
-                    label = label.cuda()
-                    osm = osm.cuda()
-
+            if args.embedding or args.triplet:
+                acc, loss = student_network_pass(args, sample, criterion, model, gtmodel)
             else:
-                data = sample['data']
-                label = sample['label']
-                if torch.cuda.is_available() and args.use_gpu:
-                    data = data.cuda()
-                    label = label.cuda()
-
-            if args.embedding:
-                output = model(data)
-                output_gt = gtmodel(osm)  # (Batch x 512) Tensor
-
-            elif args.triplet:
-                out_anchor = model(anchor)
-                out_positive = model(positive)
-                out_negative = model(negative)
-
-            else:
-                output = model(data)
-
-            if args.embedding:
-                mask = torch.ones((64, 512)).cuda()
-                loss = criterion(output, output_gt, mask)
-            elif args.triplet:
-                loss = criterion(out_anchor, out_positive, out_negative)
-            else:
-                loss = criterion(output, label)
-
-            loss_record += loss.item()
-
-            if args.embedding:
-                cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                result = (((cos(output.squeeze(), output_gt.squeeze()) + 1.0) - 0.0) * (1.0 / (2.0 - 0.0)))
-                acc_record += torch.sum(result).item()
-
-            elif args.triplet:
-                cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                result = (((cos(out_anchor.squeeze(), out_positive.squeeze()) + 1.0) - 0.0) * (1.0 / (2.0 - 0.0)))
-                acc_record += torch.sum(result).item()
-
-            else:
-                predict = torch.argmax(output, 1)
-                label = label.cpu().numpy()
-                predict = predict.cpu().numpy()
-
+                acc, loss, label, predict = student_network_pass(args, sample, criterion, model)
                 labelRecord = np.append(labelRecord, label)
                 predRecord = np.append(predRecord, predict)
 
-                acc_record += accuracy_score(label, predict)
+            loss_record += loss.item()
+            acc_record += acc
 
     # Calculate validation metrics
     loss_val_mean = loss_record / len(dataloader_val)
@@ -198,11 +138,11 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         traincriterion = torch.nn.CrossEntropyLoss(weight=class_weights)
         valcriterion = torch.nn.CrossEntropyLoss()
     elif args.embedding:
-        traincriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin)
-        valcriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin)
+        traincriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='sum')
+        valcriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='sum')
     elif args.triplet:
-        traincriterion = torch.nn.TripletMarginLoss(margin=args.margin)
-        valcriterion = torch.nn.TripletMarginLoss(margin=args.margin)
+        traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
+        valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
     else:
         traincriterion = torch.nn.CrossEntropyLoss()
         valcriterion = torch.nn.CrossEntropyLoss()
@@ -222,51 +162,10 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         acc_record = 0.0
 
         for sample in dataloader_train:
-            if args.triplet:
-                anchor = sample['anchor']
-                positive = sample['positive']
-                negative = sample['negative']
-                if torch.cuda.is_available() and args.use_gpu:
-                    anchor = anchor.cuda()
-                    positive = positive.cuda()
-                    negative = negative.cuda()
-
-            elif args.embedding:
-                data = sample['data']
-                label = sample['label']
-                osm = sample['generated_osm']
-                if torch.cuda.is_available() and args.use_gpu:
-                    data = data.cuda()
-                    label = label.cuda()
-                    osm = osm.cuda()
-
+            if args.embedding or args.triplet:
+                acc, loss = student_network_pass(args, sample, traincriterion, model, gtmodel)
             else:
-                data = sample['data']
-                label = sample['label']
-                if torch.cuda.is_available() and args.use_gpu:
-                    data = data.cuda()
-                    label = label.cuda()
-
-            if args.triplet:
-                out_anchor = model(anchor)
-                out_positive = model(positive)
-                out_negative = model(negative)
-
-            elif args.embedding:
-                output = model(data)
-                with torch.no_grad():
-                    output_gt = gtmodel(osm)  # (Batch x 512) Tensor
-
-            else:
-                output = model(data)
-
-            if args.embedding:
-                mask = torch.ones((64, 512)).cuda()
-                loss = traincriterion(output, output_gt, mask)
-            elif args.triplet:
-                loss = traincriterion(out_anchor, out_positive, out_negative)
-            else:
-                loss = traincriterion(output, label)
+                acc, loss, _, _ = student_network_pass(args, sample, traincriterion, model)
 
             loss.backward()
 
@@ -277,22 +176,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
             tq.set_postfix(loss='%.6f' % loss)
 
             loss_record += loss.item()
-
-            if args.embedding:
-                cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                result = (((cos(output.squeeze(), output_gt.squeeze()) + 1.0) - 0.0) * (1.0 / (2.0 - 0.0)))
-                acc_record += torch.sum(result).item()
-
-            elif args.triplet:
-                cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                result = (((cos(out_anchor.squeeze(), out_positive.squeeze()) + 1.0) - 0.0) * (1.0 / (2.0 - 0.0)))
-                acc_record += torch.sum(result).item()
-            else:
-                predict = torch.argmax(output, 1)
-                label = label.cpu().numpy()
-                predict = predict.cpu().numpy()
-
-                acc_record += accuracy_score(label, predict)
+            acc_record += acc
 
         tq.close()
 
@@ -460,7 +344,7 @@ def main(args, model=None):
             if args.embedding:
                 gt_model = copy.deepcopy(model)
                 gt_model.load_state_dict(torch.load(args.teacher_path))
-                if args.embedding_class: # if I'm using the teacher trained with FC I need to get rid of it before.
+                if args.embedding_class:  # if I'm using the teacher trained with FC I need to get rid of it before.
                     model = torch.nn.Sequential(*(list(model.children())[:-1]))
                     gt_model = torch.nn.Sequential(*(list(gt_model.children())[:-1]))
                 gt_model.eval()

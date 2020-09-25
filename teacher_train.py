@@ -7,18 +7,15 @@ import pandas as pd
 import torchvision.transforms as transforms
 from dataloaders.sequencedataloader import teacher_tripletloss_generated, teacher_tripletloss
 
-import warnings
-
 import torch
 from torch.utils.data import DataLoader
 from torch import nn
 
-from model.resnet_models import get_model_resnet, get_model_resnext, Personalized, Personalized_small
-from dropout_models import get_resnext, get_resnet
-from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
+from model.resnet_models import get_model_resnet
 
-from miscellaneous.utils import send_telegram_message
-from miscellaneous.utils import send_telegram_picture
+from sklearn.metrics import accuracy_score
+
+from miscellaneous.utils import send_telegram_picture, teacher_network_pass
 import time
 
 import matplotlib.pyplot as plt
@@ -28,11 +25,13 @@ import seaborn as sn
 
 
 def main(args):
+    # add noise to the osm
     addnoise = True
     if args.no_noise:
         addnoise = False
 
-    if not args.nowandb:  # if nowandb flag was set, skip
+    # if nowandb flag was set, skip
+    if not args.nowandb:
         if args.test:
             wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train",
                        job_type="eval")
@@ -64,14 +63,14 @@ def main(args):
             exit()
 
         # In both, set canonical to False to speedup the process; canonical won't be used for train/validate.
-        dataset_train = teacher_tripletloss_generated(elements=2000,
+        dataset_train = teacher_tripletloss_generated(elements=args.elements,
                                                       transform=transforms.Compose([transforms.ToPILImage(),
                                                                                     transforms.Resize((224, 224)),
                                                                                     transforms.ToTensor()
                                                                                     ]),
                                                       canonical=args.canonical,
                                                       noise=addnoise)
-        dataset_val = teacher_tripletloss_generated(elements=200,
+        dataset_val = teacher_tripletloss_generated(elements=args.elements//10,
                                                     transform=transforms.Compose([transforms.ToPILImage(),
                                                                                   transforms.Resize((224, 224)),
                                                                                   transforms.ToTensor(),
@@ -81,7 +80,8 @@ def main(args):
 
         dataloader_train = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=True,
                                       num_workers=args.num_workers)
-        dataloader_val = DataLoader(dataset_val, batch_size=1, shuffle=False, num_workers=args.num_workers)
+        dataloader_val = DataLoader(dataset_val, batch_size=args.batch_size, shuffle=False,
+                                    num_workers=args.num_workers)
 
         train(args, model, optimizer, dataloader_train, dataloader_val, dataset_train, dataset_val)
 
@@ -107,8 +107,8 @@ def main(args):
                 args.resnetmodel)
         else:
             loadpath = '/home/malvaro/Documentos/IntersectionClassifier/trainedmodels/teacher/teacher_model_class_{' \
-                       '}.pth'.format(
-                args.resnetmodel)
+                       '}.pth'.format(args.resnetmodel)
+
         print('load model from {} ...'.format(loadpath))
         model.load_state_dict(torch.load(loadpath))
         print('Done!')
@@ -170,7 +170,7 @@ def test(args, model, dataloader):
 
         if args.triplet:
             cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-            result = ((cos(out_anchor, out_positive) + 1.0) - 0.0) * (1.0 / (2.0 - 0.0))
+            result = (cos(out_anchor, out_positive) + 1.0) * 0.5
             probability = torch.sum(result).item()
 
             all_embedding_matrix.append(np.asarray(model(anchor)[0].squeeze().cpu().detach().numpy()))
@@ -249,63 +249,21 @@ def validation(args, model, criterion, dataloader_val):
 
     loss_record = 0.0
     acc_record = 0.0
-    labelRecord = np.array([], dtype=np.uint8)
-    predRecord = np.array([], dtype=np.uint8)
 
     with torch.no_grad():
         model.eval()
 
         for sample in dataloader_val:
-            if args.triplet:
-                anchor = sample['anchor']  # OSM Type X
-                positive = sample['positive']  # OSM Type X
-                negative = sample['negative']  # OSM Type Y
-            else:
-                data = sample['anchor']
-                label = sample['label_anchor']
-
-            if torch.cuda.is_available() and args.use_gpu:
-                if args.triplet:
-                    anchor = anchor.cuda()
-                    positive = positive.cuda()
-                    negative = negative.cuda()
-                else:
-                    data = data.cuda()
-                    label = label.cuda()
-
-            if args.triplet:
-                out_anchor = model(anchor)
-                out_positive = model(positive)
-                out_negative = model(negative)
-            else:
-                output = model(data)
-
-            if args.triplet:
-                loss = criterion(out_anchor, out_positive, out_negative)
-            else:
-                loss = criterion(output, label)
+            # network pass for the sample
+            sample_acc, loss = teacher_network_pass(args, sample, model, criterion)
 
             loss_record += loss.item()
-
-            if args.triplet:
-                cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                result = ((cos(out_anchor, out_positive) + 1.0) - 0.0) * (1.0 / (2.0 - 0.0))
-                acc_record += torch.sum(result).item()
-
-            else:
-                predict = torch.argmax(output, 1)
-                label = label.cpu().numpy()
-                predict = predict.cpu().numpy()
-
-                labelRecord = np.append(labelRecord, label)
-                predRecord = np.append(predRecord, predict)
-
-                acc_record += accuracy_score(label, predict)
+            acc_record += sample_acc
 
     # Calculate validation metrics
     loss_val_mean = loss_record / len(dataloader_val)
     print('Loss for test/validation : %f' % loss_val_mean)
-    acc = acc_record / len(dataloader_val)
+    acc = acc_record / (len(dataloader_val) * args.batch_size)
     print('Accuracy for test/validation : %f\n' % acc)
 
     return acc, loss_val_mean
@@ -339,34 +297,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
         acc_record = 0.0
 
         for sample in dataloader_train:
-            if args.triplet:
-                anchor = sample['anchor']
-                positive = sample['positive']
-                negative = sample['negative']
-            else:
-                data = sample['anchor']
-                label = sample['label_anchor']
-
-            if torch.cuda.is_available() and args.use_gpu:
-                if args.triplet:
-                    anchor = anchor.cuda()
-                    positive = positive.cuda()
-                    negative = negative.cuda()
-                else:
-                    data = data.cuda()
-                    label = label.cuda()
-
-            if args.triplet:
-                out_anchor = model(anchor)
-                out_positive = model(positive)
-                out_negative = model(negative)
-            else:
-                output = model(data)
-
-            if args.triplet:
-                loss = criterion(out_anchor, out_positive, out_negative)
-            else:
-                loss = criterion(output, label)
+            # network pass for the sample
+            sample_acc, loss = teacher_network_pass(args, sample, model, criterion)
 
             loss.backward()
 
@@ -377,17 +309,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
             tq.set_postfix(loss='%.6f' % loss)
 
             loss_record += loss.item()
-
-            if args.triplet:
-                cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-                result = (((cos(out_anchor.squeeze(), out_positive.squeeze()) + 1.0) - 0.0) * (1.0 / (2.0 - 0.0)))
-                acc_record += torch.sum(result).item()
-            else:
-                predict = torch.argmax(output, 1)
-                label = label.cpu().numpy()
-                predict = predict.cpu().numpy()
-
-                acc_record += accuracy_score(label, predict)
+            acc_record += sample_acc
 
         tq.close()
 
@@ -503,6 +425,7 @@ if __name__ == '__main__':
     parser.add_argument('--margin', type=float, default=1, help='margin in triplet')
     parser.add_argument('--threshold', type=float, default=0.95, help='threshold to decide if the detection is correct')
     parser.add_argument('--distance', type=int, default=20, help='Distance to crossroads')
+    parser.add_argument('--elements', type=int, default=1000, help='Number of generated images in training')
 
     args = parser.parse_args()
 

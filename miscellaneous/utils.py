@@ -10,6 +10,10 @@ import sys
 from math import pi, cos, sin, atan2, asin
 from functools import reduce
 
+from torch import nn
+from sklearn.metrics import accuracy_score
+
+
 def PrintException():
     exc_type, exc_obj, tb = sys.exc_info()
     f = tb.tb_frame
@@ -109,8 +113,8 @@ def euler2mat(z, y, x):
     """
     Ms = []
     if z:
-        cosz = math.cos(z)
-        sinz = math.sin(z)
+        cosz = cos(z)
+        sinz = sin(z)
         Ms.append(np.array(
             [[cosz, -sinz, 0, 0],
              [sinz, cosz, 0, 0],
@@ -118,8 +122,8 @@ def euler2mat(z, y, x):
              [0, 0, 0, 1]
              ]))
     if y:
-        cosy = math.cos(y)
-        siny = math.sin(y)
+        cosy = cos(y)
+        siny = sin(y)
         Ms.append(np.array(
             [[cosy, 0, siny, 0],
              [0, 1, 0, 0],
@@ -127,8 +131,8 @@ def euler2mat(z, y, x):
              [0, 0, 0, 1]
              ]))
     if x:
-        cosx = math.cos(x)
-        sinx = math.sin(x)
+        cosx = cos(x)
+        sinx = sin(x)
         Ms.append(np.array(
             [[1, 0, 0, 0],
              [0, cosx, -sinx, 0],
@@ -136,9 +140,9 @@ def euler2mat(z, y, x):
              [0, 0, 0, 1]
              ]))
     if Ms:
-        return reduce(np.dot, Ms[::-1]) #equivale a Ms[2]@Ms[1]@Ms[0]
+        return reduce(np.dot, Ms[::-1])  # equivale a Ms[2]@Ms[1]@Ms[0]
 
-    #nel caso sfigato, restituiscimi una idenatità (era 3x3, diventa 4x4)
+    # nel caso sfigato, restituiscimi una idenatità (era 3x3, diventa 4x4)
     return np.eye(4)
 
 
@@ -152,9 +156,9 @@ def npxyz2mat(x, y, z):
 
 
 def to_rotation_matrix_XYZRPY(x, y, z, roll, pitch, yaw):
-
-    R = euler2mat(yaw, pitch, roll) # la matrice che viene fuori corrisponde a eul2tform di matlab (Convert Euler angles to homogeneous transformation)
-    T = npxyz2mat(x,y,z)
+    R = euler2mat(yaw, pitch,
+                  roll)  # la matrice che viene fuori corrisponde a eul2tform di matlab (Convert Euler angles to homogeneous transformation)
+    T = npxyz2mat(x, y, z)
     RT = np.matmul(T, R)
     return RT
 
@@ -180,19 +184,19 @@ def npto_XYZRPY(rotmatrix):
     # qui sotto corrisponde a
     # quat2eul([ 0.997785  -0.0381564  0.0358964  0.041007 ],'XYZ')
     # TODO se tutto funziona, si potrebbe provare di nuovo con mathutils
-    roll  = atan2(-rotmatrix[1, 2], rotmatrix[2, 2])
-    pitch = asin ( rotmatrix[0, 2])
-    yaw   = atan2(-rotmatrix[0, 1], rotmatrix[0, 0])
-    x = rotmatrix[:3,3][0]
-    y = rotmatrix[:3,3][1]
-    z = rotmatrix[:3,3][2]
+    roll = atan2(-rotmatrix[1, 2], rotmatrix[2, 2])
+    pitch = asin(rotmatrix[0, 2])
+    yaw = atan2(-rotmatrix[0, 1], rotmatrix[0, 0])
+    x = rotmatrix[:3, 3][0]
+    y = rotmatrix[:3, 3][1]
+    z = rotmatrix[:3, 3][2]
 
-    return np.array([x,y,z,roll,pitch,yaw])
+    return np.array([x, y, z, roll, pitch, yaw])
 
 
 def getRT(a, h, k):
-    RT = np.array([[cos(a), sin(a), -h*cos(a) - k*sin(a)],
-                   [-sin(a), cos(a), h*sin(a) - k*cos(a)],
+    RT = np.array([[cos(a), sin(a), -h * cos(a) - k * sin(a)],
+                   [-sin(a), cos(a), h * sin(a) - k * cos(a)],
                    [0., 0., 1.]])
     return RT
 
@@ -212,8 +216,8 @@ def rotate_point(p, center, angle):
     center_y = center[1]
     x = x - center_x
     y = y - center_y
-    new_x = x*c - y*s
-    new_y = x*s + y*c
+    new_x = x * c - y * s
+    new_y = x * s + y * c
     new_x = new_x + center_x
     new_y = new_y + center_y
     return new_x, new_y
@@ -240,3 +244,117 @@ def radians(deg):
 
 def degrees(rad):
     return rad * (180.0 / pi)
+
+
+def teacher_network_pass(args, sample, model, criterion):
+    if args.triplet:
+        # Obtain sample values
+        anchor = sample['anchor']  # OSM Type X
+        positive = sample['positive']  # OSM Type X
+        negative = sample['negative']  # OSM Type Y
+
+        # Sent to the graphic card if posible
+        if torch.cuda.is_available() and args.use_gpu:
+            anchor = anchor.cuda()
+            positive = positive.cuda()
+            negative = negative.cuda()
+
+        # Obtain predicion results
+        out_anchor = model(anchor)
+        out_positive = model(positive)
+        out_negative = model(negative)
+
+        # Calculate the loss
+        loss = criterion(out_anchor, out_positive, out_negative)
+
+        # Calculate the accuracy
+        cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
+        result = (cos_sim(out_anchor, out_positive) + 1.0) * 0.5
+        acc = torch.sum(result).item()
+
+    else:
+        # Obtain sample values
+        data = sample['anchor']
+        label = sample['label_anchor']
+
+        # Sent to the graphic card if posible
+        if torch.cuda.is_available() and args.use_gpu:
+            data = data.cuda()
+            label = label.cuda()
+
+        # Obtain predicion results
+        output = model(data)
+
+        # Calculate the loss
+        loss = criterion(output, label)
+
+        # Calculate the accuracy
+        predict = torch.argmax(output, 1)
+        label = label.cpu().numpy()
+        predict = predict.cpu().numpy()
+
+        acc = accuracy_score(label, predict)
+
+    return acc, loss
+
+
+def student_network_pass(args, sample, criterion, model, gtmodel=None):
+
+    cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
+
+    if args.triplet:
+        anchor = sample['anchor']
+        positive = sample['positive']
+        negative = sample['negative']
+        if torch.cuda.is_available() and args.use_gpu:
+            anchor = anchor.cuda()
+            positive = positive.cuda()
+            negative = negative.cuda()
+
+        out_anchor = model(anchor)
+        out_positive = model(positive)
+        out_negative = model(negative)
+
+        loss = criterion(out_anchor, out_positive, out_negative)
+
+        result = ((cos_sim(out_anchor.squeeze(), out_positive.squeeze()) + 1.0) * 0.5)
+        acc = torch.sum(result).item()
+
+    elif args.embedding:
+        data = sample['data']
+        osm = sample['generated_osm']
+
+        if torch.cuda.is_available() and args.use_gpu:
+            data = data.cuda()
+            osm = osm.cuda()
+
+        output = model(data)
+        output_gt = gtmodel(osm)  # (Batch x 512) Tensor
+
+        mask = torch.ones((64, 512)).cuda()
+        loss = criterion(output, output_gt, mask)
+
+        result = ((cos_sim(output.squeeze(), output_gt.squeeze()) + 1.0) * 0.5)
+        acc = torch.sum(result).item()
+
+    else:
+        data = sample['data']
+        label = sample['label']
+        if torch.cuda.is_available() and args.use_gpu:
+            data = data.cuda()
+            label = label.cuda()
+
+        output = model(data)
+
+        loss = criterion(output, label)
+
+        predict = torch.argmax(output, 1)
+        label = label.cpu().numpy()
+        predict = predict.cpu().numpy()
+
+        acc = accuracy_score(label, predict)
+
+    if args.triplet or args.embedding:
+        return acc, loss
+    else:
+        return acc, loss, label, predict
