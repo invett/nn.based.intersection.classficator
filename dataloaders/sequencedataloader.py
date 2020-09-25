@@ -285,7 +285,7 @@ class fromGeneratedDataset(Dataset):
 
     def __init__(self, folders, distance, transform=None,
                  rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True, canonical=True, addGeneratedOSM=True,
-                 decimateStep=1, savelist=False, loadlist=False):
+                 decimateStep=1, savelist=False, loadlist=False, random_rate = 1.0):
         # TODO addGeneratedOSM should not be the default behavior; set FALSE here anc call with TRUE as needed
 
         """
@@ -323,6 +323,7 @@ class fromGeneratedDataset(Dataset):
         self.noise = noise
         self.canonical = canonical
         self.addGeneratedOSM = addGeneratedOSM
+        self.random_rate = random_rate
 
         tic = time.time()
 
@@ -386,7 +387,8 @@ class fromGeneratedDataset(Dataset):
         if self.addGeneratedOSM:
             # Sample an intersection given a label; this is used in the STUDENT training
             generated_osm = test_crossing_pose(crossing_type=bev_label, save=False, rnd_width=self.rnd_width,
-                                               rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise)
+                                               rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
+                                               random_rate=self.random_rate)
             sample = {'data': bev_image,
                       'label': bev_label,
                       'image_path': self.bev_images[idx],
@@ -433,7 +435,8 @@ class fromGeneratedDataset(Dataset):
 
 class teacher_tripletloss(Dataset):
 
-    def __init__(self, folders, distance, include_insidecrossing=False, transform=None, noise=True, canonical=True):
+    def __init__(self, folders, distance, include_insidecrossing=False, transform=None, noise=True, canonical=True,
+                 random_rate = 1.0):
         """
 
         This dataloader uses "REAL" intersection, using the OSM data; this data is pre-generated from the OSM and the
@@ -467,7 +470,7 @@ class teacher_tripletloss(Dataset):
 
         self.noise = noise
         self.canonical = canonical
-
+        self.random_rate = random_rate
         self.transform = transform
 
         # osm_files = []
@@ -577,7 +580,7 @@ class teacher_tripletloss(Dataset):
         negative_image = cv2.imread(negative_item[0], cv2.IMREAD_UNCHANGED)
         if self.canonical:  # set canonical to False to speedup this dataloader
             canonical_image = test_crossing_pose(crossing_type=anchor_type, save=False, noise=self.noise,
-                                                 sampling=False)[0]
+                                                 sampling=False, random_rate=self.random_rate)[0]
         else:
             canonical_image = 0
 
@@ -650,6 +653,7 @@ class teacher_tripletloss_generated(Dataset):
 
         """
 
+        self.elements = elements
         self.rnd_width = rnd_width
         self.rnd_angle = rnd_angle
         self.rnd_spatial = rnd_spatial
@@ -664,7 +668,8 @@ class teacher_tripletloss_generated(Dataset):
 
         for crossing_type in range(0, 7):
             for _ in range(0, elements):
-                # sample = test_crossing_pose(crossing_type=crossing_type, noise=True, rnd_width=1.0, save=False)
+                # sample = test_crossing_pose(crossing_type=crossing_type, noise=True, rnd_width=1.0,
+                # save=False, random_rate = )
                 osm_types.append([crossing_type])
 
         self.samples = osm_types
@@ -779,14 +784,17 @@ class teacher_tripletloss_generated(Dataset):
         negative_item = random.choice(negative_list)
 
         anchor_image = test_crossing_pose(crossing_type=anchor_type, save=False, rnd_width=self.rnd_width,
-                                          rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise)
+                                          rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
+                                          random_rate=self.random_rate)
         positive_image = test_crossing_pose(crossing_type=positive_item[0], save=False, rnd_width=self.rnd_width,
-                                            rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise)
+                                            rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
+                                            random_rate=self.random_rate)
         negative_image = test_crossing_pose(crossing_type=negative_item[0], save=False, rnd_width=self.rnd_width,
-                                            rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise)
+                                            rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
+                                            random_rate=self.random_rate)
         if self.canonical:  # set canonical to False to speedup this dataloader
             canonical_image = test_crossing_pose(crossing_type=anchor_type, save=False, noise=self.noise,
-                                                 sampling=False)
+                                                 sampling=False, random_rate=self.random_rate)
         else:
             canonical_image = [0]
 
@@ -837,6 +845,7 @@ class triplet_OBB(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
     def __len__(self):
         # In this multi inherit class we have both [teacher_tripletloss_generated] and [fromGeneratedDataset] items.
         # in OBB , OSM + BEV + BEV we want that our list of elements is like the teacher_tripletloss_generated one.
+        # in BOO , BEV + OSM + OSM we want that our list of elements is like the fromGeneratedDataset
         return len(self.samples)
 
     def __getitem__(self, idx):
@@ -877,7 +886,7 @@ class triplet_OBB(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
                               torch.tensor(sample['BEV_positive']), emptyspace, torch.tensor(sample['BEV_negative'])),
                              1))
         send_telegram_picture(a, "OSM | BEV(positive) | BEV(negative)" +
-                              "\n __image of OSM_anchor is CROPPED__\n" +
+                              "\nWarning! Image of OSM_anchor is CROPPED__\n" +
                               "\nlabel_anchor: " + str(sample['label_anchor']) +
                               "\nlabel_positive: " + str(sample['label_positive']) +
                               "\nlabel_negative: " + str(sample['label_negative']) +
@@ -885,4 +894,73 @@ class triplet_OBB(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
                               "\nfilename negative: " + str(sample['filename_negative'])
                               )
         
+        return sample
+
+
+class triplet_BOO(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
+
+    def __init__(self, folders, distance, elements=1000, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
+                 canonical=True, transform=None, random_rate=1.0, loadlist=True, savelist=False, decimateStep=1):
+        teacher_tripletloss_generated.__init__(self, elements=elements, rnd_width=rnd_width, rnd_angle=rnd_angle,
+                                               rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
+                                               transform=transform, random_rate=random_rate)
+
+        fromGeneratedDataset.__init__(self, folders, distance, transform=transform, rnd_width=rnd_width,
+                                      rnd_angle=rnd_angle, rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
+                                      addGeneratedOSM=True, decimateStep=decimateStep, savelist=savelist,
+                                      loadlist=loadlist)
+
+        self.types = [0, 1, 2, 3, 4, 5, 6]
+
+        rnd_width = self.rnd_width
+        rnd_angle = self.rnd_angle
+        rnd_spatial = self.rnd_spatial
+        noise = self.noise
+        self.random_rate = random_rate
+
+    def __len__(self):
+        # In this multi inherit class we have both [teacher_tripletloss_generated] and [fromGeneratedDataset] items.
+        # in OBB , OSM + BEV + BEV we want that our list of elements is like the teacher_tripletloss_generated one.
+        # in BOO , BEV + OSM + OSM we want that our list of elements is like the fromGeneratedDataset
+        return len(self.bev_labels)
+
+    def __getitem__(self, idx):
+        # BOO ... get a random BEV from fromGeneratedDataset
+        sample_fgd = fromGeneratedDataset.__getitem__(self, idx)
+
+        BEV = sample_fgd['data']
+        item_positive = sample_fgd['label']
+        item_negative = random.choice([element for element in self.types if element != item_positive])
+
+        OSM_positive = test_crossing_pose(crossing_type=item_positive, save=False, rnd_width=self.rnd_width,
+                                          rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
+                                          random_rate = self.random_rate)
+        OSM_negative = test_crossing_pose(crossing_type=item_negative, save=False, rnd_width=self.rnd_width,
+                                          rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
+                                          random_rate = self.random_rate)
+
+        sample = {'BEV_anchor': BEV,
+                  'OSM_positive': OSM_positive[0],
+                  'OSM_negative': OSM_negative[0],
+                  'label_anchor': sample_fgd['label'],
+                  'label_positive': item_positive,
+                  'label_negative': item_negative,
+                  'filename_anchor': sample_fgd['image_path']
+                  }
+
+        # DEBUG -- send in telegram. Little HACK for the ANCHOR, get a sub-part of image ...
+        emptyspace = 255 * torch.ones([224, 30, 3], dtype=torch.uint8)
+        a = plt.figure()
+        plt.imshow(torch.cat((torch.tensor(sample['BEV_anchor']), emptyspace,
+                              torch.tensor(sample['OSM_positive'])[38:262, 38:262, :], emptyspace,
+                              torch.tensor(sample['OSM_negative'])[38:262, 38:262, :]), 1))
+        send_telegram_picture(a, \
+                              "OSM | BEV(positive) | BEV(negative)" + \
+                              "\nWarning: images of OSM_positive and OSM_negative are CROPPED!\n" + \
+                              "\nlabel_anchor: " + str(sample['label_anchor']) + \
+                              "\nlabel_positive: " + str(sample['label_positive']) + \
+                              "\nlabel_negative: " + str(sample['label_negative']) + \
+                              "\nfilename positive: " + str(sample['filename_anchor']) \
+                              )
+
         return sample

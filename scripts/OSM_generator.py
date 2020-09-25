@@ -386,7 +386,7 @@ class Crossing:
 
 
 def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
-                       save=True, path="", filenumber=0, sampling=True):
+                       save=True, path="", filenumber=0, sampling=True, random_rate=1.0):
     """
 
     Args:
@@ -438,18 +438,18 @@ def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_a
 
     # add noise to the sample; default behaviour
     if sampling:
-        xx = 15.0 + uniform(-rnd_spatial, rnd_spatial)
-        yy = 0.0 + uniform(-rnd_spatial, rnd_spatial)
+        xx = 15.0 + uniform(-rnd_spatial, rnd_spatial) * random_rate
+        yy = 0.0 + uniform(-rnd_spatial, rnd_spatial) * random_rate
 
-        rot_a = uniform(-rnd_angle, rnd_angle)
-        rot_b = uniform(-rnd_angle, rnd_angle)
-        rot_c = uniform(-rnd_angle, rnd_angle)
-        rot_d = uniform(-rnd_angle, rnd_angle)
+        rot_a = uniform(-rnd_angle, rnd_angle) * random_rate
+        rot_b = uniform(-rnd_angle, rnd_angle) * random_rate
+        rot_c = uniform(-rnd_angle, rnd_angle) * random_rate
+        rot_d = uniform(-rnd_angle, rnd_angle) * random_rate
 
-        width_a = uniform(-rnd_width, rnd_width)
-        width_b = uniform(-rnd_width, rnd_width)
-        width_c = uniform(-rnd_width, rnd_width)
-        width_d = uniform(-rnd_width, rnd_width)
+        width_a = uniform(-rnd_width, rnd_width) * random_rate
+        width_b = uniform(-rnd_width, rnd_width) * random_rate
+        width_c = uniform(-rnd_width, rnd_width) * random_rate
+        width_d = uniform(-rnd_width, rnd_width) * random_rate
 
     intersection_center = np.array([float(xx), float(yy), 0.])
     translation = np.array([0., 0., 0.])
@@ -518,5 +518,6 @@ if __name__ == '__main__':
             sample = test_crossing_pose(crossing_type=type, path="/tmp/minchioline-sborrilla/",
                                         filenumber=i,
                                         noise=True,
-                                        rnd_width=1.0)
+                                        rnd_width=1.0,
+                                        random_rate=1.0)
             i = i + 1

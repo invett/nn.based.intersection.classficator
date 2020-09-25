@@ -11,7 +11,7 @@
 import os
 import numpy as np
 
-from dataloaders.sequencedataloader import triplet_OBB
+from dataloaders.sequencedataloader import triplet_OBB, triplet_BOO
 from torch.utils.data import DataLoader
 
 data_path = '/home/malvaro/Documentos/DualBiSeNet/data_raw_bev/'
@@ -20,7 +20,8 @@ data_path = '/home/malvaro/Documentos/DualBiSeNet/data_raw_bev/'
 folders = np.array([os.path.join(data_path, folder) for folder in os.listdir(data_path) if
                     os.path.isdir(os.path.join(data_path, folder))])
 
-dataset = triplet_OBB(folders, distance=20.0, loadlist=True)
+#dataset = triplet_OBB(folders, distance=20.0, loadlist=True)
+dataset = triplet_BOO(folders, distance=20.0, loadlist=True, random_rate=0.2)
 
 loader = DataLoader(
     dataset,
@@ -30,6 +31,6 @@ loader = DataLoader(
 )
 
 for idx, data in enumerate(loader):
-    print(idx)
+        print(idx)
 
 print("End")
