@@ -1,3 +1,13 @@
+
+
+###
+###
+###
+###     this little script was used to check/develope the triplet_OBB dataloader. nothing special here.  
+###
+###
+###
+
 import os
 import numpy as np
 
