@@ -283,7 +283,8 @@ class fromAANETandDualBisenet(Dataset):
 class fromGeneratedDataset(Dataset):
 
     def __init__(self, folders, distance, transform=None,
-                 rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True, canonical=True, addGeneratedOSM=True):
+                 rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True, canonical=True, addGeneratedOSM=True,
+                 decimateStep=1, savelist=False, loadlist=False):
         # TODO addGeneratedOSM should not be the default behavior; set FALSE here anc call with TRUE as needed
 
         """
@@ -296,10 +297,19 @@ class fromGeneratedDataset(Dataset):
             rnd_spatial: parameter for uniform spatial cross position (center of the crossing area)
             canonical: set false to avoid generating the "canonical" crossings
             noise: whether to add or not noise in the image (pixel level)
+            decimateStep: use this value to decimate the 100-elements of the generated-dataset; set as "::STEP"
 
             addGeneratedOSM: whether to add the generated OSM intersection (to train as student)
 
         """
+
+        if not isinstance(decimateStep, int) and decimateStep > 0:
+            print("decimateStep must be an integer > 0")
+            exit(-1)
+            
+        if savelist and loadlist:
+            print("load and save at the same time")
+            exit(-1)
 
         self.transform = transform
 
@@ -314,21 +324,52 @@ class fromGeneratedDataset(Dataset):
         self.addGeneratedOSM = addGeneratedOSM
 
         tic = time.time()
-        for folder in folders:
-            current_filelist = glob.glob1(str(folder), "*.png")
-            for file in current_filelist:
-                bev_filename = os.path.join(folder, file)
-                json_filename = str(bev_filename.replace('png', 'png.json'))
 
-                assert os.path.exists(bev_filename), "no bev file"
-                assert os.path.exists(json_filename), "no json file"
+        fullfilename = os.path.join(os.path.commonpath(folders.tolist()),
+                                    "fromGeneratedDataset" + str(distance) + ".npz")
 
-                self.bev_images.append(bev_filename)
+        if loadlist and os.path.isfile(fullfilename):
 
-                with open(json_filename) as json_file:
-                    bev_label = json.load(json_file)
-                    self.bev_labels.append(bev_label['label'])
-        self.__filterdistance(distance)
+            print("Loading existing file list from " + fullfilename)
+
+            self.bev_images = np.load(fullfilename)['bev_images'].tolist()
+            self.bev_labels = np.load(fullfilename)['bev_labels'].tolist()
+
+        else:
+
+            if os.path.isfile(fullfilename):
+                print("A saved version of the datasets exists. Consider using --loadlist")
+
+            for folder in folders:
+                current_filelist = glob.glob1(str(folder), "*.png")
+                for file in current_filelist:
+                    bev_filename = os.path.join(folder, file)
+                    json_filename = str(bev_filename.replace('png', 'png.json'))
+
+                    #assert os.path.exists(bev_filename), "no bev file"
+                    #assert os.path.exists(json_filename), "no json file"
+
+                    self.bev_images.append(bev_filename)
+
+                    with open(json_filename) as json_file:
+                        bev_label = json.load(json_file)
+                        self.bev_labels.append(bev_label['label'])
+
+            self.__filterdistance(distance)
+
+        if savelist:
+            np.savez_compressed(fullfilename,
+                                bev_images=np.asarray(self.bev_images),
+                                bev_labels=np.asarray(self.bev_labels))
+
+            print("File list saved to " + fullfilename)
+
+        # decimate
+        print("The dataset will be decimated taking 1 out of " + str(decimateStep) + " elements")
+        self.bev_images = self.bev_images[::decimateStep]
+        self.bev_labels = self.bev_labels[::decimateStep]
+
+
         toc = time.time()
         print("[fromGeneratedDataset] - " + str(len(self.bev_labels)) + " elements loaded in " + str(
             time.strftime("%H:%M:%S", time.gmtime(toc - tic))))
