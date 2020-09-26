@@ -276,6 +276,8 @@ def main(args, model=None):
         aanetTransforms = transforms.Compose(
             [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), ToTensor()])
         generateTransforms = transforms.Compose([Rescale((224, 224)), Normalize(), ToTensor()])
+        obsTransforms = transforms.Compose(
+            [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
 
     if not args.test:
         loo = LeaveOneOut()
@@ -298,15 +300,15 @@ def main(args, model=None):
 
             elif args.dataloader == "triplet_OBB":
                 val_dataset = triplet_OBB(val_path, args.distance, elements=200, canonical=False,
-                                          transform=generateTransforms)
+                                          transform_obs=obsTransforms, transform_bev=generateTransforms)
                 train_dataset = triplet_OBB(train_path, args.distance, elements=2000, canonical=False,
-                                            transform=generateTransforms)
+                                            transform_obs=obsTransforms, transform_bev=generateTransforms)
 
             elif args.dataloader == "triplet_BOO":
                 val_dataset = triplet_BOO(val_path, args.distance, elements=200, canonical=False,
-                                          transform=generateTransforms)
+                                          transform_obs=obsTransforms, transform_bev=generateTransforms)
                 train_dataset = triplet_BOO(train_path, args.distance, elements=2000, canonical=False,
-                                            transform=generateTransforms)
+                                            transform_obs=obsTransforms, transform_bev=generateTransforms)
 
             elif args.dataloader == "BaseLine":
                 val_dataset = BaseLine(val_path, transform=transforms.Compose([transforms.Resize((224, 224)),
