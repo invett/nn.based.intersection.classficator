@@ -10,7 +10,7 @@ data_path = '/home/malvaro/Documentos/DualBiSeNet/data_raw_bev/'
 folders = np.array([os.path.join(data_path, folder) for folder in os.listdir(data_path) if
                     os.path.isdir(os.path.join(data_path, folder))])
 
-dataset = fromGeneratedDataset(folders, distance=20.0)
+dataset = fromGeneratedDataset(folders, distance=20.0, loadlist=True)
 
 loader = DataLoader(
     dataset,
