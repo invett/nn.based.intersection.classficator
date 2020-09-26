@@ -293,7 +293,10 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
     if not args.nowandb:  # if nowandb flag was set, skip
         wandb.watch(model, log="all")
 
-    current_random_rate = 0.5
+    if args.enable_random_rate:
+        current_random_rate = 0.5
+    else:
+        current_random_rate = 1.0
 
     for epoch in range(args.num_epochs):
         lr = optimizer.param_groups[0]['lr']
@@ -377,11 +380,12 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
         if patience >= args.patience > 0 or acc_val == 1:
             break
 
-        current_random_rate = current_random_rate + 0.05
-        if current_random_rate >= 1.0:
+        if args.enable_random_rate:
+            current_random_rate = current_random_rate + 0.05
+            if current_random_rate >= 1.0:
+                current_random_rate = 1.0
+        else:
             current_random_rate = 1.0
-
-
 
 
 if __name__ == '__main__':
