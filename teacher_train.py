@@ -32,11 +32,11 @@ def main(args):
     # if nowandb flag was set, skip
     if not args.nowandb:
         if args.test:
-            wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train",
-                       job_type="eval")
+            wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train_sweep",
+                       job_type="eval", tags=["Teacher","sweep"])
         else:
-            wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train",
-                       job_type="training")
+            wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train_sweep",
+                       job_type="training", tags=["Teacher","sweep"])
         wandb.config.update(args, allow_val_change=True)
 
     # Build Model
@@ -102,10 +102,10 @@ def main(args):
 
         # load Saved Model
         if args.triplet:
-            loadpath = '/home/malvaro/Documentos/IntersectionClassifier/trainedmodels/teacher/teacher_model_{}.pth'.format(
+            loadpath = './trainedmodels/teacher/teacher_model_{}.pth'.format(
                 args.resnetmodel)
         else:
-            loadpath = '/home/malvaro/Documentos/IntersectionClassifier/trainedmodels/teacher/teacher_model_class_{' \
+            loadpath = './trainedmodels/teacher/teacher_model_class_{' \
                        '}.pth'.format(args.resnetmodel)
 
         print('load model from {} ...'.format(loadpath))
@@ -392,7 +392,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # Script modalities and Network behaviors
-    parser.add_argument('--train', action='store_true', help='Train/Validate the model')
+    parser.add_argument('--train', type=bool, default=True, help='Train/Validate the model')
     parser.add_argument('--test', action='store_true', help='Test the model')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     parser.add_argument('--telegram', type=bool, default=True, help='Send info through Telegram')
