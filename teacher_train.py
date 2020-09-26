@@ -254,7 +254,7 @@ def validation(args, model, criterion, dataloader_val, random_rate):
 
         # Optionally update the random rate for teacher_tripletloss_generated
         if args.enable_random_rate:
-            dataloader_val.set_random_rate(random_rate)  # variable is wandb-tracked in train routine
+            dataloader_val.dataset.set_random_rate(random_rate)  # variable is wandb-tracked in train routine
 
         for sample in dataloader_val:
             # network pass for the sample
@@ -307,7 +307,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
 
         # Optionally update the random rate for teacher_tripletloss_generated
         if args.enable_random_rate:
-            random_rate = dataloader_train.set_random_rate(current_random_rate)
+            random_rate = dataloader_train.dataset.set_random_rate(current_random_rate)
 
         for sample in dataloader_train:
             # network pass for the sample
