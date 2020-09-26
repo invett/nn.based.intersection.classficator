@@ -397,7 +397,7 @@ if __name__ == '__main__':
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     parser.add_argument('--telegram', type=bool, default=True, help='Send info through Telegram')
 
-    parser.add_argument('--triplet', action='store_true', help='Triplet Loss')
+    parser.add_argument('--triplet', type=bool, default=True, help='Triplet Loss')
     parser.add_argument('--swap', action='store_true', help='Triplet Loss swap')
     parser.add_argument('--margin', type=float, default=1, help='margin in triplet')
     parser.add_argument('--no_noise', action='store_true', help='In case you want to disable the noise injection in '
@@ -411,10 +411,10 @@ if __name__ == '__main__':
     parser.add_argument('--dataset_train_elements', type=int, default=2000, help='see teacher_tripletloss_generated')
     parser.add_argument('--dataset_val_elements', type=int, default=200, help='see teacher_tripletloss_generated')
 
-    parser.add_argument('--training_rnd_width',   type=float, default=2.0, help='see teacher_tripletloss_generated')
-    parser.add_argument('--training_rnd_angle',   type=float, default=0.4, help='see teacher_tripletloss_generated')
+    parser.add_argument('--training_rnd_width', type=float, default=2.0, help='see teacher_tripletloss_generated')
+    parser.add_argument('--training_rnd_angle', type=float, default=0.4, help='see teacher_tripletloss_generated')
     parser.add_argument('--training_rnd_spatial', type=float, default=9.0, help='see teacher_tripletloss_generated')
-    parser.add_argument('--enable_random_rate', action='store_true', help='see teacher_tripletloss_generated')
+    parser.add_argument('--enable_random_rate', type=bool, default=True, help='see teacher_tripletloss_generated')
 
     # Script configuration / paths
     parser.add_argument('--dataset', type=str, help='path to the dataset you are using.')
@@ -429,7 +429,6 @@ if __name__ == '__main__':
     parser.add_argument('--saveEmbeddings', action='store_true', help='Save all the embeddings for debug')
     parser.add_argument('--saveEmbeddingsPath', type=str,
                         help='Where to save the Embeddings. Required when --saveEmbeddings is set')
-
 
     # Network parameters (for backbone)
     parser.add_argument('--resnetmodel', type=str, default="resnet18",
