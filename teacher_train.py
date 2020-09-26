@@ -1,3 +1,4 @@
+import multiprocessing
 import argparse
 import os
 import numpy as np
@@ -389,6 +390,13 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
 
 
 if __name__ == '__main__':
+
+    # workaround for r5g2 machine... opencv stuff
+    # seems related to
+    # https://github.com/opencv/opencv/issues/5150 and
+    # https: // github.com / pytorch / pytorch / issues / 1355
+    multiprocessing.set_start_method('spawn')
+
     parser = argparse.ArgumentParser()
 
     # Script modalities and Network behaviors
