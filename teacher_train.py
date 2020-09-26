@@ -37,7 +37,7 @@ def main(args):
         else:
             wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train",
                        job_type="training", allow_val_change=True)
-        wandb.config.update(args)
+        wandb.config.update(args, allow_val_change=True)
 
     # Build Model
     model = get_model_resnet(args.resnetmodel, args.num_classes, greyscale=False, embedding=args.triplet)
