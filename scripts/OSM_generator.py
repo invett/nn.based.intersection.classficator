@@ -35,14 +35,14 @@ parser = argparse.ArgumentParser(description='Crossing Localization')
 
 parser.add_argument('--std_rot', type=float, default=0.05, help='Std for arms rotation')
 parser.add_argument('--max_width', type=float, default=6., help='MAX arms width')
-parser.add_argument('--grid_test', type=float, default=None, nargs=3, help='deltas for grid testing [delta_forward, delta_lateral, delta_rotation')
+parser.add_argument('--grid_test', type=float, default=None, nargs=3,
+                    help='deltas for grid testing [delta_forward, delta_lateral, delta_rotation')
 
 args, unknown = parser.parse_known_args()
 print(args)
 
 
 class Crossing:
-
     max_x = 30.
     max_y = 15.
     min_y = -15.
@@ -61,7 +61,8 @@ class Crossing:
         self.num_arms = num_arms
         self.real_rotation = deepcopy(rotations_list)
         self.rotations_list = rotations_list
-        self.fixed_rotation_frame = deepcopy(self.rotations_list[0])  # This is used for limiting the arms rotation angle
+        self.fixed_rotation_frame = deepcopy(
+            self.rotations_list[0])  # This is used for limiting the arms rotation angle
         for i in range(num_arms):
             self.real_rotation[i] -= self.fixed_rotation_frame
         self.widths_list = widths_list
@@ -87,7 +88,8 @@ class Crossing:
         self.center = center_pose
 
     def generate_og(self, noise=True):
-        return self.create_og_hypotesis(self.num_arms, self.rotations_list, self.widths_list, self.center, with_noise=noise)
+        return self.create_og_hypotesis(self.num_arms, self.rotations_list, self.widths_list, self.center,
+                                        with_noise=noise)
 
     def rotate_point_og(self, p, center, angle):
         center_x = center[0]
@@ -179,7 +181,8 @@ class Crossing:
 
         return (cx, cy), radius, pt1_angle, pt2_angle, (int(flood_x), int(flood_y))
 
-    def draw_ellipse(self, img, center, axes, angle, startAngle, endAngle, color, thickness=1, lineType=cv2.LINE_AA, shift=10):
+    def draw_ellipse(self, img, center, axes, angle, startAngle, endAngle, color, thickness=1, lineType=cv2.LINE_AA,
+                     shift=10):
         # uses the shift to accurately get sub-pixel resolution for arc
         # taken from https://stackoverflow.com/a/44892317/5087436
         center = (int(round(center[0] * 2 ** shift)), int(round(center[1] * 2 ** shift)))
@@ -243,7 +246,7 @@ class Crossing:
                 noise[np.arange(noise.shape[0])[line, None], result] = 0
 
         if len(test.shape) == 3:  # check whether we're using a 3-channel image; in this case, 3-channelize the noise
-            noise = np.dstack([noise]*3)
+            noise = np.dstack([noise] * 3)
 
         test = test * noise
         # toc = datetime.now()
@@ -267,7 +270,8 @@ class Crossing:
 
         return test
 
-    def create_og_hypotesis(self, howManyLanes, rotation_list, width_list, center=(14, 0), make_arcs=False, with_noise=True):
+    def create_og_hypotesis(self, howManyLanes, rotation_list, width_list, center=(14, 0), make_arcs=False,
+                            with_noise=True):
         """
 
         Args:
@@ -287,9 +291,9 @@ class Crossing:
 
         crossing_image = np.zeros((self.n_col, self.n_row), np.float32)
 
-        lines = np.zeros((howManyLanes, 2, 2), np.float32)                                      # magic numbers
-        round_points = []                                                                       # for the arcs
-        aaa = 3                                                                                 # magic number
+        lines = np.zeros((howManyLanes, 2, 2), np.float32)  # magic numbers
+        round_points = []  # for the arcs
+        aaa = 3  # magic number
         max_width = np.array(width_list).max()
         center_x = center[0]
         center_y = center[1]
@@ -312,16 +316,17 @@ class Crossing:
                 lines[i, 0, :] = self.rotate_point_og(lines[i, 0, :], center, rotation)
                 lines[i, 1, :] = self.rotate_point_og(lines[i, 1, :], center, rotation)
 
-                #ARCS
+                # ARCS
                 round_point1 = self.rotate_point_og(round_point1, center, rotation)
                 round_point2 = self.rotate_point_og(round_point2, center,
-                                               rotation)  # round_point2 = (int(round_point1[0] / gridCellSize), int(round_point1[1] / gridCellSize))  # round_point1 = (int(round_point2[0] / gridCellSize), int(round_point2[1] / gridCellSize))
+                                                    rotation)  # round_point2 = (int(round_point1[0] / gridCellSize), int(round_point1[1] / gridCellSize))  # round_point1 = (int(round_point2[0] / gridCellSize), int(round_point2[1] / gridCellSize))
 
             round_points.append((round_point1, round_point2))
 
             lines[i] = lines[i] / self.gridCellSize
             cv2.line(crossing_image, tuple(lines[i, 0].astype(np.int32)), tuple(lines[i, 1].astype(np.int32)), 255,
-                     int((width / self.gridCellSize)), cv2.LINE_AA)  # cv2.fillPoly(crossing_image, [poly[i].astype(np.int32)], 1.)
+                     int((width / self.gridCellSize)),
+                     cv2.LINE_AA)  # cv2.fillPoly(crossing_image, [poly[i].astype(np.int32)], 1.)
 
         # THIS PART IS FOR THE "CURVES" BETWEEN TWO ROADS, THE LITTLE NICE ARCS
         if make_arcs:
@@ -339,36 +344,40 @@ class Crossing:
                         # print("D: ",distance(round_points[i][1], round_points[j][1]))
                         try:
                             if self.distance(round_points[i][0], round_points[j][0]) < width:
-                                center_arc, radius, start_angle, end_angle, flood_pt = self.convert_arc(round_points[i][0],
-                                                                                                   round_points[j][0], sagitta,
-                                                                                                   center_image)
+                                center_arc, radius, start_angle, end_angle, flood_pt = self.convert_arc(
+                                    round_points[i][0],
+                                    round_points[j][0], sagitta,
+                                    center_image)
                                 if radius == -1:
                                     continue
                                 axes = (radius, radius)
                                 self.draw_ellipse(crossing_image, center_arc, axes, 0, start_angle, end_angle, 255)
                                 cv2.floodFill(crossing_image, mask, flood_pt, 255)
                             if self.distance(round_points[i][0], round_points[j][1]) < width:
-                                center_arc, radius, start_angle, end_angle, flood_pt = self.convert_arc(round_points[i][0],
-                                                                                                   round_points[j][1], sagitta,
-                                                                                                   center_image)
+                                center_arc, radius, start_angle, end_angle, flood_pt = self.convert_arc(
+                                    round_points[i][0],
+                                    round_points[j][1], sagitta,
+                                    center_image)
                                 if radius == -1:
                                     continue
                                 axes = (radius, radius)
                                 self.draw_ellipse(crossing_image, center_arc, axes, 0, start_angle, end_angle, 255)
                                 cv2.floodFill(crossing_image, mask, flood_pt, 255)
                             if self.distance(round_points[i][1], round_points[j][0]) < width:
-                                center_arc, radius, start_angle, end_angle, flood_pt = self.convert_arc(round_points[i][1],
-                                                                                                   round_points[j][0], sagitta,
-                                                                                                   center_image)
+                                center_arc, radius, start_angle, end_angle, flood_pt = self.convert_arc(
+                                    round_points[i][1],
+                                    round_points[j][0], sagitta,
+                                    center_image)
                                 if radius == -1:
                                     continue
                                 axes = (radius, radius)
                                 self.draw_ellipse(crossing_image, center_arc, axes, 0, start_angle, end_angle, 255)
                                 cv2.floodFill(crossing_image, mask, flood_pt, 255)
                             if self.distance(round_points[i][1], round_points[j][1]) < width:
-                                center_arc, radius, start_angle, end_angle, flood_pt = self.convert_arc(round_points[i][1],
-                                                                                                   round_points[j][1], sagitta,
-                                                                                                   center_image)
+                                center_arc, radius, start_angle, end_angle, flood_pt = self.convert_arc(
+                                    round_points[i][1],
+                                    round_points[j][1], sagitta,
+                                    center_image)
                                 if radius == -1:
                                     continue
                                 axes = (radius, radius)
@@ -379,8 +388,9 @@ class Crossing:
                             pass
 
         if with_noise:
-            #crossing_image = self.add_noise(crossing_image, elements_multiplier=3., distribution="uniform") TODO check this out, there's an issue with the staticmethod
-            crossing_image = self.add_noise(self=self, test=crossing_image, elements_multiplier=3., distribution="uniform")
+            # crossing_image = self.add_noise(crossing_image, elements_multiplier=3., distribution="uniform") TODO check this out, there's an issue with the staticmethod
+            crossing_image = self.add_noise(self=self, test=crossing_image, elements_multiplier=3.,
+                                            distribution="uniform")
 
         return crossing_image
 
@@ -474,7 +484,7 @@ def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_a
         branch_widths = [standard_width + width_a, standard_width + width_b]
     elif crossing_type == 3:
         branches = 3
-        rotation_list = [0. + rot_a,  pi + rot_c, 3 / 2 * pi + rot_d]
+        rotation_list = [0. + rot_a, pi + rot_c, 3 / 2 * pi + rot_d]
         branch_widths = [standard_width + width_a, standard_width + width_b, standard_width + width_c]
     elif crossing_type == 4:
         branches = 3
@@ -487,10 +497,11 @@ def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_a
     elif crossing_type == 6:
         branches = 4
         rotation_list = [0. + rot_a, pi / 2 + rot_b, pi + rot_c, 3 / 2 * pi + rot_d]
-        branch_widths = [standard_width + width_a, standard_width + width_b, standard_width + width_c, standard_width + width_d]
+        branch_widths = [standard_width + width_a, standard_width + width_b, standard_width + width_c,
+                         standard_width + width_d]
 
     crossing_sample = Crossing(crossing_pose,  # matrix form... similar to intersection center, I won't change the code!
-                               branches,       # how many arms in the intersection
+                               branches,  # how many arms in the intersection
                                rotation_list,  # rotation list (n# elements == n# arms)
                                branch_widths,  # width list (n# elements == n# arms)
                                (intersection_center[0], intersection_center[1])
@@ -504,8 +515,7 @@ def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_a
     # conversion to uint8 seems necessary for sending to telegram
     # and
     # create 3-channel image
-    sample = np.dstack([np.array(sample / 1.0, dtype=np.uint8)]*3)
-
+    sample = np.dstack([np.array(sample / 1.0, dtype=np.uint8)] * 3)
 
     return [sample, xx, yy]
 

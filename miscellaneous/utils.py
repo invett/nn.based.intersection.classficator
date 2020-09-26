@@ -10,6 +10,7 @@ import sys
 from math import pi, cos, sin, atan2, asin
 from functools import reduce
 
+import torch
 from torch import nn
 from sklearn.metrics import accuracy_score
 
@@ -302,9 +303,14 @@ def student_network_pass(args, sample, criterion, model, gtmodel=None):
     cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
 
     if args.triplet:
-        anchor = sample['anchor']  # BEV Image / OSM Anchor
-        positive = sample['positive']  # OSM Positive / BEV Positive
-        negative = sample['negative']  # OSM Negative / BEV Negative
+        if args.dataloader == 'triplet_OBB':
+            anchor = sample['OSM_anchor']  # OSM Anchor
+            positive = sample['BEV_positive']  # BEV Positive
+            negative = sample['BEV_negative']  # BEV Negative
+        if args.dataloader == 'triplet_BOO':
+            anchor = sample['BEV_anchor']  # BEV Image
+            positive = sample['OSM_positive']  # OSM Positive
+            negative = sample['OSM_negative']  # OSM Negative
         if torch.cuda.is_available() and args.use_gpu:
             anchor = anchor.cuda()
             positive = positive.cuda()

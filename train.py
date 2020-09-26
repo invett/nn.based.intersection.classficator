@@ -15,7 +15,8 @@ from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mi
 
 from torch.optim.lr_scheduler import MultiStepLR
 
-from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet, BaseLine, fromGeneratedDataset
+from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet, BaseLine, fromGeneratedDataset, \
+    triplet_OBB, triplet_BOO
 from model.resnet_models import get_model_resnet, get_model_resnext, Personalized, Personalized_small
 from dropout_models import get_resnext, get_resnet
 from sklearn.model_selection import LeaveOneOut
@@ -41,7 +42,7 @@ def test(args, dataloader_test, gt_model=None):
     # Build model
     if args.resnetmodel[0:6] == 'resnet':
         model = get_model_resnet(args.resnetmodel, args.num_classes, transfer=args.transfer, pretrained=args.pretrained,
-                                 embedding=(args.embedding or args.triplet))
+                                 embedding=(args.embedding or args.triplet) and not args.embedding_class)
     elif args.resnetmodel[0:7] == 'resnext':
         model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
     elif args.resnetmodel == 'personalized':
@@ -50,15 +51,19 @@ def test(args, dataloader_test, gt_model=None):
         model = Personalized_small(args.num_classes)
 
     # load Saved Model
+    if args.embedding and args.embedding_class:
+        gt_model = copy.deepcopy(model)
+        print('load model from {} ...'.format(args.teacher_path))
+        gt_model.load_state_dict(torch.load(args.teacher_path))
+        print('Done!')
+        model = torch.nn.Sequential(*(list(model.children())[:-1]))
+        gt_model = torch.nn.Sequential(*(list(gt_model.children())[:-1]))
+        gt_model.eval()
+
     savepath = './trainedmodels/model_' + args.resnetmodel + '.pth'
     print('load model from {} ...'.format(savepath))
     model.load_state_dict(torch.load(savepath))
     print('Done!')
-
-    if args.embedding:
-        gt_model = copy.deepcopy(model)
-        gt_model.load_state_dict(torch.load(args.teacher_path))
-        gt_model.eval()
 
     if torch.cuda.is_available() and args.use_gpu:
         model = model.cuda()
@@ -66,7 +71,7 @@ def test(args, dataloader_test, gt_model=None):
             gt_model = gt_model.cuda()
 
     # Start testing
-    if args.embedding:
+    if args.embedding or args.triplet:
         acc_val, loss_val = validation(args, model, criterion, dataloader_test, gtmodel=gt_model)
         if not args.nowandb:  # if nowandb flag was set, skip
             wandb.log({"Test/loss": loss_val, "Test/Acc": acc_val})
@@ -291,6 +296,18 @@ def main(args, model=None):
                 val_dataset = fromGeneratedDataset(val_path, args.distance, transform=generateTransforms)
                 train_dataset = fromGeneratedDataset(train_path, args.distance, transform=generateTransforms)
 
+            elif args.dataloader == "triplet_OBB":
+                val_dataset = triplet_OBB(val_path, args.distance, elements=200, canonical=False,
+                                          transform=generateTransforms)
+                train_dataset = triplet_OBB(train_path, args.distance, elements=2000, canonical=False,
+                                            transform=generateTransforms)
+
+            elif args.dataloader == "triplet_BOO":
+                val_dataset = triplet_BOO(val_path, args.distance, elements=200, canonical=False,
+                                          transform=generateTransforms)
+                train_dataset = triplet_BOO(train_path, args.distance, elements=2000, canonical=False,
+                                            transform=generateTransforms)
+
             elif args.dataloader == "BaseLine":
                 val_dataset = BaseLine(val_path, transform=transforms.Compose([transforms.Resize((224, 224)),
                                                                                transforms.ToTensor(),
@@ -402,6 +419,9 @@ def main(args, model=None):
             test_path = test_path.replace('data_raw_bev', 'data_raw')
             test_dataset = TestDataset(test_path, args.distance, transform=generateTransforms)
 
+    elif args.dataloader == 'triplet_OBB':
+        test_dataset = triplet_OBB(test_path, args.distance, transform=generateTransforms)
+
     dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
     if not args.nowandb:  # if nowandb flag was set, skip
@@ -460,6 +480,8 @@ if __name__ == '__main__':
     # different data loaders, use one from choices; a description is provided in the documentation of each dataloader
     parser.add_argument('--dataloader', type=str, default='BaseLine', choices=['fromAANETandDualBisenet',
                                                                                'generatedDataset',
+                                                                               'triplet_OBB',
+                                                                               'triplet_B00',
                                                                                'BaseLine',
                                                                                'TestDataset'],
                         help='One of the supported datasets')
@@ -488,8 +510,7 @@ if __name__ == '__main__':
 
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
-    # group_id = wandb.util.generate_id()
-    group_id = 'Teacher_Student_embedding'
+    group_id = 'Tripletloss_training'
     print(args)
     warnings.filterwarnings("ignore")
 
