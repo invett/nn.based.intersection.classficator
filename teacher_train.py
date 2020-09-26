@@ -293,6 +293,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
     if not args.nowandb:  # if nowandb flag was set, skip
         wandb.watch(model, log="all")
 
+    current_random_rate = 0.5
+
     for epoch in range(args.num_epochs):
         lr = optimizer.param_groups[0]['lr']
         tq = tqdm.tqdm(total=len(dataloader_train) * args.batch_size)
@@ -302,7 +304,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
 
         # Optionally update the random rate for teacher_tripletloss_generated
         if args.enable_random_rate:
-            random_rate = dataloader_train.set_random_rate(1.0)
+            random_rate = dataloader_train.set_random_rate(current_random_rate)
 
         for sample in dataloader_train:
             # network pass for the sample
@@ -338,7 +340,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
 
         if epoch % args.validation_step == 0:
 
-            acc_val, loss_val = validation(args, model, criterion, dataloader_val, random_rate=random_rate)
+            acc_val, loss_val = validation(args, model, criterion, dataloader_val, random_rate=current_random_rate)
 
             if (acc_pre < acc_val) or (loss_pre > loss_val):
                 patience = 0
@@ -374,6 +376,11 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
 
         if patience >= args.patience > 0 or acc_val == 1:
             break
+
+        current_random_rate = current_random_rate + 0.05
+        if current_random_rate >= 1.0:
+            current_random_rate = 1.0
+
 
 
 
