@@ -36,7 +36,7 @@ def main(args):
                        job_type="eval")
         else:
             wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train",
-                       job_type="training")
+                       job_type="training", allow_val_change=True)
         wandb.config.update(args)
 
     # Build Model
