@@ -453,11 +453,11 @@ if __name__ == '__main__':
     parser.add_argument('--cuda', type=str, default='0', help='GPU is used for training')
     parser.add_argument('--use_gpu', type=bool, default=True, help='whether to user gpu for training')
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
-    parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
-    parser.add_argument('--patience_start', type=int, default=5,
+    parser.add_argument('--patience', type=int, default=2, help='Patience of validation. Default, none. ')
+    parser.add_argument('--patience_start', type=int, default=6,
                         help='Starting epoch for patience of validation. Default, 50. ')
     parser.add_argument('--pretrained', type=bool, default=True, help='whether to use a pretrained net, or not')
-    parser.add_argument('--threshold', type=float, default=0.95, help='threshold to decide if the detection is correct')
+    parser.add_argument('--threshold', type=float, default=0.92, help='threshold to decide if the detection is correct')
     parser.add_argument('--distance', type=int, default=20, help='Distance to crossroads')
 
     args = parser.parse_args()
