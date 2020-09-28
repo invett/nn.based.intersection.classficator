@@ -401,12 +401,12 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
                         print('Saving model: ',
                               os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(wandb.run.name)))
                         torch.save(bestModel, os.path.join(args.save_model_path,
-                                                           'teacher_model_{}.pth'.format(wandb.run.nam)))
+                                                           'teacher_model_{}.pth'.format(wandb.run.name)))
                     else:
                         print('Saving model: ',
                               os.path.join(args.save_model_path, 'teacher_model_class_{}.pth'.format(wandb.run.name)))
                         torch.save(bestModel, os.path.join(args.save_model_path,
-                                                           'teacher_model_class_{}.pth'.format(wandb.run.nam)))
+                                                           'teacher_model_class_{}.pth'.format(wandb.run.name)))
 
             elif epoch < args.patience_start:
                 patience = 0
