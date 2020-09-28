@@ -773,8 +773,8 @@ class teacher_tripletloss_generated(Dataset):
         """
 
         # safe to delete, this is for the SEED test
-        if idx == 0:
-            print("Random seed to check: " + str(np.random.rand() ))
+        # if idx == 0:
+        #     print("Random seed to check: " + str(np.random.rand() ))
 
         # identify the typology for anchor item
         anchor_type = self.samples[idx][0]
