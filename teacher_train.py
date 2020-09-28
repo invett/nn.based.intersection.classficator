@@ -34,14 +34,15 @@ def main(args):
     if not args.nowandb:
         if args.test:
             wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train_sweep",
-                       job_type="eval", tags=["Teacher","sweep"])
+                       job_type="eval", tags=["Teacher", "sweep"])
         else:
             wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train_sweep",
-                       job_type="training", tags=["Teacher","sweep"])
+                       job_type="training", tags=["Teacher", "sweep"])
         wandb.config.update(args, allow_val_change=True)
 
     # Build Model
-    model = get_model_resnet(args.resnetmodel, args.num_classes, greyscale=False, embedding=args.triplet)
+    model = get_model_resnet(args.resnetmodel, args.num_classes, pretrained=args.pretrained, greyscale=False,
+                             embedding=args.triplet)
 
     if torch.cuda.is_available() and args.use_gpu:
         model = model.cuda()
@@ -455,7 +456,7 @@ if __name__ == '__main__':
     parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
     parser.add_argument('--patience_start', type=int, default=5,
                         help='Starting epoch for patience of validation. Default, 50. ')
-
+    parser.add_argument('--pretrained', type=bool, default=True, help='whether to use a pretrained net, or not')
     parser.add_argument('--threshold', type=float, default=0.95, help='threshold to decide if the detection is correct')
     parser.add_argument('--distance', type=int, default=20, help='Distance to crossroads')
 
