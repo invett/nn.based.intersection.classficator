@@ -1,4 +1,4 @@
-import socket #to get the machine name
+import socket  # to get the machine name
 import multiprocessing
 from functools import partial
 
@@ -385,16 +385,28 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
                     wandb.log({"Val/loss": loss_val,
                                "Val/Acc": acc_val,
                                "random_rate": random_rate}, step=epoch)
-                if args.triplet:
-                    print('Saving model: ',
-                          os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(args.resnetmodel)))
-                    torch.save(bestModel, os.path.join(args.save_model_path,
-                                                       'teacher_model_{}.pth'.format(args.resnetmodel)))
+                if args.nowandb:
+                    if args.triplet:
+                        print('Saving model: ',
+                              os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(args.resnetmodel)))
+                        torch.save(bestModel, os.path.join(args.save_model_path,
+                                                           'teacher_model_{}.pth'.format(args.resnetmodel)))
+                    else:
+                        print('Saving model: ',
+                              os.path.join(args.save_model_path, 'teacher_model_class_{}.pth'.format(args.resnetmodel)))
+                        torch.save(bestModel, os.path.join(args.save_model_path,
+                                                           'teacher_model_class_{}.pth'.format(args.resnetmodel)))
                 else:
-                    print('Saving model: ',
-                          os.path.join(args.save_model_path, 'teacher_model_class_{}.pth'.format(args.resnetmodel)))
-                    torch.save(bestModel, os.path.join(args.save_model_path,
-                                                       'teacher_model_class_{}.pth'.format(args.resnetmodel)))
+                    if args.triplet:
+                        print('Saving model: ',
+                              os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(wandb.run.name)))
+                        torch.save(bestModel, os.path.join(args.save_model_path,
+                                                           'teacher_model_{}.pth'.format(args.resnetmodel)))
+                    else:
+                        print('Saving model: ',
+                              os.path.join(args.save_model_path, 'teacher_model_class_{}.pth'.format(wandb.run.name)))
+                        torch.save(bestModel, os.path.join(args.save_model_path,
+                                                           'teacher_model_class_{}.pth'.format(args.resnetmodel)))
 
             elif epoch < args.patience_start:
                 patience = 0
@@ -462,7 +474,8 @@ if __name__ == '__main__':
     ################################
     # SCRIPT CONFIGURATION / PATHS #
     ################################
-    parser.add_argument('--dataset', default='../DualBiSeNet/data_raw_bev/', type=str, help='path to the dataset you are using.')
+    parser.add_argument('--dataset', default='../DualBiSeNet/data_raw_bev/', type=str,
+                        help='path to the dataset you are using.')
     parser.add_argument('--save_model_path', type=str, default='./trainedmodels/teacher/', help='path to save model')
 
     parser.add_argument('--saveTestCouplesForDebug', action='store_true',
