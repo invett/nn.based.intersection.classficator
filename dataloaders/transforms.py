@@ -261,7 +261,7 @@ class GenerateBev(object):
             save_out_colors = save_out_colors
             save_out_colors = save_out_colors[idx]
 
-        # ALVARO MASK
+        # ALVARO MASK # TODO this is the right place to disable ALVARO MASK s and so get the FULL - BEVs
         alvaro = sample['alvaromask']
         out_points = out_points[alvaro > 0]
         out_colors = out_colors[alvaro > 0]
