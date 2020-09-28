@@ -34,14 +34,15 @@ def main(args):
     if not args.nowandb:
         if args.test:
             wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train_sweep",
-                       job_type="eval", tags=["Teacher","sweep"])
+                       job_type="eval", tags=["Teacher", "sweep"])
         else:
             wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train_sweep",
-                       job_type="training", tags=["Teacher","sweep"])
+                       job_type="training", tags=["Teacher", "sweep"])
         wandb.config.update(args, allow_val_change=True)
 
     # Build Model
-    model = get_model_resnet(args.resnetmodel, args.num_classes, greyscale=False, embedding=args.triplet)
+    model = get_model_resnet(args.resnetmodel, args.num_classes, pretrained=args.pretrained, greyscale=False,
+                             embedding=args.triplet)
 
     if torch.cuda.is_available() and args.use_gpu:
         model = model.cuda()
@@ -395,7 +396,7 @@ if __name__ == '__main__':
     # seems related to
     # https://github.com/opencv/opencv/issues/5150 and
     # https: // github.com / pytorch / pytorch / issues / 1355
-    multiprocessing.set_start_method('spawn')
+    # multiprocessing.set_start_method('spawn')
 
     parser = argparse.ArgumentParser()
 
