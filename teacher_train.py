@@ -462,7 +462,7 @@ if __name__ == '__main__':
     ################################
     # SCRIPT CONFIGURATION / PATHS #
     ################################
-    parser.add_argument('--dataset', type=str, help='path to the dataset you are using.')
+    parser.add_argument('--dataset', default='../DualBiSeNet/data_raw_bev/', type=str, help='path to the dataset you are using.')
     parser.add_argument('--save_model_path', type=str, default='./trainedmodels/teacher/', help='path to save model')
 
     parser.add_argument('--saveTestCouplesForDebug', action='store_true',
