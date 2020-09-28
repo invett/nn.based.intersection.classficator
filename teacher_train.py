@@ -1,4 +1,7 @@
+import socket #to get the machine name
 import multiprocessing
+from functools import partial
+
 import argparse
 import os
 import numpy as np
@@ -24,8 +27,23 @@ import matplotlib.pyplot as plt
 import wandb
 import seaborn as sn
 
+import random
+
+
+def _init_fn(worker_id, seed, epoch):
+    seed = seed.value + worker_id + epoch.value * 100
+    # if you want to debug... print(f"\nInit worker {worker_id} with seed {seed}")
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+
 
 def main(args):
+    GLOBAL_EPOCH = multiprocessing.Value('i', 0)
+    seed = multiprocessing.Value('i', args.seed)
+
+    init_fn = partial(_init_fn, seed=seed, epoch=GLOBAL_EPOCH)
+
     addnoise = True
     if args.no_noise:
         addnoise = False
@@ -80,11 +98,11 @@ def main(args):
                                                     noise=addnoise)
 
         dataloader_train = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=True,
-                                      num_workers=args.num_workers)
+                                      num_workers=args.num_workers, worker_init_fn=init_fn)
         dataloader_val = DataLoader(dataset_val, batch_size=args.batch_size, shuffle=False,
-                                    num_workers=args.num_workers)
+                                    num_workers=args.num_workers, worker_init_fn=init_fn)
 
-        train(args, model, optimizer, dataloader_train, dataloader_val, dataset_train, dataset_val)
+        train(args, model, optimizer, dataloader_train, dataloader_val, dataset_train, dataset_val, GLOBAL_EPOCH)
 
     # List all test folders
     if args.test:
@@ -107,8 +125,7 @@ def main(args):
             loadpath = './trainedmodels/teacher/teacher_model_{}.pth'.format(
                 args.resnetmodel)
         else:
-            loadpath = './trainedmodels/teacher/teacher_model_class_{' \
-                       '}.pth'.format(args.resnetmodel)
+            loadpath = './trainedmodels/teacher/teacher_model_class_{}.pth'.format(args.resnetmodel)
 
         print('load model from {} ...'.format(loadpath))
         model.load_state_dict(torch.load(loadpath))
@@ -258,12 +275,17 @@ def validation(args, model, criterion, dataloader_val, random_rate):
         if args.enable_random_rate:
             dataloader_val.dataset.set_random_rate(random_rate)  # variable is wandb-tracked in train routine
 
+        tq = tqdm.tqdm(total=len(dataloader_val) * args.batch_size)
+        tq.set_description('Validation... ')
+
         for sample in dataloader_val:
             # network pass for the sample
             sample_acc, loss = teacher_network_pass(args, sample, model, criterion)
 
             loss_record += loss.item()
             acc_record += sample_acc
+
+            tq.update(args.batch_size)
 
     # Calculate validation metrics
     loss_val_mean = loss_record / len(dataloader_val)
@@ -274,7 +296,7 @@ def validation(args, model, criterion, dataloader_val, random_rate):
     return acc, loss_val_mean
 
 
-def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_train, dataset_val):
+def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_train, dataset_val, GLOBAL_EPOCH):
     if not os.path.isdir(args.save_model_path):
         os.mkdir(args.save_model_path)
 
@@ -301,6 +323,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
         current_random_rate = 1.0
 
     for epoch in range(args.num_epochs):
+        with GLOBAL_EPOCH.get_lock():
+            GLOBAL_EPOCH.value = epoch
         lr = optimizer.param_groups[0]['lr']
         tq = tqdm.tqdm(total=len(dataloader_train) * args.batch_size)
         tq.set_description('epoch %d, lr %f' % (epoch, lr))
@@ -392,15 +416,25 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
 
 if __name__ == '__main__':
 
-    # workaround for r5g2 machine... opencv stuff
-    # seems related to
-    # https://github.com/opencv/opencv/issues/5150 and
-    # https: // github.com / pytorch / pytorch / issues / 1355
-    multiprocessing.set_start_method('spawn')
+    ###################################################################################
+    # Workaround for r5g2 machine... opencv stuff                                     #
+    # Seems related to:                                                               #
+    #    1. https://github.com/opencv/opencv/issues/5150 and                          #
+    #    2. https: // github.com / pytorch / pytorch / issues / 1355                  #
+    # we don't know why but this is needed only in R5G2 machine (hostname NvidiaBrut) #
+    ###################################################################################
+    if socket.gethostname() == "NvidiaBrut":
+        print("\nDetected NvidiaBrut - Applying patch\n")
+        multiprocessing.set_start_method('spawn')
+    else:
+        print("\nGoooood! This is not NvidiaBrut!\n")
 
     parser = argparse.ArgumentParser()
 
-    # Script modalities and Network behaviors
+    ###########################################
+    # SCRIPT MODALITIES AND NETWORK BEHAVIORS #
+    ###########################################
+    parser.add_argument('--seed', type=int, default=0, help='Starting seed, for reproducibility. Default is ZERO!')
     parser.add_argument('--train', type=bool, default=True, help='Train/Validate the model')
     parser.add_argument('--test', action='store_true', help='Test the model')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
@@ -425,7 +459,9 @@ if __name__ == '__main__':
     parser.add_argument('--training_rnd_spatial', type=float, default=9.0, help='see teacher_tripletloss_generated')
     parser.add_argument('--enable_random_rate', type=bool, default=True, help='see teacher_tripletloss_generated')
 
-    # Script configuration / paths
+    ################################
+    # SCRIPT CONFIGURATION / PATHS #
+    ################################
     parser.add_argument('--dataset', type=str, help='path to the dataset you are using.')
     parser.add_argument('--save_model_path', type=str, default='./trainedmodels/teacher/', help='path to save model')
 
@@ -439,7 +475,9 @@ if __name__ == '__main__':
     parser.add_argument('--saveEmbeddingsPath', type=str,
                         help='Where to save the Embeddings. Required when --saveEmbeddings is set')
 
-    # Network parameters (for backbone)
+    #####################################
+    # NETWORK PARAMETERS (FOR BACKBONE) #
+    #####################################
     parser.add_argument('--resnetmodel', type=str, default="resnet18",
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
