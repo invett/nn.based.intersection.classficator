@@ -903,6 +903,15 @@ class triplet_OBB(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
 
 
 class triplet_BOO(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
+    """
+        In this dataloader, <<teacher_tripletloss_generated>> is not actually used; what we really need is the
+        <<test_crossing_pose>> that is used inside <<teacher_tripletloss_generated>> but using the class to get
+        the OSM-pos/neg seemed a little awkward and required changes in that class; for this reason we directly
+        used the <<test_crossing_pose>> here.
+
+        teacher_tripletloss_generated is here just to keep this triplet_BOO with same init as triplet_BOO :)
+
+    """
 
     def __init__(self, folders, distance, elements=1000, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
                  canonical=True, transform_obs=None, transform_bev=None, random_rate=1.0, loadlist=True, savelist=False, decimateStep=1):
