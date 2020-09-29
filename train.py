@@ -255,6 +255,9 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
 
 def main(args, model=None):
+    # Getting the hostname to add to wandb (seem useful for sweeps)
+    hostname = str(socket.gethostname())
+
     # Accuracy accumulator
     acc = 0.0
 
@@ -286,7 +289,7 @@ def main(args, model=None):
 
             if not args.nowandb:  # if nowandb flag was set, skip
                 wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito',
-                           job_type="training", reinit=True)
+                           job_type="training", reinit=True, tags=[hostname])
                 wandb.config.update(args)
 
             train_path, val_path = folders[train_index], folders[val_index]
@@ -434,7 +437,8 @@ def main(args, model=None):
     dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
     if not args.nowandb:  # if nowandb flag was set, skip
-        wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito', job_type="eval")
+        wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito', job_type="eval",
+                   tags=[hostname])
         wandb.config.update(args)
 
     test(args, dataloader_test)

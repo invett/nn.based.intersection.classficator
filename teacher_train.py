@@ -41,6 +41,9 @@ def _init_fn(worker_id, seed, epoch):
 
 
 def main(args):
+    # Getting the hostname to add to wandb (seem useful for sweeps)
+    hostname = str(socket.gethostname())
+
     GLOBAL_EPOCH = multiprocessing.Value('i', 0)
     seed = multiprocessing.Value('i', args.seed)
 
@@ -54,10 +57,10 @@ def main(args):
     if not args.nowandb:
         if args.test:
             wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train_sweep",
-                       job_type="eval", tags=["Teacher", "sweep"])
+                       job_type="eval", tags=["Teacher", "sweep", hostname])
         else:
             wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train_sweep",
-                       job_type="training", tags=["Teacher", "sweep"])
+                       job_type="training", tags=["Teacher", "sweep", hostname])
         wandb.config.update(args, allow_val_change=True)
 
     # Build Model
