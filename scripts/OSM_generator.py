@@ -464,8 +464,8 @@ def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_a
     intersection_center = np.array([float(xx), float(yy), 0.])
     translation = np.array([0., 0., 0.])
 
-    distance_x = intersection_center[0] - translation[0]
-    distance_y = intersection_center[1] - translation[1]
+    # distance_x = intersection_center[0] - translation[0]
+    # distance_y = intersection_center[1] - translation[1]
 
     crossing_pose = to_rotation_matrix_XYZRPY(translation[0], translation[1], translation[2], euler[0], euler[1],
                                               euler[2])
