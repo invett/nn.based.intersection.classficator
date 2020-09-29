@@ -295,8 +295,10 @@ def main(args, model=None):
                 train_dataset = fromAANETandDualBisenet(train_path, args.distance, transform=aanetTransforms)
 
             elif args.dataloader == "generatedDataset":
-                val_dataset = fromGeneratedDataset(val_path, args.distance, transform=generateTransforms)
-                train_dataset = fromGeneratedDataset(train_path, args.distance, transform=generateTransforms)
+                val_dataset = fromGeneratedDataset(val_path, args.distance, canonical=False,
+                                                   transform=generateTransforms)
+                train_dataset = fromGeneratedDataset(train_path, args.distance, canonical=False,
+                                                     transform=generateTransforms)
 
             elif args.dataloader == "triplet_OBB":
                 val_dataset = triplet_OBB(val_path, args.distance, elements=200, canonical=False,
@@ -416,13 +418,17 @@ def main(args, model=None):
                                                                            ]))
     elif args.dataloader == 'generatedDataset':
         if args.embedding:
-            test_dataset = fromGeneratedDataset([test_path], args.distance, transform=generateTransforms)
+            test_dataset = fromGeneratedDataset([test_path], args.distance, canonical=True,
+                                                transform=generateTransforms)
         else:
             test_path = test_path.replace('data_raw_bev', 'data_raw')
             test_dataset = TestDataset(test_path, args.distance, transform=generateTransforms)
 
     elif args.dataloader == 'triplet_OBB':
-        test_dataset = triplet_OBB(test_path, args.distance, transform=generateTransforms)
+        test_dataset = triplet_OBB(test_path, args.distance, canonical=True, transform=generateTransforms)
+
+    elif args.dataloader == 'triplet_BOO':
+        test_dataset = triplet_BOO(test_path, args.distance, canonical=True, transform=generateTransforms)
 
     dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
