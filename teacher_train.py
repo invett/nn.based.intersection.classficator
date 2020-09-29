@@ -29,6 +29,8 @@ import seaborn as sn
 
 import random
 
+import warnings
+warnings.filterwarnings("ignore")
 
 def _init_fn(worker_id, seed, epoch):
     seed = seed.value + worker_id + epoch.value * 100
