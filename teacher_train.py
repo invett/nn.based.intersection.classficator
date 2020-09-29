@@ -365,7 +365,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
             wandb.log({"Train/loss": loss_train_mean,
                        "Train/acc": acc_train,
                        "Train/lr": lr,
-                       "random_rate": random_rate}, step=epoch)
+                       "random_rate": random_rate,
+                       "Completed epoch": epoch}, step=epoch)
 
         if epoch % args.validation_step == 0:
 

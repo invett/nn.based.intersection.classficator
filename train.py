@@ -199,7 +199,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         if not args.nowandb:  # if nowandb flag was set, skip
             wandb.log({"Train/loss": loss_train_mean,
                        "Train/acc": acc_train,
-                       "Train/lr": lr}, step=epoch)
+                       "Train/lr": lr,
+                       "Completed epoch": epoch}, step=epoch)
 
         if epoch % args.validation_step == 0:
             if args.embedding or args.triplet:
