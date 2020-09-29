@@ -402,7 +402,7 @@ def main(args, model=None):
             if not args.nowandb:  # if nowandb flag was set, skip
                 wandb.join()
 
-    # Final Test on 2011_10_03_drive_0027_sync
+    # Final Test on 2011_09_30_drive_0028_sync, the folder with the high value of intersections and frames
     if args.dataloader == "fromAANETandDualBisenet":
         test_dataset = TestDataset(test_path, args.distance,
                                    transform=transforms.Compose([transforms.Resize((224, 224)),
