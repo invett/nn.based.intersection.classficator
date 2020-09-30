@@ -517,6 +517,9 @@ if __name__ == '__main__':
     parser.add_argument('--train', type=bool, default=True, help='Train/Validate the model')
     parser.add_argument('--test', type=bool, default=False, help='Test the model')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
+    parser.add_argument('--sweep', action='store_true', help='if set, this run is part of a wandb-sweep; use it with'
+                                                             'as documented in '
+                                                             'in https://docs.wandb.com/sweeps/configuration#command')
     parser.add_argument('--telegram', type=bool, default=True, help='Send info through Telegram')
 
     parser.add_argument('--triplet', type=bool, default=True, help='Triplet Loss')
