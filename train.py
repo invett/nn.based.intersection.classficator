@@ -71,6 +71,8 @@ def test(args, dataloader_test, gt_model=None):
         acc_val, loss_val = validation(args, model, criterion, dataloader_test, gtmodel=gt_model)
         if not args.nowandb:  # if nowandb flag was set, skip
             wandb.log({"Test/loss": loss_val, "Test/Acc": acc_val})
+    elif args.triplet:
+        pass
     else:
         confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test)
 
@@ -294,7 +296,6 @@ def main(args, model=None):
                 val_dataset = fromGeneratedDataset(val_path, args.distance, transform=generateTransforms)
                 train_dataset = fromGeneratedDataset(train_path, args.distance, transform=generateTransforms)
 
-
             elif args.dataloader == "triplet_OBB":
 
                 val_dataset = triplet_OBB(val_path, args.distance, elements=200, canonical=False,
@@ -304,7 +305,6 @@ def main(args, model=None):
                 train_dataset = triplet_OBB(train_path, args.distance, elements=2000, canonical=False,
 
                                             transform_obs=obsTransforms, transform_bev=generateTransforms)
-
 
             elif args.dataloader == "triplet_BOO":
 
@@ -426,6 +426,13 @@ def main(args, model=None):
         else:
             test_path = test_path.replace('data_raw_bev', 'data_raw')
             test_dataset = TestDataset(test_path, args.distance, transform=generateTransforms)
+
+    elif args.dataloader == "triplet_OBB":
+        test_dataset = triplet_OBB([test_path], args.distance, elements=200, canonical=True,
+                                   transform_obs=obsTransforms, transform_bev=generateTransforms)
+    elif args.dataloader == "triplet_BOO":
+        test_dataset = triplet_BOO([test_path], args.distance, elements=200, canonical=True,
+                                   transform_obs=obsTransforms, transform_bev=generateTransforms)
 
     dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
