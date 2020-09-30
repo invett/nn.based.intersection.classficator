@@ -30,6 +30,7 @@ import seaborn as sn
 import random
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -71,20 +72,24 @@ def main(args):
 
     # if nowandb flag was set, skip
     if not args.nowandb:
-        if args.test:
-            wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train_sweep",
-                       job_type="eval", tags=["Teacher", "sweep", "class", hostname],
-                       config=hyperparameter_defaults)
-        else:
-            wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train_sweep",
-                       job_type="training", tags=["Teacher", "sweep", "class", hostname],
-                       config=hyperparameter_defaults)
-
-        # Check if sweep parameter is included, as the procedure to connect with wandb differs
         if args.sweep:
+            wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train_sweep",
+                       job_type="sweep", tags=["Teacher", "sweep", "class", hostname],
+                       config=hyperparameter_defaults)
             args = wandb.config
         else:
+            if args.test:
+                wandb.init(project="nn-based-intersection-classficator", entity="chiringuito",
+                           group="Teacher_train_sweep",
+                           job_type="eval", tags=["Teacher", "sweep", "class", hostname],
+                           config=hyperparameter_defaults)
+            else:
+                wandb.init(project="nn-based-intersection-classficator", entity="chiringuito",
+                           group="Teacher_train_sweep",
+                           job_type="training", tags=["Teacher", "sweep", "class", hostname],
+                           config=hyperparameter_defaults)
             wandb.config.update(args, allow_val_change=True)
+
 
     # Build Model
     if 'vgg' in args.model:
