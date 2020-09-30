@@ -285,7 +285,7 @@ class fromAANETandDualBisenet(Dataset):
 class fromGeneratedDataset(Dataset):
 
     def __init__(self, folders, distance, transform=None,
-                 rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True, canonical=True, addGeneratedOSM=True,
+                 rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True, canonical=False, addGeneratedOSM=True,
                  decimateStep=1, savelist=False, loadlist=False, random_rate=1.0):
         # TODO addGeneratedOSM should not be the default behavior; set FALSE here anc call with TRUE as needed
 
@@ -389,7 +389,7 @@ class fromGeneratedDataset(Dataset):
             # Sample an intersection given a label; this is used in the STUDENT training
             generated_osm = test_crossing_pose(crossing_type=bev_label, save=False, rnd_width=self.rnd_width,
                                                rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
-                                               random_rate=self.random_rate)
+                                               sampling=not self.canonical, random_rate=self.random_rate)
             sample = {'data': bev_image,
                       'label': bev_label,
                       'image_path': self.bev_images[idx],
@@ -772,6 +772,10 @@ class teacher_tripletloss_generated(Dataset):
 
         """
 
+        # safe to delete, this is for the SEED test
+        # if idx == 0:
+        #     print("Random seed to check: " + str(np.random.rand() ))
+
         # identify the typology for anchor item
         anchor_type = self.samples[idx][0]
 
@@ -832,7 +836,8 @@ class teacher_tripletloss_generated(Dataset):
 class triplet_OBB(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
 
     def __init__(self, folders, distance, elements=1000, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
-                 canonical=True, transform_obs=None, transform_bev=None, random_rate=1.0, loadlist=True, savelist=False, decimateStep=1):
+                 canonical=True, transform_obs=None, transform_bev=None, random_rate=1.0, loadlist=True, savelist=False,
+                 decimateStep=1):
         # TODO Use diferent transforms for each dataset (fromgenerated, teacher_triplet_loss)
         teacher_tripletloss_generated.__init__(self, elements=elements, rnd_width=rnd_width, rnd_angle=rnd_angle,
                                                rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
@@ -899,9 +904,19 @@ class triplet_OBB(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
 
 
 class triplet_BOO(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
+    """
+        In this dataloader, <<teacher_tripletloss_generated>> is not actually used; what we really need is the
+        <<test_crossing_pose>> that is used inside <<teacher_tripletloss_generated>> but using the class to get
+        the OSM-pos/neg seemed a little awkward and required changes in that class; for this reason we directly
+        used the <<test_crossing_pose>> here.
+
+        teacher_tripletloss_generated is here just to keep this triplet_BOO with same init as triplet_BOO :)
+
+    """
 
     def __init__(self, folders, distance, elements=1000, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
-                 canonical=True, transform_obs=None, transform_bev=None, random_rate=1.0, loadlist=True, savelist=False, decimateStep=1):
+                 canonical=True, transform_obs=None, transform_bev=None, random_rate=1.0, loadlist=True, savelist=False,
+                 decimateStep=1):
         teacher_tripletloss_generated.__init__(self, elements=elements, rnd_width=rnd_width, rnd_angle=rnd_angle,
                                                rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
                                                transform=transform_obs, random_rate=random_rate)
@@ -918,6 +933,7 @@ class triplet_BOO(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
         self.rnd_spatial = rnd_spatial
         self.noise = noise
         self.random_rate = random_rate
+        self.canonical = canonical
 
     def __len__(self):
         # In this multi inherit class we have both [teacher_tripletloss_generated] and [fromGeneratedDataset] items.
@@ -935,10 +951,10 @@ class triplet_BOO(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
 
         OSM_positive = test_crossing_pose(crossing_type=item_positive, save=False, rnd_width=self.rnd_width,
                                           rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
-                                          random_rate=self.random_rate)
+                                          sampling=not self.canonical, random_rate=self.random_rate)
         OSM_negative = test_crossing_pose(crossing_type=item_negative, save=False, rnd_width=self.rnd_width,
                                           rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
-                                          random_rate=self.random_rate)
+                                          sampling=not self.canonical, random_rate=self.random_rate)
 
         sample = {'BEV_anchor': BEV,
                   'OSM_positive': OSM_positive[0],

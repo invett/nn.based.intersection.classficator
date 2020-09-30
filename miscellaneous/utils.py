@@ -296,7 +296,10 @@ def teacher_network_pass(args, sample, model, criterion):
 
         acc = accuracy_score(label, predict)
 
-    return acc, loss
+    if args.triplet:
+        return acc, loss
+    else:
+        return acc, loss, label, predict
 
 
 def student_network_pass(args, sample, criterion, model, gtmodel=None):
