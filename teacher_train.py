@@ -50,7 +50,7 @@ def main(args):
                                    dataset_train_elements=2000, dataset_val_elements=200, distance=20,
                                    enable_random_rate=True, lr=0.0001, margin=1, momentum=0.9, no_noise=False,
                                    nowandb=False, num_classes=7, num_epochs=50, num_workers=4, optimizer='sgd',
-                                   patience=2, patience_start=6, pretrained=True, resnetmodel='resnet18',
+                                   patience=2, patience_start=6, pretrained=True, model='resnet18',
                                    saveEmbeddings=False, saveEmbeddingsPath=None, saveTestCouplesForDebug=False,
                                    saveTestCouplesForDebugPath=None, save_model_path='./trainedmodels/teacher/', seed=0,
                                    swap=False, telegram=True, test=False, threshold=0.92, train=True,
@@ -117,14 +117,14 @@ def main(args):
                                                                                     transforms.Resize((224, 224)),
                                                                                     transforms.ToTensor()
                                                                                     ]),
-                                                      canonical=args.canonical,
+                                                      canonical=False,
                                                       noise=addnoise)
         dataset_val = teacher_tripletloss_generated(elements=args.dataset_val_elements,
                                                     transform=transforms.Compose([transforms.ToPILImage(),
                                                                                   transforms.Resize((224, 224)),
                                                                                   transforms.ToTensor(),
                                                                                   ]),
-                                                    canonical=args.canonical,
+                                                    canonical=False,
                                                     noise=addnoise)
 
         dataloader_train = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=True,
@@ -146,7 +146,7 @@ def main(args):
                                                                          transforms.ToTensor()
                                                                          ]),
                                            noise=addnoise,
-                                           canonical=args.canonical)
+                                           canonical=True)
 
         dataloader_test = DataLoader(dataset_test, batch_size=1, shuffle=False, num_workers=args.num_workers)
 
@@ -455,14 +455,14 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
                 if args.nowandb:
                     if args.triplet:
                         print('Saving model: ',
-                              os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(args.resnetmodel)))
+                              os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(args.model)))
                         torch.save(bestModel, os.path.join(args.save_model_path,
-                                                           'teacher_model_{}.pth'.format(args.resnetmodel)))
+                                                           'teacher_model_{}.pth'.format(args.model)))
                     else:
                         print('Saving model: ',
-                              os.path.join(args.save_model_path, 'teacher_model_class_{}.pth'.format(args.resnetmodel)))
+                              os.path.join(args.save_model_path, 'teacher_model_class_{}.pth'.format(args.model)))
                         torch.save(bestModel, os.path.join(args.save_model_path,
-                                                           'teacher_model_class_{}.pth'.format(args.resnetmodel)))
+                                                           'teacher_model_class_{}.pth'.format(args.model)))
                 else:
                     if args.triplet:
                         print('Saving model: ',
@@ -563,7 +563,7 @@ if __name__ == '__main__':
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
     parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
-    parser.add_argument('--validation_step', type=int, default=6, help='How often to perform validation and a '
+    parser.add_argument('--validation_step', type=int, default=2, help='How often to perform validation and a '
                                                                        'checkpoint (epochs)')
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate used for train')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum used for train')
@@ -573,7 +573,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_gpu', type=bool, default=True, help='whether to user gpu for training')
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
     parser.add_argument('--patience', type=int, default=2, help='Patience of validation. Default, none. ')
-    parser.add_argument('--patience_start', type=int, default=6,
+    parser.add_argument('--patience_start', type=int, default=2,
                         help='Starting epoch for patience of validation. Default, 50. ')
     parser.add_argument('--pretrained', type=bool, default=True, help='whether to use a pretrained net, or not')
     parser.add_argument('--threshold', type=float, default=0.92, help='threshold to decide if the detection is correct')
