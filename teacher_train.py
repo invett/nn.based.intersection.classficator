@@ -42,6 +42,10 @@ def _init_fn(worker_id, seed, epoch):
 
 def main(args):
 
+    # Try to avoid randomness -- https://pytorch.org/docs/stable/notes/randomness.html
+    # torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
+
     hyperparameter_defaults = dict(batch_size=64, canonical=False, cuda='0', dataset='../DualBiSeNet/data_raw_bev/',
                                    dataset_train_elements=2000, dataset_val_elements=200, distance=20,
                                    enable_random_rate=True, lr=0.0001, margin=1, momentum=0.9, no_noise=False,
