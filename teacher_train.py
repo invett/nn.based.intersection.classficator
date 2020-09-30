@@ -47,7 +47,7 @@ def main(args):
     # torch.backends.cudnn.deterministic = True
     # torch.backends.cudnn.benchmark = False
 
-    hyperparameter_defaults = dict(batch_size=8, canonical=False, cuda='0', dataset='../DualBiSeNet/data_raw_bev/',
+    hyperparameter_defaults = dict(batch_size=8, canonical=False, cuda='0', dataset='../DualBiSeNet/data_raw/',
                                    dataset_train_elements=2000, dataset_val_elements=200, distance=20,
                                    enable_random_rate=True, lr=0.0001, margin=1, momentum=0.9, no_noise=False,
                                    nowandb=False, num_classes=7, num_epochs=50, num_workers=4, optimizer='sgd',
@@ -278,7 +278,7 @@ def test(args, model, dataloader):
     conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6, 7], columns=[0, 1, 2, 3, 4, 5, 6, 7],
                                       fill_value=0)
     plt.figure(figsize=(10, 7))
-    heatmap = sn.heatmap(conf_matrix, annot=True, fmt='.3f')  # give a name to the heatmap, so u can call telegram
+    heatmap = sn.heatmap(conf_matrix, annot=True, fmt='d')  # give a name to the heatmap, so u can call telegram
 
     if not args.nowandb:  # if nowandb flag was set, skip
         wandb.log({"Test/Acc": acc, "conf-matrix": wandb.Image(plt)})
@@ -452,7 +452,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
                                    "random_rate": random_rate}, step=epoch)
                     else:
                         plt.figure(figsize=(10, 7))
-                        sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
+                        sn.heatmap(confusion_matrix, annot=True, fmt='d')
                         wandb.log({"Val/loss": loss_val,
                                    "Val/Acc": acc_val,
                                    "random_rate": random_rate,
@@ -549,7 +549,7 @@ if __name__ == '__main__':
     ################################
     # SCRIPT CONFIGURATION / PATHS #
     ################################
-    parser.add_argument('--dataset', default='../DualBiSeNet/data_raw_bev/', type=str,
+    parser.add_argument('--dataset', default='../DualBiSeNet/data_raw/', type=str,
                         help='path to the dataset you are using.')
     parser.add_argument('--save_model_path', type=str, default='./trainedmodels/teacher/', help='path to save model')
 
