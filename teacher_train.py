@@ -15,7 +15,7 @@ import torch
 from torch.utils.data import DataLoader
 from torch import nn
 
-from model.resnet_models import get_model_resnet
+from model.resnet_models import get_model_resnet, get_model_vgg
 
 from sklearn.metrics import accuracy_score
 
@@ -87,9 +87,11 @@ def main(args):
             wandb.config.update(args, allow_val_change=True)
 
     # Build Model
-    model = get_model_resnet(args.resnetmodel, args.num_classes, pretrained=args.pretrained, greyscale=False,
-                             embedding=args.triplet)
-
+    if 'vgg' in args.model:
+        model = get_model_vgg(args.model, args.num_classes, pretrained=args.pretrained, embedding=args.triplet)
+    else:
+        model = get_model_resnet(args.model, args.num_classes, pretrained=args.pretrained, greyscale=False,
+                                 embedding=args.triplet)
     if torch.cuda.is_available() and args.use_gpu:
         model = model.cuda()
 
@@ -151,9 +153,9 @@ def main(args):
         # load Saved Model
         if args.nowandb:
             if args.triplet:
-                loadpath = './trainedmodels/teacher/teacher_model_{}.pth'.format(args.resnetmodel)
+                loadpath = './trainedmodels/teacher/teacher_model_{}.pth'.format(args.model)
             else:
-                loadpath = './trainedmodels/teacher/teacher_model_class_{}.pth'.format(args.resnetmodel)
+                loadpath = './trainedmodels/teacher/teacher_model_class_{}.pth'.format(args.model)
         else:
             if args.triplet:
                 loadpath = './trainedmodels/teacher/teacher_model_{}.pth'.format(wandb.run.name)
@@ -515,9 +517,6 @@ if __name__ == '__main__':
     parser.add_argument('--train', type=bool, default=True, help='Train/Validate the model')
     parser.add_argument('--test', action='store_true', help='Test the model')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
-    parser.add_argument('--sweep', action='store_true', help='if set, this run is part of a wandb-sweep; use it with'
-                                                             'as documented in '
-                                                             'in https://docs.wandb.com/sweeps/configuration#command')
     parser.add_argument('--telegram', type=bool, default=True, help='Send info through Telegram')
 
     parser.add_argument('--triplet', type=bool, default=True, help='Triplet Loss')
@@ -559,11 +558,12 @@ if __name__ == '__main__':
     #####################################
     # NETWORK PARAMETERS (FOR BACKBONE) #
     #####################################
-    parser.add_argument('--resnetmodel', type=str, default="resnet18",
+    parser.add_argument('--model', type=str, default="resnet18",
+                        choices=['resnet18', 'vgg11', 'vgg13', 'vgg16', 'vgg19'],
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
     parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
-    parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
+    parser.add_argument('--validation_step', type=int, default=6, help='How often to perform validation and a '
                                                                        'checkpoint (epochs)')
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate used for train')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum used for train')

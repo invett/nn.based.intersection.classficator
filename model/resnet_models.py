@@ -54,8 +54,50 @@ def set_classifier(num_class):
     return classifier
 
 
-def get_model_resnet(model_version, num_classes, transfer=False, pretrained=True, greyscale=False, embedding=False):
+def set_feature_vector():
+    classifier = nn.Sequential(
+        nn.Conv2d(512, 512, 3, stride=2, padding=1, bias=False),  # --> 512 x 4 x 4
+        nn.BatchNorm2d(512),
+        nn.ReLU(inplace=True),
+        nn.AvgPool2d(4, stride=1)  # --> 512 x 1 x 1
+    )
 
+    return classifier
+
+
+def get_model_vgg(model_version, num_classes=7, embedding=False, pretrained=True):
+    if model_version == 'vgg11':
+        model = models.vgg11_bn(pretrained=pretrained)
+        if embedding:
+            model.classifier = set_feature_vector()
+        else:
+            model.classifier[6] = torch.nn.Linear(4096, num_classes)
+
+    if model_version == 'vgg13':
+        model = models.vgg13_bn(pretrained=pretrained)
+        if embedding:
+            model.classifier = set_feature_vector()
+        else:
+            model.classifier[6] = torch.nn.Linear(4096, num_classes)
+
+    if model_version == 'vgg16':
+        model = models.vgg16_bn(pretrained=pretrained)
+        if embedding:
+            model.classifier = set_feature_vector()
+        else:
+            model.classifier[6] = torch.nn.Linear(4096, num_classes)
+
+    if model_version == 'vgg19':
+        model = models.vgg19_bn(pretrained=pretrained)
+        if embedding:
+            model.classifier = set_feature_vector()
+        else:
+            model.classifier[6] = torch.nn.Linear(4096, num_classes)
+
+    return model
+
+
+def get_model_resnet(model_version, num_classes, transfer=False, pretrained=True, greyscale=False, embedding=False):
     if model_version == 'resnet18':
         model = models.resnet18(pretrained=pretrained)
         if transfer:
