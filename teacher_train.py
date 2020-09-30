@@ -317,7 +317,10 @@ def validation(args, model, criterion, dataloader_val, random_rate):
     # Calculate validation metrics
     loss_val_mean = loss_record / len(dataloader_val)
     print('Loss for test/validation : %f' % loss_val_mean)
-    acc = acc_record / (len(dataloader_val) * args.batch_size)
+    if args.triplet:
+        acc = acc_record / (len(dataloader_val) * args.batch_size)
+    else:
+        acc = acc_record / len(dataloader_val)
     print('Accuracy for test/validation : %f\n' % acc)
 
     return acc, loss_val_mean
