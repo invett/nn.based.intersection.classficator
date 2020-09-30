@@ -32,6 +32,7 @@ import random
 import warnings
 warnings.filterwarnings("ignore")
 
+
 def _init_fn(worker_id, seed, epoch):
     seed = seed.value + worker_id + epoch.value * 100
     # if you want to debug... print(f"\nInit worker {worker_id} with seed {seed}")
@@ -73,12 +74,18 @@ def main(args):
     if not args.nowandb:
         if args.test:
             wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train_sweep",
-                       job_type="eval", tags=["Teacher", "sweep", hostname])
+                       job_type="eval", tags=["Teacher", "sweep", "class", hostname],
+                       config=hyperparameter_defaults)
         else:
             wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train_sweep",
-                       job_type="training", tags=["Teacher", "sweep", hostname], config=hyperparameter_defaults)
-        args = wandb.config
-        #wandb.config.update(args, allow_val_change=True)
+                       job_type="training", tags=["Teacher", "sweep", "class", hostname],
+                       config=hyperparameter_defaults)
+
+        # Check if sweep parameter is included, as the procedure to connect with wandb differs
+        if args.sweep:
+            args = wandb.config
+        else:
+            wandb.config.update(args, allow_val_change=True)
 
     # Build Model
     model = get_model_resnet(args.resnetmodel, args.num_classes, pretrained=args.pretrained, greyscale=False,
@@ -143,11 +150,16 @@ def main(args):
         dataloader_test = DataLoader(dataset_test, batch_size=1, shuffle=False, num_workers=args.num_workers)
 
         # load Saved Model
-        if args.triplet:
-            loadpath = './trainedmodels/teacher/teacher_model_{}.pth'.format(
-                args.resnetmodel)
+        if args.nowandb:
+            if args.triplet:
+                loadpath = './trainedmodels/teacher/teacher_model_{}.pth'.format(args.resnetmodel)
+            else:
+                loadpath = './trainedmodels/teacher/teacher_model_class_{}.pth'.format(args.resnetmodel)
         else:
-            loadpath = './trainedmodels/teacher/teacher_model_class_{}.pth'.format(args.resnetmodel)
+            if args.triplet:
+                loadpath = './trainedmodels/teacher/teacher_model_{}.pth'.format(wandb.run.name)
+            else:
+                loadpath = './trainedmodels/teacher/teacher_model_class_{}.pth'.format(wandb.run.name)
 
         print('load model from {} ...'.format(loadpath))
         model.load_state_dict(torch.load(loadpath))
@@ -312,7 +324,10 @@ def validation(args, model, criterion, dataloader_val, random_rate):
     # Calculate validation metrics
     loss_val_mean = loss_record / len(dataloader_val)
     print('Loss for test/validation : %f' % loss_val_mean)
-    acc = acc_record / (len(dataloader_val) * args.batch_size)
+    if args.triplet:
+        acc = acc_record / (len(dataloader_val) * args.batch_size)
+    else:
+        acc = acc_record / len(dataloader_val)
     print('Accuracy for test/validation : %f\n' % acc)
 
     return acc, loss_val_mean
@@ -473,6 +488,9 @@ if __name__ == '__main__':
     parser.add_argument('--train', type=bool, default=True, help='Train/Validate the model')
     parser.add_argument('--test', action='store_true', help='Test the model')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
+    parser.add_argument('--sweep', action='store_true', help='if set, this run is part of a wandb-sweep; use it with'
+                                                             'as documented in '
+                                                             'in https://docs.wandb.com/sweeps/configuration#command')
     parser.add_argument('--telegram', type=bool, default=True, help='Send info through Telegram')
 
     parser.add_argument('--triplet', type=bool, default=True, help='Triplet Loss')
