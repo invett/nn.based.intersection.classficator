@@ -30,7 +30,9 @@ import seaborn as sn
 import random
 
 import warnings
+
 warnings.filterwarnings("ignore")
+
 
 def _init_fn(worker_id, seed, epoch):
     seed = seed.value + worker_id + epoch.value * 100
@@ -41,7 +43,6 @@ def _init_fn(worker_id, seed, epoch):
 
 
 def main(args):
-
     # Try to avoid randomness -- https://pytorch.org/docs/stable/notes/randomness.html
     # torch.backends.cudnn.deterministic = True
     # torch.backends.cudnn.benchmark = False
@@ -76,9 +77,10 @@ def main(args):
                        job_type="eval", tags=["Teacher", "sweep", "class", hostname])
         else:
             wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train_sweep",
-                       job_type="training", tags=["Teacher", "sweep", "class", hostname], config=hyperparameter_defaults)
+                       job_type="training", tags=["Teacher", "sweep", "class", hostname],
+                       config=hyperparameter_defaults)
         args = wandb.config
-        #wandb.config.update(args, allow_val_change=True)
+        # wandb.config.update(args, allow_val_change=True)
 
     # Build Model
     model = get_model_resnet(args.resnetmodel, args.num_classes, pretrained=args.pretrained, greyscale=False,
@@ -294,6 +296,8 @@ def validation(args, model, criterion, dataloader_val, random_rate):
 
     loss_record = 0.0
     acc_record = 0.0
+    labelRecord = np.array([], dtype=np.uint8)
+    predRecord = np.array([], dtype=np.uint8)
 
     with torch.no_grad():
         model.eval()
@@ -307,7 +311,12 @@ def validation(args, model, criterion, dataloader_val, random_rate):
 
         for sample in dataloader_val:
             # network pass for the sample
-            sample_acc, loss = teacher_network_pass(args, sample, model, criterion)
+            if args.triplet:
+                sample_acc, loss = teacher_network_pass(args, sample, model, criterion)
+            else:
+                sample_acc, loss, label, predict = teacher_network_pass(args, sample, model, criterion)
+                labelRecord = np.append(labelRecord, label)
+                predRecord = np.append(predRecord, predict)
 
             loss_record += loss.item()
             acc_record += sample_acc
@@ -323,7 +332,14 @@ def validation(args, model, criterion, dataloader_val, random_rate):
         acc = acc_record / len(dataloader_val)
     print('Accuracy for test/validation : %f\n' % acc)
 
-    return acc, loss_val_mean
+    if not args.triplet:
+        conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'], margins=True,
+                                  normalize='all')
+        conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6, 'All'], columns=[0, 1, 2, 3, 4, 5, 6, 'All'],
+                                          fill_value=0)
+        return conf_matrix, acc, loss_val_mean
+    else:
+        return acc, loss_val_mean
 
 
 def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_train, dataset_val, GLOBAL_EPOCH):
@@ -367,7 +383,10 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
 
         for sample in dataloader_train:
             # network pass for the sample
-            sample_acc, loss = teacher_network_pass(args, sample, model, criterion)
+            if args.triplet:
+                sample_acc, loss = teacher_network_pass(args, sample, model, criterion)
+            else:
+                sample_acc, loss, _, _ = teacher_network_pass(args, sample, model, criterion)
 
             loss.backward()
 
@@ -399,8 +418,11 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
                        "Completed epoch": epoch}, step=epoch)
 
         if epoch % args.validation_step == 0:
-
-            acc_val, loss_val = validation(args, model, criterion, dataloader_val, random_rate=current_random_rate)
+            if args.triplet:
+                acc_val, loss_val = validation(args, model, criterion, dataloader_val, random_rate=current_random_rate)
+            else:
+                confusion_matrix, acc_val, loss_val = validation(args, model, criterion, dataloader_val,
+                                                                 random_rate=current_random_rate)
 
             if (acc_pre < acc_val) or (loss_pre > loss_val):
                 patience = 0
@@ -413,9 +435,17 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
                 print('Best global accuracy: {}'.format(acc_pre))
 
                 if not args.nowandb:  # if nowandb flag was set, skip
-                    wandb.log({"Val/loss": loss_val,
-                               "Val/Acc": acc_val,
-                               "random_rate": random_rate}, step=epoch)
+                    if args.triplet:
+                        wandb.log({"Val/loss": loss_val,
+                                   "Val/Acc": acc_val,
+                                   "random_rate": random_rate}, step=epoch)
+                    else:
+                        plt.figure(figsize=(10, 7))
+                        sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
+                        wandb.log({"Val/loss": loss_val,
+                                   "Val/Acc": acc_val,
+                                   "random_rate": random_rate,
+                                   "conf-matrix_{}_{}".format(wandb.run.name, epoch): wandb.Image(plt)}, step=epoch)
                 if args.nowandb:
                     if args.triplet:
                         print('Saving model: ',
