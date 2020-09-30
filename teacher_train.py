@@ -41,6 +41,18 @@ def _init_fn(worker_id, seed, epoch):
 
 
 def main(args):
+
+    hyperparameter_defaults = dict(batch_size=64, canonical=False, cuda='0', dataset='../DualBiSeNet/data_raw_bev/',
+                                   dataset_train_elements=2000, dataset_val_elements=200, distance=20,
+                                   enable_random_rate=True, lr=0.0001, margin=1, momentum=0.9, no_noise=False,
+                                   nowandb=True, num_classes=7, num_epochs=50, num_workers=4, optimizer='sgd',
+                                   patience=2, patience_start=6, pretrained=True, resnetmodel='resnet18',
+                                   saveEmbeddings=False, saveEmbeddingsPath=None, saveTestCouplesForDebug=False,
+                                   saveTestCouplesForDebugPath=None, save_model_path='./trainedmodels/teacher/', seed=0,
+                                   swap=False, telegram=True, test=False, threshold=0.92, train=True,
+                                   training_rnd_angle=0.4, training_rnd_spatial=9.0, training_rnd_width=2.0,
+                                   triplet=True, use_gpu=True, validation_step=5)
+
     # Getting the hostname to add to wandb (seem useful for sweeps)
     hostname = str(socket.gethostname())
 
@@ -60,8 +72,9 @@ def main(args):
                        job_type="eval", tags=["Teacher", "sweep", hostname])
         else:
             wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train_sweep",
-                       job_type="training", tags=["Teacher", "sweep", hostname])
-        wandb.config.update(args, allow_val_change=True)
+                       job_type="training", tags=["Teacher", "sweep", hostname], config=hyperparameter_defaults)
+        args = wandb.config
+        #wandb.config.update(args, allow_val_change=True)
 
     # Build Model
     model = get_model_resnet(args.resnetmodel, args.num_classes, pretrained=args.pretrained, greyscale=False,
