@@ -143,11 +143,16 @@ def main(args):
         dataloader_test = DataLoader(dataset_test, batch_size=1, shuffle=False, num_workers=args.num_workers)
 
         # load Saved Model
-        if args.triplet:
-            loadpath = './trainedmodels/teacher/teacher_model_{}.pth'.format(
-                args.resnetmodel)
+        if args.nowandb:
+            if args.triplet:
+                loadpath = './trainedmodels/teacher/teacher_model_{}.pth'.format(args.resnetmodel)
+            else:
+                loadpath = './trainedmodels/teacher/teacher_model_class_{}.pth'.format(args.resnetmodel)
         else:
-            loadpath = './trainedmodels/teacher/teacher_model_class_{}.pth'.format(args.resnetmodel)
+            if args.triplet:
+                loadpath = './trainedmodels/teacher/teacher_model_{}.pth'.format(wandb.run.name)
+            else:
+                loadpath = './trainedmodels/teacher/teacher_model_class_{}.pth'.format(wandb.run.name)
 
         print('load model from {} ...'.format(loadpath))
         model.load_state_dict(torch.load(loadpath))
@@ -518,7 +523,7 @@ if __name__ == '__main__':
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
     parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
-    parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
+    parser.add_argument('--validation_step', type=int, default=6, help='How often to perform validation and a '
                                                                        'checkpoint (epochs)')
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate used for train')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum used for train')
