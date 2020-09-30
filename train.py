@@ -1,3 +1,7 @@
+import socket  # to get the machine name
+import multiprocessing
+from functools import partial
+
 import argparse
 import os
 import time
@@ -26,7 +30,7 @@ import matplotlib.pyplot as plt
 import wandb
 import seaborn as sn
 
-from miscellaneous.utils import send_telegram_picture, send_telegram_message, student_network_pass
+from miscellaneous.utils import send_telegram_picture, send_telegram_message, student_network_pass, init_function
 
 
 def test(args, dataloader_test, gt_model=None):
@@ -252,6 +256,26 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
 
 def main(args, model=None):
+    # Try to avoid randomness -- https://pytorch.org/docs/stable/notes/randomness.html
+    # torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
+
+    hyperparameter_defaults = dict(batch_size=64, cuda='0', dataloader='BaseLine', dataset=None, decimate=1.0,
+                                   distance=20.0, embedding=False, embedding_class=False, grayscale=False, lr=0.0001,
+                                   margin=0.5, momentum=0.9, nowandb=False, num_classes=7, num_epochs=50, num_workers=4,
+                                   optimizer='sgd', patience=-1, patience_start=50, pretrained=False,
+                                   resnetmodel='resnet18', save_model_path='./trainedmodels/', scheduler=False, seed=0,
+                                   sweep=False, teacher_path=None, telegram=False, test=False, transfer=False,
+                                   triplet=False, use_gpu=True, validation_step=5, weighted=False)
+
+    # Getting the hostname to add to wandb (seem useful for sweeps)
+    hostname = str(socket.gethostname())
+
+    GLOBAL_EPOCH = multiprocessing.Value('i', 0)
+    seed = multiprocessing.Value('i', args.seed)
+
+    init_fn = partial(init_function, seed=seed, epoch=GLOBAL_EPOCH)
+
     # Accuracy accumulator
     acc = 0.0
 
@@ -343,9 +367,9 @@ def main(args, model=None):
                 raise Exception("Dataloader not found")
 
             dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                                          num_workers=args.num_workers)
+                                          num_workers=args.num_workers, worker_init_fn=init_fn)
             dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False,
-                                        num_workers=args.num_workers)
+                                        num_workers=args.num_workers, worker_init_fn=init_fn)
 
             # Build model
             if args.resnetmodel[0:6] == 'resnet':
@@ -434,7 +458,8 @@ def main(args, model=None):
         test_dataset = triplet_BOO([test_path], args.distance, elements=200, canonical=True,
                                    transform_obs=obsTransforms, transform_bev=generateTransforms)
 
-    dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+    dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers,
+                                 worker_init_fn=init_fn)
 
     if not args.nowandb:  # if nowandb flag was set, skip
         wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito', job_type="eval")
@@ -447,8 +472,34 @@ def main(args, model=None):
 
 
 if __name__ == '__main__':
+
+    ###################################################################################
+    # Workaround for r5g2 machine... opencv stuff                                     #
+    # Seems related to:                                                               #
+    #    1. https://github.com/opencv/opencv/issues/5150 and                          #
+    #    2. https: // github.com / pytorch / pytorch / issues / 1355                  #
+    # we don't know why but this is needed only in R5G2 machine (hostname NvidiaBrut) #
+    ###################################################################################
+    if socket.gethostname() == "NvidiaBrut":
+        print("\nDetected NvidiaBrut - Applying patch\n")
+        multiprocessing.set_start_method('spawn')
+    else:
+        print("\nGoooood! This is not NvidiaBrut!\n")
+
     # basic parameters
     parser = argparse.ArgumentParser()
+
+    ###########################################
+    # SCRIPT MODALITIES AND NETWORK BEHAVIORS #
+    ###########################################
+
+    parser.add_argument('--seed', type=int, default=0, help='Starting seed, for reproducibility. Default is ZERO!')
+    parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
+    parser.add_argument('--sweep', action='store_true', help='if set, this run is part of a wandb-sweep; use it with'
+                                                             'as documented in '
+                                                             'in https://docs.wandb.com/sweeps/configuration#command')
+
+    parser.add_argument('--telegram', action='store_true', help='Send info through Telegram')
 
     parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
     parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
@@ -474,7 +525,6 @@ if __name__ == '__main__':
     parser.add_argument('--decimate', type=float, default=1.0, help='How much of the points will remain after '
                                                                     'decimation')
     parser.add_argument('--distance', type=float, default=20.0, help='Distance from the cross')
-    parser.add_argument('--telegram', action='store_true', help='Send info through Telegram')
 
     parser.add_argument('--weighted', action='store_true', help='Weighted losses')
     parser.add_argument('--pretrained', action='store_true', help='pretrained net')
@@ -510,7 +560,6 @@ if __name__ == '__main__':
                              help='0-drop-neuron, 1-drop-channel, 2-drop-path, 3-drop-layer')
     parser_drop.add_argument('--drop_rate', default=0.0, type=float, help='dropout rate')
     parser_drop.add_argument('--report_ratio ', action='store_true', help='Cardinality of the net')
-    parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
 
     args = parser.parse_args()
 

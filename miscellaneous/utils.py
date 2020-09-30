@@ -14,6 +14,8 @@ import torch
 from torch import nn
 from sklearn.metrics import accuracy_score
 
+import random
+
 
 def PrintException():
     exc_type, exc_obj, tb = sys.exc_info()
@@ -366,3 +368,23 @@ def student_network_pass(args, sample, criterion, model, gtmodel=None):
         return acc, loss
     else:
         return acc, loss, label, predict
+
+
+def init_function(worker_id, seed, epoch):
+    """
+    This method was copied from old Daniele's works, with some enhancements into the "main" part. This will be the code
+    called from the dataloader. To initialize the seeds differently in every epoch, we use the following parameters
+
+    Args:
+        worker_id: will automagically appears from pytorch
+        seed: this value is something you choose. usually we set to zero for reproducibility
+        epoch: allow us to have a different seed every epoch
+
+    Returns:
+
+    """
+    seed = seed.value + worker_id + epoch.value * 100
+    # if you want to debug... print(f"\nInit worker {worker_id} with seed {seed}")
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)

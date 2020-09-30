@@ -19,7 +19,7 @@ from model.resnet_models import get_model_resnet, get_model_vgg
 
 from sklearn.metrics import accuracy_score
 
-from miscellaneous.utils import send_telegram_picture, teacher_network_pass
+from miscellaneous.utils import send_telegram_picture, teacher_network_pass, init_function
 import time
 
 import matplotlib.pyplot as plt
@@ -27,19 +27,9 @@ import matplotlib.pyplot as plt
 import wandb
 import seaborn as sn
 
-import random
-
 import warnings
 
 warnings.filterwarnings("ignore")
-
-
-def _init_fn(worker_id, seed, epoch):
-    seed = seed.value + worker_id + epoch.value * 100
-    # if you want to debug... print(f"\nInit worker {worker_id} with seed {seed}")
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    random.seed(seed)
 
 
 def main(args):
@@ -64,7 +54,7 @@ def main(args):
     GLOBAL_EPOCH = multiprocessing.Value('i', 0)
     seed = multiprocessing.Value('i', args.seed)
 
-    init_fn = partial(_init_fn, seed=seed, epoch=GLOBAL_EPOCH)
+    init_fn = partial(init_function, seed=seed, epoch=GLOBAL_EPOCH)
 
     addnoise = True
     if args.no_noise:
