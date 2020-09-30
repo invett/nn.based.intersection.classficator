@@ -278,7 +278,7 @@ def test(args, model, dataloader):
     conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6, 7], columns=[0, 1, 2, 3, 4, 5, 6, 7],
                                       fill_value=0)
     plt.figure(figsize=(10, 7))
-    heatmap = sn.heatmap(conf_matrix, annot=True, fmt='d')  # give a name to the heatmap, so u can call telegram
+    heatmap = sn.heatmap(conf_matrix, annot=True, fmt='.3f')  # give a name to the heatmap, so u can call telegram
 
     if not args.nowandb:  # if nowandb flag was set, skip
         wandb.log({"Test/Acc": acc, "conf-matrix": wandb.Image(plt)})
