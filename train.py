@@ -15,7 +15,8 @@ from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mi
 
 from torch.optim.lr_scheduler import MultiStepLR
 
-from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet, BaseLine, fromGeneratedDataset
+from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet, BaseLine, fromGeneratedDataset, \
+    triplet_BOO, triplet_OBB
 from model.resnet_models import get_model_resnet, get_model_resnext, Personalized, Personalized_small
 from dropout_models import get_resnext, get_resnet
 from sklearn.model_selection import LeaveOneOut
@@ -271,6 +272,8 @@ def main(args, model=None):
         aanetTransforms = transforms.Compose(
             [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), ToTensor()])
         generateTransforms = transforms.Compose([Rescale((224, 224)), Normalize(), ToTensor()])
+        obsTransforms = transforms.Compose(
+            [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
 
     if not args.test:
         loo = LeaveOneOut()
