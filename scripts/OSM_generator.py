@@ -31,16 +31,6 @@ from miscellaneous.utils import send_telegram_message
 from miscellaneous.utils import send_telegram_picture
 import matplotlib.pyplot as plt
 
-parser = argparse.ArgumentParser(description='Crossing Localization')
-
-parser.add_argument('--std_rot', type=float, default=0.05, help='Std for arms rotation')
-parser.add_argument('--max_width', type=float, default=6., help='MAX arms width')
-parser.add_argument('--grid_test', type=float, default=None, nargs=3,
-                    help='deltas for grid testing [delta_forward, delta_lateral, delta_rotation')
-
-args, unknown = parser.parse_known_args()
-print(args)
-
 
 class Crossing:
     max_x = 30.
