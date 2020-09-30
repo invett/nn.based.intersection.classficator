@@ -301,8 +301,10 @@ def main(args, model=None):
                 train_dataset = fromAANETandDualBisenet(train_path, args.distance, transform=aanetTransforms)
 
             elif args.dataloader == "generatedDataset":
-                val_dataset = fromGeneratedDataset(val_path, args.distance, transform=generateTransforms)
-                train_dataset = fromGeneratedDataset(train_path, args.distance, transform=generateTransforms)
+                val_dataset = fromGeneratedDataset(val_path, args.distance, decimateStep=4,
+                                                   transform=generateTransforms)
+                train_dataset = fromGeneratedDataset(train_path, args.distance, decimateStep=4,
+                                                     transform=generateTransforms)
 
             elif args.dataloader == "triplet_OBB":
 
