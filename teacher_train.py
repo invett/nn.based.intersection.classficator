@@ -12,7 +12,7 @@ import torch
 from torch.utils.data import DataLoader
 from torch import nn
 
-from model.resnet_models import get_model_resnet
+from model.resnet_models import get_model_resnet, get_model_vgg
 
 from sklearn.metrics import accuracy_score
 
@@ -41,9 +41,11 @@ def main(args):
         wandb.config.update(args, allow_val_change=True)
 
     # Build Model
-    model = get_model_resnet(args.resnetmodel, args.num_classes, pretrained=args.pretrained, greyscale=False,
-                             embedding=args.triplet)
-
+    if 'vgg' in args.model:
+        model = get_model_vgg(args.model, args.num_classes, pretrained=args.pretrained, embedding=args.triplet)
+    else:
+        model = get_model_resnet(args.model, args.num_classes, pretrained=args.pretrained, greyscale=False,
+                                 embedding=args.triplet)
     if torch.cuda.is_available() and args.use_gpu:
         model = model.cuda()
 
@@ -104,11 +106,9 @@ def main(args):
 
         # load Saved Model
         if args.triplet:
-            loadpath = './trainedmodels/teacher/teacher_model_{}.pth'.format(
-                args.resnetmodel)
+            loadpath = './trainedmodels/teacher/teacher_model_{}.pth'.format(args.model)
         else:
-            loadpath = './trainedmodels/teacher/teacher_model_class_{' \
-                       '}.pth'.format(args.resnetmodel)
+            loadpath = './trainedmodels/teacher/teacher_model_class_{}.pth'.format(args.model)
 
         print('load model from {} ...'.format(loadpath))
         model.load_state_dict(torch.load(loadpath))
@@ -140,17 +140,6 @@ def test(args, model, dataloader):
         else:
             data = sample['anchor']
             label = sample['label_anchor']
-
-        # if args.canonical:
-        #    a = plt.figure()
-        #    plt.imshow(canonical.squeeze().numpy().transpose((1, 2, 0)))
-        #    send_telegram_picture(a, "canonical")
-        #    plt.close('all')
-
-        # a = plt.figure()
-        # plt.imshow(sample['anchor'].squeeze().numpy().transpose((1, 2, 0)))
-        # send_telegram_picture(a, "anchor")
-        # plt.close('all')
 
         if torch.cuda.is_available() and args.use_gpu:
             if args.triplet:
@@ -363,14 +352,14 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
                                "random_rate": random_rate}, step=epoch)
                 if args.triplet:
                     print('Saving model: ',
-                          os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(args.resnetmodel)))
+                          os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(args.model)))
                     torch.save(bestModel, os.path.join(args.save_model_path,
-                                                       'teacher_model_{}.pth'.format(args.resnetmodel)))
+                                                       'teacher_model_{}.pth'.format(args.model)))
                 else:
                     print('Saving model: ',
-                          os.path.join(args.save_model_path, 'teacher_model_class_{}.pth'.format(args.resnetmodel)))
+                          os.path.join(args.save_model_path, 'teacher_model_class_{}.pth'.format(args.model)))
                     torch.save(bestModel, os.path.join(args.save_model_path,
-                                                       'teacher_model_class_{}.pth'.format(args.resnetmodel)))
+                                                       'teacher_model_class_{}.pth'.format(args.model)))
 
             elif epoch < args.patience_start:
                 patience = 0
@@ -440,7 +429,8 @@ if __name__ == '__main__':
                         help='Where to save the Embeddings. Required when --saveEmbeddings is set')
 
     # Network parameters (for backbone)
-    parser.add_argument('--resnetmodel', type=str, default="resnet18",
+    parser.add_argument('--model', type=str, default="resnet18",
+                        choices=['resnet18', 'vgg11', 'vgg13', 'vgg16', 'vgg19'],
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
     parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
