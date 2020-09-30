@@ -45,7 +45,7 @@ def main(args):
     hyperparameter_defaults = dict(batch_size=64, canonical=False, cuda='0', dataset='../DualBiSeNet/data_raw_bev/',
                                    dataset_train_elements=2000, dataset_val_elements=200, distance=20,
                                    enable_random_rate=True, lr=0.0001, margin=1, momentum=0.9, no_noise=False,
-                                   nowandb=True, num_classes=7, num_epochs=50, num_workers=4, optimizer='sgd',
+                                   nowandb=False, num_classes=7, num_epochs=50, num_workers=4, optimizer='sgd',
                                    patience=2, patience_start=6, pretrained=True, resnetmodel='resnet18',
                                    saveEmbeddings=False, saveEmbeddingsPath=None, saveTestCouplesForDebug=False,
                                    saveTestCouplesForDebugPath=None, save_model_path='./trainedmodels/teacher/', seed=0,
