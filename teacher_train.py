@@ -47,7 +47,7 @@ def main(args):
     # torch.backends.cudnn.deterministic = True
     # torch.backends.cudnn.benchmark = False
 
-    hyperparameter_defaults = dict(batch_size=16, canonical=False, cuda='0', dataset='../DualBiSeNet/data_raw_bev/',
+    hyperparameter_defaults = dict(batch_size=8, canonical=False, cuda='0', dataset='../DualBiSeNet/data_raw_bev/',
                                    dataset_train_elements=2000, dataset_val_elements=200, distance=20,
                                    enable_random_rate=True, lr=0.0001, margin=1, momentum=0.9, no_noise=False,
                                    nowandb=False, num_classes=7, num_epochs=50, num_workers=4, optimizer='sgd',
@@ -569,7 +569,7 @@ if __name__ == '__main__':
     parser.add_argument('--model', type=str, default="resnet18",
                         choices=['resnet18', 'vgg11', 'vgg13', 'vgg16', 'vgg19'],
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
-    parser.add_argument('--batch_size', type=int, default=16, help='Number of images in each batch')
+    parser.add_argument('--batch_size', type=int, default=8, help='Number of images in each batch')
     parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
     parser.add_argument('--validation_step', type=int, default=2, help='How often to perform validation and a '
                                                                        'checkpoint (epochs)')
