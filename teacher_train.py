@@ -55,7 +55,7 @@ def main(args):
                                    saveTestCouplesForDebugPath=None, save_model_path='./trainedmodels/teacher/', seed=0,
                                    swap=False, telegram=True, test=False, threshold=0.92, train=True,
                                    training_rnd_angle=0.4, training_rnd_spatial=9.0, training_rnd_width=2.0,
-                                   triplet=True, use_gpu=True, validation_step=5, sweep=False)
+                                   triplet=True, use_gpu=True, validation_step=5, sweep=True)
 
     # Getting the hostname to add to wandb (seem useful for sweeps)
     hostname = str(socket.gethostname())
