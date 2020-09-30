@@ -73,10 +73,10 @@ def main(args):
     if not args.nowandb:
         if args.test:
             wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train_sweep",
-                       job_type="eval", tags=["Teacher", "sweep", hostname])
+                       job_type="eval", tags=["Teacher", "sweep", "class", hostname])
         else:
             wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train_sweep",
-                       job_type="training", tags=["Teacher", "sweep", hostname], config=hyperparameter_defaults)
+                       job_type="training", tags=["Teacher", "sweep", "class", hostname], config=hyperparameter_defaults)
         args = wandb.config
         #wandb.config.update(args, allow_val_change=True)
 
