@@ -1,36 +1,31 @@
-import socket  # to get the machine name
+import argparse
+import copy
 import multiprocessing
+import os
+import socket  # to get the machine name
+import time
+import warnings
 from functools import partial
 
-import argparse
-import os
-import time
+import matplotlib.pyplot as plt
 import numpy as np
-import tqdm
 import pandas as pd
-import copy
-
-import warnings
-
+import seaborn as sn
 import torch
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
-from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror, GrayScale
-
-from torch.optim.lr_scheduler import MultiStepLR
-
-from dataloaders.sequencedataloader import TestDataset, fromAANETandDualBisenet, BaseLine, fromGeneratedDataset, \
-    triplet_BOO, triplet_OBB
-from model.resnet_models import get_model_resnet, get_model_resnext, Personalized, Personalized_small
-from dropout_models import get_resnext, get_resnet
-from sklearn.model_selection import LeaveOneOut
-
-import matplotlib.pyplot as plt
-
+import tqdm
 import wandb
-import seaborn as sn
+from sklearn.model_selection import LeaveOneOut
+from torch.optim.lr_scheduler import MultiStepLR
+from torch.utils.data import DataLoader
 
-from miscellaneous.utils import send_telegram_picture, send_telegram_message, student_network_pass, init_function
+from dataloaders.sequencedataloader import BaseLine, TestDataset, fromAANETandDualBisenet, fromGeneratedDataset, \
+    triplet_BOO, triplet_OBB
+from dataloaders.transforms import GenerateBev, GrayScale, Mirror, Normalize, Rescale, ToTensor
+from dropout_models import get_resnet, get_resnext
+from miscellaneous.utils import init_function, reset_wandb_env, send_telegram_message, send_telegram_picture, \
+    student_network_pass
+from model.resnet_models import Personalized, Personalized_small, get_model_resnet, get_model_resnext
 
 
 def test(args, dataloader_test, gt_model=None):
@@ -268,6 +263,35 @@ def main(args, model=None):
                                    sweep=False, teacher_path=None, telegram=False, test=False, transfer=False,
                                    triplet=False, use_gpu=True, validation_step=5, weighted=False)
 
+    sweep_run = wandb.init()
+    sweep_id = sweep_run.sweep_id or "unknown"
+    sweep_url = "URL" #sweep_run.get_sweep_url()
+    project_url = "PROJECTURL"  # sweep_run.get_project_url()
+    sweep_group_url = "{}/groups/{}".format(project_url, sweep_id)
+    sweep_run.notes = sweep_group_url
+    sweep_run.save()
+    sweep_run_name = sweep_run.name or sweep_run.id or "unknown"
+
+    gigi = wandb.config
+    print("This is the config:")
+    print(gigi)
+    print("====================================================================================")
+    print(sweep_id)         this is the 'group'
+    print(sweep_run_name)   this will be the base name for all the K-folds, just add some number after, like the K-fold
+                            fold so to have --->>>  still-sweep-7-0
+                                                    still-sweep-7-1
+                                                    still-sweep-7-2 all these shares the same configuration from the sweep
+                                                    still-sweep-7-3
+                                                    still-sweep-7-4
+                            where still-sweep-7 is the sweep name.
+    print("====================================================================================")
+
+    if args.sweep:
+        print("YES IT IS A SWEEP")
+    else:
+        print("VERY SAD TIMES....")
+    exit(-1)
+
     # Getting the hostname to add to wandb (seem useful for sweeps)
     hostname = str(socket.gethostname())
 
@@ -281,6 +305,11 @@ def main(args, model=None):
 
     # create dataset and dataloader
     data_path = args.dataset
+
+    if data_path == "":
+        print("Empty path. Please provide the path of the dataset you want to use."
+              "Ex: --dataset=../DualBiSeNet/data_raw")
+        exit(-1)
 
     # All sequence folders
     folders = np.array([os.path.join(data_path, folder) for folder in os.listdir(data_path) if
@@ -527,8 +556,10 @@ if __name__ == '__main__':
     parser.add_argument('--distance', type=float, default=20.0, help='Distance from the cross')
 
     parser.add_argument('--weighted', action='store_true', help='Weighted losses')
-    parser.add_argument('--pretrained', action='store_true', help='pretrained net')
-    parser.add_argument('--scheduler', action='store_true', help='scheduling lr')
+######    parser.add_argument('--pretrained', action='store_true', help='pretrained net')
+    parser.add_argument('--pretrained', type=bool, default=True, help='whether to use a pretrained net, or not')
+#####    parser.add_argument('--scheduler', action='store_true', help='scheduling lr')
+    parser.add_argument('--scheduler', type=bool, default=False, help='scheduling lr')
     parser.add_argument('--test', action='store_true', help='scheduling lr')
     parser.add_argument('--grayscale', action='store_true', help='Use Grayscale Images')
 

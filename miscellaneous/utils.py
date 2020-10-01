@@ -1,20 +1,18 @@
+import datetime
+import json
+import linecache
+import os
+import random
+import sys
+from functools import reduce
+from io import BytesIO
+from math import asin, atan2, cos, pi, sin
+
 import numpy as np
 import requests
-import json
-import datetime
-
-from io import BytesIO
-import linecache
-import sys
-
-from math import pi, cos, sin, atan2, asin
-from functools import reduce
-
 import torch
-from torch import nn
 from sklearn.metrics import accuracy_score
-
-import random
+from torch import nn
 
 
 def PrintException():
@@ -388,3 +386,14 @@ def init_function(worker_id, seed, epoch):
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
+
+
+def reset_wandb_env():
+    exclude = {
+        "WANDB_PROJECT",
+        "WANDB_ENTITY",
+        "WANDB_API_KEY",
+    }
+    for k, v in os.environ.items():
+        if k.startswith("WANDB_") and k not in exclude:
+            del os.environ[k]

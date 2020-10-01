@@ -1,33 +1,26 @@
-import socket  # to get the machine name
+import argparse
 import multiprocessing
+import os
+import socket  # to get the machine name
+import time
+import warnings
 from functools import partial
 
-import argparse
-import os
-import numpy as np
-import tqdm
-import pandas as pd
-
-import torchvision.transforms as transforms
-from dataloaders.sequencedataloader import teacher_tripletloss_generated, teacher_tripletloss
-
-import torch
-from torch.utils.data import DataLoader
-from torch import nn
-
-from model.resnet_models import get_model_resnet, get_model_vgg
-
-from sklearn.metrics import accuracy_score
-
-from miscellaneous.utils import send_telegram_picture, teacher_network_pass, init_function
-import time
-
 import matplotlib.pyplot as plt
-
-import wandb
+import numpy as np
+import pandas as pd
 import seaborn as sn
+import torch
+import torchvision.transforms as transforms
+import tqdm
+import wandb
+from sklearn.metrics import accuracy_score
+from torch import nn
+from torch.utils.data import DataLoader
 
-import warnings
+from dataloaders.sequencedataloader import teacher_tripletloss, teacher_tripletloss_generated
+from miscellaneous.utils import init_function, send_telegram_picture, teacher_network_pass
+from model.resnet_models import get_model_resnet, get_model_vgg
 
 warnings.filterwarnings("ignore")
 
