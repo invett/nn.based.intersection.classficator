@@ -352,8 +352,8 @@ class fromGeneratedDataset(Dataset):
                     bev_filename = os.path.join(folder, file)
                     json_filename = str(bev_filename.replace('png', 'png.json'))
 
-                    # assert os.path.exists(bev_filename), "no bev file"
-                    # assert os.path.exists(json_filename), "no json file"
+                    assert os.path.exists(bev_filename), "no bev file"
+                    assert os.path.exists(json_filename), "no json file"
 
                     self.bev_images.append(bev_filename)
 
@@ -385,7 +385,7 @@ class fromGeneratedDataset(Dataset):
 
     def __getitem__(self, idx):
 
-        assert os.path.isfile(self.bev_images[idx])
+        assert os.path.isfile(self.bev_images[idx]), "os.path.isfile(self.bev_images[idx]) -- no image"
 
         bev_image = cv2.imread(self.bev_images[idx], cv2.IMREAD_UNCHANGED)
         bev_label = self.bev_labels[idx]

@@ -15,7 +15,7 @@ command:
   - --teacher_path
   - ./trainedmodels/teacher/teacher_model_sunny-sweep-1.pth
   - --dataset
-  - ../DualBiSeNet/data_raw
+  - ../DualBiSeNet/data_raw_bev
   - --sweep
   - --train
   - True
