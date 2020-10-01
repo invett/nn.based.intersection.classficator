@@ -606,7 +606,7 @@ if __name__ == '__main__':
     parser.add_argument('--patience_start', type=int, default=50,
                         help='Starting epoch for patience of validation. Default, 50. ')
 
-    parser.add_argument('--decimate', type=float, default=1.0, help='How much of the points will remain after '
+    parser.add_argument('--decimate', type=int, default=1, help='How much of the points will remain after '
                                                                     'decimation')
     parser.add_argument('--distance', type=float, default=20.0, help='Distance from the cross')
 
