@@ -264,31 +264,28 @@ def main(args, model=None):
                                    sweep=True, teacher_path=None, telegram=False, train=True, test=False,
                                    transfer=False, triplet=False, use_gpu=True, validation_step=5, weighted=False)
 
+    sweep = wandb.init(config=hyperparameter_defaults, job_type="sweep", reinit=True)
+    #args = wandb.config  o meglio sweep.config
+    sweep_id = sweep.sweep_id or "unknown"
+    sweep_url = sweep._get_sweep_url()
+    project_url = sweep._get_project_url()
+    sweep.notes = "{}/groups/{}".format(project_url, sweep_id)
+    sweep_run_name = sweep.name or sweep.id or "unknown"
+    sweep.join()
 
-    #sweep_run = wandb.init()
-    sweep_run = wandb.init(config=hyperparameter_defaults, job_type="sweep")
-    #args = wandb.config
-    sweep_id = sweep_run.sweep_id or "unknown"
-    sweep_url = "URL" #sweep_run.get_sweep_url()
-    project_url = "PROJECTURL"  # sweep_run.get_project_url()
-    sweep_group_url = "{}/groups/{}".format(project_url, sweep_id)
-    sweep_run.notes = sweep_group_url
-    sweep_run.save()
-    sweep_run_name = sweep_run.name or sweep_run.id or "unknown"
-
-    print("====================================================================================")
-    gigi = wandb.config
-    print("\n\nWE!!!! This is the config:")
-    print(gigi)
-    print(sweep_id)         # this is the 'group'
-    print(sweep_run_name)   # this will be the base name for all the K-folds, just add some number after, like the K-fold
+    print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    print("Starting from outside for loop. This is the config:")
+    print("sweep.config:\n", sweep.config)
+    print("sweep_id: ", sweep_id)         # this is the 'group'
+    print("sweep_run_name: ", sweep_run_name)
+                            # this will be the base name for all the K-folds, just add some number after, like the K-fold
                             # fold so to have --->>>  still-sweep-7-0
                             #                         still-sweep-7-1
                             #                         still-sweep-7-2 all these shares the same configuration from the sweep
                             #                         still-sweep-7-3
                             #                         still-sweep-7-4
                             # where still-sweep-7 is the sweep name.
-    print("====================================================================================")
+    print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
     # Getting the hostname to add to wandb (seem useful for sweeps)
     hostname = str(socket.gethostname())
@@ -303,10 +300,6 @@ def main(args, model=None):
 
     # create dataset and dataloader
     data_path = args.dataset
-
-    print(">>>>>>>>>")
-    print("args.train" + str(args.dataset))
-    print(">>>>>>>>>")
 
     # All sequence folders
     folders = np.array([os.path.join(data_path, folder) for folder in os.listdir(data_path) if
@@ -327,29 +320,26 @@ def main(args, model=None):
         obsTransforms = transforms.Compose(
             [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
 
-    print(">>>>>>>>>")
-    print("args.train" + str(args.train))
-    print(">>>>>>>>>")
-
     if args.train:
         loo = LeaveOneOut()
-        sweep_config = sweep_run.config
+        sweep_config = sweep.config
 
         for train_index, val_index in loo.split(folders):
 
+            print("\n\n NOW K-FOLDING .... ", train_index, val_index)
+
             if args.sweep:
-                print("*******")
+                print("******* BEGIN *******")
                 reset_wandb_env()
-                run_name = str(sweep_run_name) + "-" + str(val_index[0])
+                run_name = str(sweep_run_name) + "-split-" + str(val_index[0])
+                print("Initializing run with name: " , run_name)
                 id = wandb.util.generate_id()
-                #run = wandb.init(id=id, group=sweep_run.name,
+                #run = wandb.init(id=id, group=sweep.name,
                 #                 tags=["Teacher", "sweep", "class", hostname], name=run_name)
 
-                run = wandb.init(id=id, group=sweep_id, tags=["Teacher", "sweep", "class", hostname],
-                                 name=run_name, job_type=sweep_run.name)
+                run = wandb.init(id=id, group=sweep_id, name=run_name, job_type=sweep.name,
+                                 tags=["Teacher", "sweep", "class", hostname])
 
-
-                #run.name = run_name
 
                 if "sweep" in args and args.sweep:
                     print("YES IT IS A SWEEP! and should be called ---> " + run_name)
@@ -364,10 +354,10 @@ def main(args, model=None):
                 else:
                     print("VERY SAD TIMES....")
 
-                print("*******")
+                print("*******  END  *******")
                 continue
             else:
-                print("MECOJONI")
+                print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MECOJONI")
                 exit(-1)
                 if not args.nowandb:  # if nowandb flag was set, skip
                     wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito',
@@ -497,7 +487,7 @@ def main(args, model=None):
     print("====================================================================================")
     print("=============the end of the test ===eh===eh===eh=====:-)============================")
     print("====================================================================================")
-    sweep_run.join()
+    sweep.join()
     exit(-2)
 
     if args.test:
