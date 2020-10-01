@@ -265,7 +265,7 @@ def main(args, model=None):
                                    transfer=False, triplet=False, use_gpu=True, validation_step=5, weighted=False)
 
     sweep = wandb.init(config=hyperparameter_defaults, job_type="sweep", reinit=True)
-    #args = wandb.config  o meglio sweep.config
+    args = sweep.config # get the config from the sweep
     sweep_id = sweep.sweep_id or "unknown"
     sweep_url = sweep._get_sweep_url()
     project_url = sweep._get_project_url()
@@ -278,13 +278,6 @@ def main(args, model=None):
     print("sweep.config:\n", sweep.config)
     print("sweep_id: ", sweep_id)         # this is the 'group'
     print("sweep_run_name: ", sweep_run_name)
-                            # this will be the base name for all the K-folds, just add some number after, like the K-fold
-                            # fold so to have --->>>  still-sweep-7-0
-                            #                         still-sweep-7-1
-                            #                         still-sweep-7-2 all these shares the same configuration from the sweep
-                            #                         still-sweep-7-3
-                            #                         still-sweep-7-4
-                            # where still-sweep-7 is the sweep name.
     print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
     # Getting the hostname to add to wandb (seem useful for sweeps)
@@ -326,39 +319,35 @@ def main(args, model=None):
 
         for train_index, val_index in loo.split(folders):
 
-            print("\n\n NOW K-FOLDING .... ", train_index, val_index)
+            # todo delete when ok -----| print("\n\n NOW K-FOLDING .... ", train_index, val_index)
 
             if args.sweep:
                 print("******* BEGIN *******")
                 reset_wandb_env()
-                run_name = str(sweep_run_name) + "-split-" + str(val_index[0])
-                print("Initializing run with name: " , run_name)
-                id = wandb.util.generate_id()
-                #run = wandb.init(id=id, group=sweep.name,
-                #                 tags=["Teacher", "sweep", "class", hostname], name=run_name)
+                wandb_local_name = str(sweep_run_name) + "-split-" + str(val_index[0])
+                print("Initializing wandb_current_run with name: " , wandb_local_name)
+                wandb_id = wandb.util.generate_id()
 
-                run = wandb.init(id=id, group=sweep_id, name=run_name, job_type=sweep.name,
+                wandb_current_run = wandb.init(id=wandb_id, group=sweep_id, name=wandb_local_name, job_type=sweep.name,
                                  tags=["Teacher", "sweep", "class", hostname])
 
 
-                if "sweep" in args and args.sweep:
-                    print("YES IT IS A SWEEP! and should be called ---> " + run_name)
-                    print("YES IT IS A SWEEP! and its name is this ---> " + run.name)
-                    print("ITS RUN ID IS                           ---> " + run.id)
-                    print("ITS SWEEP ID IS                         ---> " + sweep_id)
-                    val_accuracy = random.random()
-                    run.log(dict(val_accuracy=val_accuracy))
-                    run.join()
-                    run.finish()
-                    print("END_RUN!!! MOVING TO THE NEXT ONE IN k-fold!" + run_name)
-                else:
-                    print("VERY SAD TIMES....")
-
-                print("*******  END  *******")
-                continue
+                # todo delete when ok -----| if "sweep" in args and args.sweep:
+                # todo delete when ok -----|     print("YES IT IS A SWEEP! and should be called ---> " + wandb_local_name)
+                # todo delete when ok -----|     print("YES IT IS A SWEEP! and its name is this ---> " + wandb_current_run.name)
+                # todo delete when ok -----|     print("ITS RUN ID IS                           ---> " + wandb_current_run.id)
+                # todo delete when ok -----|     print("ITS SWEEP ID IS                         ---> " + sweep_id)
+                # todo delete when ok -----|     val_accuracy = random.random()
+                # todo delete when ok -----|     wandb_current_run.log(dict(val_accuracy=val_accuracy))
+                # todo delete when ok -----|     wandb_current_run.join()
+                # todo delete when ok -----|     wandb_current_run.finish()
+                # todo delete when ok -----|     print("END_RUN!!! MOVING TO THE NEXT ONE IN k-fold!" + wandb_local_name)
+                # todo delete when ok -----| else:
+                # todo delete when ok -----|     print("VERY SAD TIMES....")
+                # todo delete when ok -----|
+                # todo delete when ok -----| print("*******  END  *******")
+                # todo delete when ok -----| continue
             else:
-                print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MECOJONI")
-                exit(-1)
                 if not args.nowandb:  # if nowandb flag was set, skip
                     wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito',
                                job_type="training", reinit=True)
@@ -481,14 +470,17 @@ def main(args, model=None):
             if args.telegram:
                 send_telegram_message("K-Fold finished")
 
-            if not args.nowandb:  # if nowandb flag was set, skip
-                wandb.join()
+            if args.sweep:
+                wandb_current_run.join()
+            else:
+                if not args.nowandb:  # if nowandb flag was set, skip
+                    wandb.join()
 
-    print("====================================================================================")
-    print("=============the end of the test ===eh===eh===eh=====:-)============================")
-    print("====================================================================================")
-    sweep.join()
-    exit(-2)
+    # todo delete when ok -----| print("==============================================================================")
+    # todo delete when ok -----| print("=============the end of the test ===eh===eh===eh=====:-)======================")
+    # todo delete when ok -----| print("==============================================================================")
+    # todo delete when ok -----| sweep.join()
+    # todo delete when ok -----| exit(-2)
 
     if args.test:
         # Final Test on 2011_10_03_drive_0027_sync
