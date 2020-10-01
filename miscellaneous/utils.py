@@ -395,5 +395,7 @@ def reset_wandb_env():
         "WANDB_API_KEY",
     }
     for k, v in os.environ.items():
+        if k.startswith("WANDB_"):
+            print(v)
         if k.startswith("WANDB_") and k not in exclude:
             del os.environ[k]

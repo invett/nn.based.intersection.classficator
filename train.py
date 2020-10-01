@@ -2,6 +2,7 @@ import argparse
 import copy
 import multiprocessing
 import os
+import random
 import socket  # to get the machine name
 import time
 import warnings
@@ -260,37 +261,34 @@ def main(args, model=None):
                                    margin=0.5, momentum=0.9, nowandb=False, num_classes=7, num_epochs=50, num_workers=4,
                                    optimizer='sgd', patience=-1, patience_start=50, pretrained=False,
                                    resnetmodel='resnet18', save_model_path='./trainedmodels/', scheduler=False, seed=0,
-                                   sweep=False, teacher_path=None, telegram=False, test=False, transfer=False,
-                                   triplet=False, use_gpu=True, validation_step=5, weighted=False)
+                                   sweep=True, teacher_path=None, telegram=False, train=True, test=False,
+                                   transfer=False, triplet=False, use_gpu=True, validation_step=5, weighted=False)
 
-    sweep_run = wandb.init()
+
+    #sweep_run = wandb.init()
+    sweep_run = wandb.init(config=hyperparameter_defaults, reinit=True)
+    #args = wandb.config
     sweep_id = sweep_run.sweep_id or "unknown"
     sweep_url = "URL" #sweep_run.get_sweep_url()
     project_url = "PROJECTURL"  # sweep_run.get_project_url()
     sweep_group_url = "{}/groups/{}".format(project_url, sweep_id)
     sweep_run.notes = sweep_group_url
-    sweep_run.save()
+    #sweep_run.save()
     sweep_run_name = sweep_run.name or sweep_run.id or "unknown"
 
+    print("====================================================================================")
     gigi = wandb.config
-    print("This is the config:")
+    print("\n\nWE!!!! This is the config:")
     print(gigi)
+    print(sweep_id)         # this is the 'group'
+    print(sweep_run_name)   # this will be the base name for all the K-folds, just add some number after, like the K-fold
+                            # fold so to have --->>>  still-sweep-7-0
+                            #                         still-sweep-7-1
+                            #                         still-sweep-7-2 all these shares the same configuration from the sweep
+                            #                         still-sweep-7-3
+                            #                         still-sweep-7-4
+                            # where still-sweep-7 is the sweep name.
     print("====================================================================================")
-    print(sweep_id)         this is the 'group'
-    print(sweep_run_name)   this will be the base name for all the K-folds, just add some number after, like the K-fold
-                            fold so to have --->>>  still-sweep-7-0
-                                                    still-sweep-7-1
-                                                    still-sweep-7-2 all these shares the same configuration from the sweep
-                                                    still-sweep-7-3
-                                                    still-sweep-7-4
-                            where still-sweep-7 is the sweep name.
-    print("====================================================================================")
-
-    if args.sweep:
-        print("YES IT IS A SWEEP")
-    else:
-        print("VERY SAD TIMES....")
-    exit(-1)
 
     # Getting the hostname to add to wandb (seem useful for sweeps)
     hostname = str(socket.gethostname())
@@ -306,10 +304,9 @@ def main(args, model=None):
     # create dataset and dataloader
     data_path = args.dataset
 
-    if data_path == "":
-        print("Empty path. Please provide the path of the dataset you want to use."
-              "Ex: --dataset=../DualBiSeNet/data_raw")
-        exit(-1)
+    print(">>>>>>>>>")
+    print("args.train" + str(args.dataset))
+    print(">>>>>>>>>")
 
     # All sequence folders
     folders = np.array([os.path.join(data_path, folder) for folder in os.listdir(data_path) if
@@ -330,14 +327,47 @@ def main(args, model=None):
         obsTransforms = transforms.Compose(
             [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
 
-    if not args.test:
+    print(">>>>>>>>>")
+    print("args.train" + str(args.train))
+    print(">>>>>>>>>")
+
+    if args.train:
         loo = LeaveOneOut()
+        sweep_config = sweep_run.config
+
         for train_index, val_index in loo.split(folders):
 
-            if not args.nowandb:  # if nowandb flag was set, skip
-                wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito',
-                           job_type="training", reinit=True)
-                wandb.config.update(args)
+            if args.sweep:
+                print("*******")
+                reset_wandb_env()
+                run_name = str(sweep_run_name) + "-" + str(val_index[0])
+                run = wandb.init(group=sweep_run.name, job_type="sweep", tags=["Teacher", "sweep", "class", hostname],
+                                 name=run_name, reinit=True)
+
+                #run.name = run_name
+
+                if "sweep" in args and args.sweep:
+                    print("YES IT IS A SWEEP! and should be called ---> " + run_name)
+                    print("YES IT IS A SWEEP! and its name is this ---> " + run.name)
+                    print("ITS RUN ID IS                           ---> " + run.id)
+                    print("ITS SWEEP ID IS                         ---> " + sweep_id)
+                    val_accuracy = random.random()
+                    run.log(dict(val_accuracy=val_accuracy))
+                    run.join()
+                    run.finish()
+                    print("END_RUN!!! MOVING TO THE NEXT ONE IN k-fold!" + run_name)
+                else:
+                    print("VERY SAD TIMES....")
+
+                print("*******")
+                continue
+            else:
+                print("MECOJONI")
+                exit(-1)
+                if not args.nowandb:  # if nowandb flag was set, skip
+                    wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito',
+                               job_type="training", reinit=True)
+                    wandb.config.update(args)
 
             train_path, val_path = folders[train_index], folders[val_index]
 
@@ -459,42 +489,49 @@ def main(args, model=None):
             if not args.nowandb:  # if nowandb flag was set, skip
                 wandb.join()
 
-    # Final Test on 2011_10_03_drive_0027_sync
-    if args.dataloader == "fromAANETandDualBisenet":
-        test_dataset = TestDataset(test_path, args.distance,
-                                   transform=transforms.Compose([transforms.Resize((224, 224)),
-                                                                 transforms.ToTensor(),
-                                                                 transforms.Normalize((0.485, 0.456, 0.406),
-                                                                                      (0.229, 0.224, 0.225))
-                                                                 ]))
-    elif args.dataloader == 'BaseLine':
-        test_dataset = BaseLine([test_path], transform=transforms.Compose([transforms.Resize((224, 224)),
-                                                                           transforms.ToTensor(),
-                                                                           transforms.Normalize((0.485, 0.456, 0.406),
-                                                                                                (0.229, 0.224, 0.225))
-                                                                           ]))
-    elif args.dataloader == 'generatedDataset':
-        if args.embedding:
-            test_dataset = fromGeneratedDataset([test_path], args.distance, transform=generateTransforms)
-        else:
-            test_path = test_path.replace('data_raw_bev', 'data_raw')
-            test_dataset = TestDataset(test_path, args.distance, transform=generateTransforms)
+    print("====================================================================================")
+    print("=============the end of the test ===eh===eh===eh=====:-)============================")
+    print("====================================================================================")
+    sweep_run.join()
+    exit(-2)
 
-    elif args.dataloader == "triplet_OBB":
-        test_dataset = triplet_OBB([test_path], args.distance, elements=200, canonical=True,
-                                   transform_obs=obsTransforms, transform_bev=generateTransforms)
-    elif args.dataloader == "triplet_BOO":
-        test_dataset = triplet_BOO([test_path], args.distance, elements=200, canonical=True,
-                                   transform_obs=obsTransforms, transform_bev=generateTransforms)
+    if args.test:
+        # Final Test on 2011_10_03_drive_0027_sync
+        if args.dataloader == "fromAANETandDualBisenet":
+            test_dataset = TestDataset(test_path, args.distance,
+                                       transform=transforms.Compose([transforms.Resize((224, 224)),
+                                                                     transforms.ToTensor(),
+                                                                     transforms.Normalize((0.485, 0.456, 0.406),
+                                                                                          (0.229, 0.224, 0.225))
+                                                                     ]))
+        elif args.dataloader == 'BaseLine':
+            test_dataset = BaseLine([test_path], transform=transforms.Compose(
+                [transforms.Resize((224, 224)), transforms.ToTensor(),
+                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))]))
 
-    dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers,
-                                 worker_init_fn=init_fn)
+        elif args.dataloader == 'generatedDataset':
+            if args.embedding:
+                test_dataset = fromGeneratedDataset([test_path], args.distance, transform=generateTransforms)
+            else:
+                test_path = test_path.replace('data_raw_bev', 'data_raw')
+                test_dataset = TestDataset(test_path, args.distance, transform=generateTransforms)
 
-    if not args.nowandb:  # if nowandb flag was set, skip
-        wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito', job_type="eval")
-        wandb.config.update(args)
+        elif args.dataloader == "triplet_OBB":
+            test_dataset = triplet_OBB([test_path], args.distance, elements=200, canonical=True,
+                                       transform_obs=obsTransforms, transform_bev=generateTransforms)
+        elif args.dataloader == "triplet_BOO":
+            test_dataset = triplet_BOO([test_path], args.distance, elements=200, canonical=True,
+                                       transform_obs=obsTransforms, transform_bev=generateTransforms)
 
-    test(args, dataloader_test)
+        dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
+                                     num_workers=args.num_workers, worker_init_fn=init_fn)
+
+        if not args.nowandb:  # if nowandb flag was set, skip
+            wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito',
+                       job_type="eval")
+            wandb.config.update(args)
+
+        test(args, dataloader_test)
 
     if args.telegram:
         send_telegram_message("Finish successfully")
@@ -523,6 +560,8 @@ if __name__ == '__main__':
     ###########################################
 
     parser.add_argument('--seed', type=int, default=0, help='Starting seed, for reproducibility. Default is ZERO!')
+    parser.add_argument('--train', type=bool, default=True, help='Train/Validate the model')
+    parser.add_argument('--test', type=bool, default=False, help='Test the model')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     parser.add_argument('--sweep', action='store_true', help='if set, this run is part of a wandb-sweep; use it with'
                                                              'as documented in '
@@ -560,7 +599,6 @@ if __name__ == '__main__':
     parser.add_argument('--pretrained', type=bool, default=True, help='whether to use a pretrained net, or not')
 #####    parser.add_argument('--scheduler', action='store_true', help='scheduling lr')
     parser.add_argument('--scheduler', type=bool, default=False, help='scheduling lr')
-    parser.add_argument('--test', action='store_true', help='scheduling lr')
     parser.add_argument('--grayscale', action='store_true', help='Use Grayscale Images')
 
     # to enable the STUDENT training, set --embedding and provide the teacher path
@@ -597,6 +635,11 @@ if __name__ == '__main__':
     # check whether --embedding was set but with no teacher path
     if args.embedding and not args.teacher_path:
         print("Parameter --teacher_path is REQUIRED when --embedding is set")
+        exit(-1)
+
+    if args.dataset == "":
+        print("Empty path. Please provide the path of the dataset you want to use."
+              "Ex: --dataset=../DualBiSeNet/data_raw")
         exit(-1)
 
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
