@@ -230,11 +230,19 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
                     bestModel = model.state_dict()
                     acc_pre = kfold_acc
                     print('Best global accuracy: {}'.format(kfold_acc))
-                    print('Saving model: ', os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
-                    torch.save(bestModel, os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
+                    if args.nowandb:
+                        print('Saving model: ',
+                              os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
+                        torch.save(bestModel,
+                                   os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
+                    else:
+                        print('Saving model: ',
+                              os.path.join(args.save_model_path, 'model_{}.pth'.format(wandb.run.name)))
+                        torch.save(bestModel,
+                                   os.path.join(args.save_model_path, 'model_{}.pth'.format(wandb.run.name)))
 
                     if not args.nowandb:  # if nowandb flag was set, skip
-                        wandb.save(os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
+                        wandb.save(os.path.join(args.save_model_path, 'model_{}.pth'.format(wandb.run.name)))
 
             elif epoch < args.patience_start:
                 patience = 0
@@ -280,7 +288,7 @@ def main(args, model=None):
 
     sweep.config.update(args, allow_val_change=True)
     args = sweep.config  # get the config from the sweep
-    
+
     sweep_id = sweep.sweep_id or "unknown"
     sweep_url = sweep._get_sweep_url()
     project_url = sweep._get_project_url()
@@ -377,8 +385,10 @@ def main(args, model=None):
                 train_dataset = fromAANETandDualBisenet(train_path, args.distance, transform=aanetTransforms)
 
             elif args.dataloader == "generatedDataset":
-                val_dataset = fromGeneratedDataset(val_path, args.distance, transform=generateTransforms)
-                train_dataset = fromGeneratedDataset(train_path, args.distance, transform=generateTransforms)
+                val_dataset = fromGeneratedDataset(val_path, args.distance, decimateStep=4,
+                                                   transform=generateTransforms)
+                train_dataset = fromGeneratedDataset(train_path, args.distance, decimateStep=4,
+                                                     transform=generateTransforms)
 
             elif args.dataloader == "triplet_OBB":
 
@@ -599,9 +609,9 @@ if __name__ == '__main__':
     parser.add_argument('--distance', type=float, default=20.0, help='Distance from the cross')
 
     parser.add_argument('--weighted', action='store_true', help='Weighted losses')
-######    parser.add_argument('--pretrained', action='store_true', help='pretrained net')
+######    parser.add_argument('--pretrained', type=bool, default=True, help='pretrained net')
     parser.add_argument('--pretrained', type=bool, default=True, help='whether to use a pretrained net, or not')
-#####    parser.add_argument('--scheduler', action='store_true', help='scheduling lr')
+#####    parser.add_argument('--scheduler', type=bool, default=True, help='scheduling lr')
     parser.add_argument('--scheduler', type=bool, default=False, help='scheduling lr')
     parser.add_argument('--grayscale', action='store_true', help='Use Grayscale Images')
 
@@ -610,14 +620,14 @@ if __name__ == '__main__':
     parser.add_argument('--embedding_class', action='store_true', help='Use embedding matching with classification')
     parser.add_argument('--triplet', action='store_true', help='Use triplet learing')
     parser.add_argument('--teacher_path', type=str, help='Insert teacher path (for student training)')
-    parser.add_argument('--margin', type=float, default=0.5, help='margin in triplet and embedding')
+    parser.add_argument('--margin', type=float, default=1, help='margin in triplet and embedding')
 
     # different data loaders, use one from choices; a description is provided in the documentation of each dataloader
-    parser.add_argument('--dataloader', type=str, default='BaseLine', choices=['fromAANETandDualBisenet',
-                                                                               'generatedDataset',
-                                                                               'BaseLine',
-                                                                               'triplet_OBB',
-                                                                               'TestDataset'],
+    parser.add_argument('--dataloader', type=str, default='generatedDataset', choices=['fromAANETandDualBisenet',
+                                                                                       'generatedDataset',
+                                                                                       'BaseLine',
+                                                                                       'triplet_OBB',
+                                                                                       'TestDataset'],
                         help='One of the supported datasets')
 
     subparsers = parser.add_subparsers(help='Subparser for dropout models')
@@ -650,7 +660,7 @@ if __name__ == '__main__':
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
     # group_id = wandb.util.generate_id()
     group_id = 'Teacher_Student_embedding'
-    #print(args)
+    print(args)
     warnings.filterwarnings("ignore")
 
     if args.telegram:
