@@ -309,7 +309,7 @@ class fromGeneratedDataset(Dataset):
         """
 
         if not isinstance(decimateStep, int) and decimateStep > 0:
-            print("decimateStep must be an integer > 0")
+            print("decimateStep must be an integer > 0. Passed: ", decimateStep)
             exit(-1)
 
         if savelist and loadlist:
