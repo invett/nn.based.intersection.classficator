@@ -2,7 +2,6 @@ import argparse
 import copy
 import multiprocessing
 import os
-import random
 import socket  # to get the machine name
 import time
 import warnings
@@ -256,16 +255,32 @@ def main(args, model=None):
     # torch.backends.cudnn.deterministic = True
     # torch.backends.cudnn.benchmark = False
 
-    hyperparameter_defaults = dict(batch_size=64, cuda='0', dataloader='BaseLine', dataset=None, decimate=1.0,
+    hyperparameter_defaults = dict(batch_size=64, cuda='0', dataloader='BaseLine', decimate=1.0,
                                    distance=20.0, embedding=False, embedding_class=False, grayscale=False, lr=0.0001,
                                    margin=0.5, momentum=0.9, nowandb=False, num_classes=7, num_epochs=50, num_workers=4,
                                    optimizer='sgd', patience=-1, patience_start=50, pretrained=False,
                                    resnetmodel='resnet18', save_model_path='./trainedmodels/', scheduler=False, seed=0,
-                                   sweep=True, teacher_path=None, telegram=False, train=True, test=False,
+                                   sweep=True, telegram=False, train=True, test=False,
                                    transfer=False, triplet=False, use_gpu=True, validation_step=5, weighted=False)
 
-    sweep = wandb.init(config=hyperparameter_defaults, job_type="sweep", reinit=True)
-    args = sweep.config # get the config from the sweep
+    sweep = wandb.init(project="test-kfold", entity="chiringuito", config=hyperparameter_defaults, job_type="sweep",
+                       reinit=True)
+
+    # the part passed from wandb through the sweep does not contain the command line parameters in the "config" but
+    # they are inside the "args" because the train.py was called... little mess.. update the config with the FEW values
+    # you have in "args".
+    # Example:
+    # 2020-10-01 18:53:18,896 - wandb.wandb_agent - INFO - About to run command:
+    # /usr/bin/env python train.py
+    # --lr=0.00075 --optimizer=Adamax                                                      <<<< SWEEP PARAMETERS   !!!!
+    # --embedding --teacher_path ./trainedmodels/teacher/teacher_model_sunny-sweep-1.pth   <<<< THESE ARE COMMANDS !!!!
+    # --dataset ../DualBiSeNet/data_raw --sweep --train True                               <<<< THESE ARE COMMANDS !!!!
+    # commands are not set in "sweep.config" so if you overwrite args with sweep.config, you'll loose some part of
+    # the commands you want to give to the script
+
+    sweep.config.update(args, allow_val_change=True)
+    args = sweep.config  # get the config from the sweep
+    
     sweep_id = sweep.sweep_id or "unknown"
     sweep_url = sweep._get_sweep_url()
     project_url = sweep._get_project_url()
@@ -274,10 +289,12 @@ def main(args, model=None):
     sweep.join()
 
     print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-    print("Starting from outside for loop. This is the config:")
+    print("Starting from outer --for loop--. This is the config:")
     print("sweep.config:\n", sweep.config)
     print("sweep_id: ", sweep_id)         # this is the 'group'
     print("sweep_run_name: ", sweep_run_name)
+    print("sweep project_name: ", sweep.project_name())
+    print("sweep entity: ", sweep.entity)
     print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
     # Getting the hostname to add to wandb (seem useful for sweeps)
@@ -633,7 +650,7 @@ if __name__ == '__main__':
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
     # group_id = wandb.util.generate_id()
     group_id = 'Teacher_Student_embedding'
-    print(args)
+    #print(args)
     warnings.filterwarnings("ignore")
 
     if args.telegram:
