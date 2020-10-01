@@ -13,7 +13,7 @@ command:
   - ${args}
   - --embedding
   - --teacher_path
-  - "./trainedmodels/teacher/teacher_model_sunny-sweep-1.pth"
+  - ./trainedmodels/teacher/teacher_model_sunny-sweep-1.pth
   - --dataset
   - ../DualBiSeNet/data_raw
   - --sweep
