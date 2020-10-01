@@ -266,7 +266,7 @@ def main(args, model=None):
 
 
     #sweep_run = wandb.init()
-    sweep_run = wandb.init(config=hyperparameter_defaults, reinit=True)
+    sweep_run = wandb.init(config=hyperparameter_defaults, job_type="sweep")
     #args = wandb.config
     sweep_id = sweep_run.sweep_id or "unknown"
     sweep_url = "URL" #sweep_run.get_sweep_url()
@@ -275,6 +275,7 @@ def main(args, model=None):
     sweep_run.notes = sweep_group_url
     #sweep_run.save()
     sweep_run_name = sweep_run.name or sweep_run.id or "unknown"
+    sweep_run.
 
     print("====================================================================================")
     gigi = wandb.config
@@ -341,8 +342,10 @@ def main(args, model=None):
                 print("*******")
                 reset_wandb_env()
                 run_name = str(sweep_run_name) + "-" + str(val_index[0])
-                run = wandb.init(group=sweep_run.name, job_type="sweep", tags=["Teacher", "sweep", "class", hostname],
-                                 name=run_name, reinit=True)
+                id = wandb.util.generate_id()
+                run = wandb.init(id=id, group=sweep_run.name,
+                                 tags=["Teacher", "sweep", "class", hostname], name=run_name, reinit=True)
+
 
                 #run.name = run_name
 
