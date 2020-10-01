@@ -13,20 +13,14 @@ command:
   - ${args}
   - --embedding
   - --teacher_path
-  - "./trainedmodels/teacher/TODO"
+  - "./trainedmodels/teacher/teacher_model_sunny-sweep-1.pth"
   - --dataset
   - ../DualBiSeNet/data_raw
   - --sweep
   - --train
   - True
 parameters:
-  pretrained:
-    values: [true, false]
-  scheduler:
-    values: [true, false]
   optimizer:
-    values: [adam, ASGD, Adamax, sgd, rmsprop]
-  momentum:
-    values: [0.99, 0.9, 0.85]
+    values: [adam, ASGD, Adamax]
   lr:
-    values: [0.0005, 0.00075, 0.001]
+    values: [0.00075, 0.001]
