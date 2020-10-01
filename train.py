@@ -273,9 +273,8 @@ def main(args, model=None):
     project_url = "PROJECTURL"  # sweep_run.get_project_url()
     sweep_group_url = "{}/groups/{}".format(project_url, sweep_id)
     sweep_run.notes = sweep_group_url
-    #sweep_run.save()
+    sweep_run.save()
     sweep_run_name = sweep_run.name or sweep_run.id or "unknown"
-    sweep_run.
 
     print("====================================================================================")
     gigi = wandb.config
@@ -343,8 +342,11 @@ def main(args, model=None):
                 reset_wandb_env()
                 run_name = str(sweep_run_name) + "-" + str(val_index[0])
                 id = wandb.util.generate_id()
-                run = wandb.init(id=id, group=sweep_run.name,
-                                 tags=["Teacher", "sweep", "class", hostname], name=run_name, reinit=True)
+                #run = wandb.init(id=id, group=sweep_run.name,
+                #                 tags=["Teacher", "sweep", "class", hostname], name=run_name)
+
+                run = wandb.init(id=id, group=sweep_id, tags=["Teacher", "sweep", "class", hostname],
+                                 name=run_name, job_type=sweep_run.name)
 
 
                 #run.name = run_name
