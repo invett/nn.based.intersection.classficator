@@ -1,0 +1,32 @@
+program: train.py
+project: test-kfold
+entity: chiringuito
+job-type: k-fold
+method: grid
+metric:
+  goal: maximize
+  name: Train/acc
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+  - ${args}
+  - --embedding
+  - --teacher_path
+  - "./trainedmodels/teacher/TODO"
+  - --dataset
+  - ../DualBiSeNet/data_raw
+  - --sweep
+  - --train
+  - True
+parameters:
+  pretrained:
+    values: [true, false]
+  scheduler:
+    values: [true, false]
+  optimizer:
+    values: [adam, ASGD, Adamax, sgd, rmsprop]
+  momentum:
+    values: [0.99, 0.9, 0.85]
+  lr:
+    values: [0.0005, 0.00075, 0.001]
