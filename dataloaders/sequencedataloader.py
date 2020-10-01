@@ -291,7 +291,6 @@ class fromGeneratedDataset(Dataset):
 
         """
         Args:
-            root_dir (string): Directory with all the images.
 
             # THE FOLLOWING PARAMETERS ARE COPIED FROM <teacher_tripletloss_generated>
             rnd_width: parameter for uniform noise add (width);          uniform(-rnd_width, rnd_width)
@@ -303,6 +302,10 @@ class fromGeneratedDataset(Dataset):
 
             addGeneratedOSM: whether to add the generated OSM intersection (to train as student)
 
+            savelist: saves ALL full file names (path+file); this is ONE for ALL the dataset; todo: fix for k-fold!
+            loadlist: load the previous ones.. once you have saved them. consider using a script like
+                      "standardization.py" , or other code, that load this dataloader just once, so the "saved/npz" will
+                      be created
         """
 
         if not isinstance(decimateStep, int) and decimateStep > 0:
@@ -381,6 +384,8 @@ class fromGeneratedDataset(Dataset):
         return len(self.bev_labels)
 
     def __getitem__(self, idx):
+
+        assert os.path.isfile(self.bev_images[idx])
 
         bev_image = cv2.imread(self.bev_images[idx], cv2.IMREAD_UNCHANGED)
         bev_label = self.bev_labels[idx]

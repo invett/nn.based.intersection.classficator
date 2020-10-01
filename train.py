@@ -385,10 +385,12 @@ def main(args, model=None):
                 train_dataset = fromAANETandDualBisenet(train_path, args.distance, transform=aanetTransforms)
 
             elif args.dataloader == "generatedDataset":
-                val_dataset = fromGeneratedDataset(val_path, args.distance, decimateStep=4,
-                                                   transform=generateTransforms)
-                train_dataset = fromGeneratedDataset(train_path, args.distance, decimateStep=4,
-                                                     transform=generateTransforms)
+                val_dataset = fromGeneratedDataset(val_path, args.distance, transform=generateTransforms,
+                                                   loadlist=False,
+                                                   decimate=args.decimate)  # todo fix loadlist for k-fold
+                train_dataset = fromGeneratedDataset(train_path, args.distance, transform=generateTransforms,
+                                                     loadlist=False,
+                                                     decimate=args.decimate)  # todo fix loadlist for k-fold
 
             elif args.dataloader == "triplet_OBB":
 
