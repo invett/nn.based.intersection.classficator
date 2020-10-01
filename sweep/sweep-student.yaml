@@ -19,6 +19,8 @@ command:
   - --sweep
   - --train
   - True
+  - --decimate
+  - 4
 parameters:
   optimizer:
     values: [adam, ASGD, Adamax]
