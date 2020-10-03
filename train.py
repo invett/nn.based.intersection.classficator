@@ -122,7 +122,7 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None):
         return acc, loss_val_mean
 
 
-def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, valfolder, gtmodel=None):
+def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, valfolder, gtmodel=None, GLOBAL_EPOCH):
     if not os.path.isdir(args.save_model_path):
         os.mkdir(args.save_model_path)
 
@@ -153,6 +153,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         wandb.watch(model, log="all")
 
     for epoch in range(args.num_epochs):
+        with GLOBAL_EPOCH.get_lock():
+            GLOBAL_EPOCH.value = epoch
         lr = optimizer.param_groups[0]['lr']
         tq = tqdm.tqdm(total=len(dataloader_train) * args.batch_size)
         tq.set_description('epoch %d, lr %f' % (epoch, lr))
@@ -194,7 +196,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         if not args.nowandb:  # if nowandb flag was set, skip
             wandb.log({"Train/loss": loss_train_mean,
                        "Train/acc": acc_train,
-                       "Train/lr": lr}, step=epoch)
+                       "Train/lr": lr,
+                       "Completed epoch": epoch}, step=epoch)
 
         if epoch % args.validation_step == 0:
             if args.embedding or args.triplet:
