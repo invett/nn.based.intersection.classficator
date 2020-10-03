@@ -343,6 +343,8 @@ def main(args, model=None):
                                             transforms.ToTensor(),
                                             ])
 
+    k_fold_acc_list = []
+
     if args.train:
         loo = LeaveOneOut()
         # sweep_config = sweep.config
@@ -500,6 +502,8 @@ def main(args, model=None):
                 acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc,
                             os.path.basename(val_path[0]))
 
+            k_fold_acc_list.append(acc)
+
             if args.telegram:
                 send_telegram_message("K-Fold finished")
 
@@ -508,6 +512,9 @@ def main(args, model=None):
             else:
                 if not args.nowandb:  # if nowandb flag was set, skip
                     wandb.join()
+
+    if not args.nowandb:  # if nowandb flag was set, skip
+        wandb.log({"Train/acc": np.average(np.array(k_fold_acc_list))})
 
     # todo delete when ok -----| print("==============================================================================")
     # todo delete when ok -----| print("=============the end of the test ===eh===eh===eh=====:-)======================")
