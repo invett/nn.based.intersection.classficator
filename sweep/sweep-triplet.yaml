@@ -1,0 +1,28 @@
+program: train.py
+project: test-triplet
+entity: chiringuito
+job-type: k-fold
+method: grid
+metric:
+  goal: maximize
+  name: Val/acc
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+  - ${args}
+  - --triplet
+  - --dataset
+  - ../DualBiSeNet/data_raw_bev
+  - --sweep
+  - --train
+  - True
+  - --decimate
+  - 5
+parameters:
+  optimizer:
+    values: [adam, ASGD, Adamax]
+  lr:
+    values: [0.00075, 0.001, 0.0005]
+  dataloader:
+    values: [triplet_OBB, triplet_BOO]
