@@ -316,7 +316,7 @@ class fromGeneratedDataset(Dataset):
             print("load and save at the same time")
             exit(-1)
 
-        self.transform = transform
+        self.transform_generated = transform
 
         self.bev_images = []
         self.bev_labels = []
@@ -412,8 +412,8 @@ class fromGeneratedDataset(Dataset):
         # plt.imshow(np.asarray(sample['generated_osm'], dtype=np.uint8))
         # send_telegram_picture(a, "generated_osm")
 
-        if self.transform:
-            sample = self.transform(sample)
+        if self.transform_generated:
+            sample = self.transform_generated(sample)
 
         return sample
 
@@ -667,7 +667,7 @@ class teacher_tripletloss_generated(Dataset):
         self.canonical = canonical
         self.random_rate = random_rate
 
-        self.transform = transform
+        self.transform_triplet = transform
 
         # Generate a list of crossings; will be then used during the sampling process; is just a list of int s
         osm_types = []
@@ -830,10 +830,10 @@ class teacher_tripletloss_generated(Dataset):
                   'anchor_oxts_lon': 0, 'positive_oxts_lat': 0, 'positive_oxts_lon': 0, 'negative_oxts_lat': 0,
                   'negative_oxts_lon': 0}
 
-        if self.transform:
-            sample['anchor'] = self.transform(sample['anchor'])
-            sample['positive'] = self.transform(sample['positive'])
-            sample['negative'] = self.transform(sample['negative'])
+        if self.transform_triplet:
+            sample['anchor'] = self.transform_triplet(sample['anchor'])
+            sample['positive'] = self.transform_triplet(sample['positive'])
+            sample['negative'] = self.transform_triplet(sample['negative'])
 
         return sample
 
@@ -843,6 +843,7 @@ class triplet_OBB(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
     def __init__(self, folders, distance, elements=1000, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
                  canonical=True, transform_obs=None, transform_bev=None, random_rate=1.0, loadlist=True, savelist=False,
                  decimateStep=1):
+        # TODO Use diferent transforms for each dataset (fromgenerated, teacher_triplet_loss)
         teacher_tripletloss_generated.__init__(self, elements=elements, rnd_width=rnd_width, rnd_angle=rnd_angle,
                                                rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
                                                transform=transform_obs, random_rate=random_rate)

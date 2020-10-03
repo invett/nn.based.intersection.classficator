@@ -344,7 +344,7 @@ def main(args, model=None):
 
     if args.train:
         loo = LeaveOneOut()
-        sweep_config = sweep.config
+        # sweep_config = sweep.config
 
         for train_index, val_index in loo.split(folders):
 
@@ -398,21 +398,17 @@ def main(args, model=None):
             elif args.dataloader == "triplet_OBB":
 
                 val_dataset = triplet_OBB(val_path, args.distance, elements=200, canonical=False,
-
                                           transform_obs=obsTransforms, transform_bev=generateTransforms)
 
                 train_dataset = triplet_OBB(train_path, args.distance, elements=2000, canonical=False,
-
                                             transform_obs=obsTransforms, transform_bev=generateTransforms)
 
             elif args.dataloader == "triplet_BOO":
 
                 val_dataset = triplet_BOO(val_path, args.distance, elements=200, canonical=False,
-
                                           transform_obs=obsTransforms, transform_bev=generateTransforms)
 
                 train_dataset = triplet_BOO(train_path, args.distance, elements=2000, canonical=False,
-
                                             transform_obs=obsTransforms, transform_bev=generateTransforms)
 
             elif args.dataloader == "BaseLine":
