@@ -271,7 +271,8 @@ def main(args, model=None):
                                        resnetmodel='resnet18', save_model_path='./trainedmodels/', scheduler=False,
                                        seed=0,
                                        sweep=True, telegram=False, train=True, test=False,
-                                       transfer=False, triplet=False, use_gpu=True, validation_step=5, weighted=False)
+                                       transfer=False, triplet=False, use_gpu=True, validation_step=5, weighted=False,
+                                       num_elements_OBB=2000)
 
         sweep = wandb.init(project="test-kfold", entity="chiringuito", config=hyperparameter_defaults, job_type="sweep",
                            reinit=True)
@@ -397,12 +398,15 @@ def main(args, model=None):
 
             elif args.dataloader == "triplet_OBB":
 
-                val_dataset = triplet_OBB(val_path, args.distance, elements=200, canonical=False,
-                                          transform_obs=obsTransforms, transform_bev=generateTransforms, loadlist=False)
+                print("\nCreating train dataset from triplet_OBB")
+                train_dataset = triplet_OBB(train_path, args.distance, elements=args.num_elements_OBB, canonical=False,
+                                            transform_obs=obsTransforms, transform_bev=generateTransforms,
+                                            loadlist=False, decimateStep=args.decimate)
 
-                train_dataset = triplet_OBB(train_path, args.distance, elements=2000, canonical=False,
-                                            transform_obs=obsTransforms,
-                                            transform_bev=generateTransforms, loadlist=False)
+                print("\nCreating validation dataset from triplet_OBB")
+                val_dataset = triplet_OBB(val_path, args.distance, elements=args.num_elements_OBB, canonical=False,
+                                          transform_obs=obsTransforms, transform_bev=generateTransforms, loadlist=False,
+                                          decimateStep=args.decimate)
 
             elif args.dataloader == "triplet_BOO":
 
@@ -597,6 +601,7 @@ if __name__ == '__main__':
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum used for train')
 
     parser.add_argument('--num_workers', type=int, default=4, help='num of workers')
+
     parser.add_argument('--num_classes', type=int, default=7, help='num of object classes')
     parser.add_argument('--cuda', type=str, default='0', help='GPU is used for training')
     parser.add_argument('--use_gpu', type=bool, default=True, help='whether to user gpu for training')
@@ -632,6 +637,7 @@ if __name__ == '__main__':
                                                                                        'triplet_BOO',
                                                                                        'TestDataset'],
                         help='One of the supported datasets')
+    parser.add_argument('--num_elements_OBB', type=int, default=2000, help='Number of OSM in OBB training')
 
     subparsers = parser.add_subparsers(help='Subparser for dropout models')
     parser_drop = subparsers.add_parser('dropout', help='Dropout models. Resnext and Resnet')

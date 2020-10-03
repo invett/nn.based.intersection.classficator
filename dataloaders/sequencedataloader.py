@@ -1,21 +1,22 @@
 # Dataloader for DualBisenet under prepared Kitti dataset
-import os
 import glob
-from PIL import Image
-from torch.utils.data import Dataset
-import torch
-import pandas as pd
-from numpy import load
-import cv2
 import json
-from miscellaneous.utils import write_ply
+import os
 import random
 import time
-import numpy as np
 
-from scripts.OSM_generator import Crossing, test_crossing_pose
-from miscellaneous.utils import send_telegram_picture
+import cv2
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import torch
+from PIL import Image
+from numpy import load
+from torch.utils.data import Dataset
+
+from miscellaneous.utils import send_telegram_picture
+from miscellaneous.utils import write_ply
+from scripts.OSM_generator import Crossing, test_crossing_pose
 
 
 class BaseLine(Dataset):
@@ -336,7 +337,7 @@ class fromGeneratedDataset(Dataset):
 
         if loadlist and os.path.isfile(fullfilename):
 
-            print("Loading existing file list from " + fullfilename)
+            print("\nLoading existing file list from " + fullfilename)
 
             self.bev_images = np.load(fullfilename)['bev_images'].tolist()
             self.bev_labels = np.load(fullfilename)['bev_labels'].tolist()
@@ -374,6 +375,8 @@ class fromGeneratedDataset(Dataset):
         print("The dataset will be decimated taking 1 out of " + str(decimateStep) + " elements")
         self.bev_images = self.bev_images[::decimateStep]
         self.bev_labels = self.bev_labels[::decimateStep]
+
+        self.feasible_intersections = list(set(self.bev_labels))
 
         toc = time.time()
         print("[fromGeneratedDataset] - " + str(len(self.bev_labels)) + " elements loaded in " + str(
@@ -638,7 +641,7 @@ class teacher_tripletloss(Dataset):
 class teacher_tripletloss_generated(Dataset):
 
     def __init__(self, elements=1000, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True, canonical=True,
-                 transform=None, random_rate=1.0):
+                 transform=None, random_rate=1.0, crossing_type_set=None):
         """
 
         This dataloader uses "RUNTIME-GENERATED" intersections (this differs from teacher_tripletloss dataloader that
@@ -656,8 +659,12 @@ class teacher_tripletloss_generated(Dataset):
             random_rate: this parameter multiplies all the rnd_xxxxx values; used to create such as "learning rate"
 
             transform:  transforms to the image
+            crossing_type_set: if set, this defines the types of available crossing type in this dataset. pass a LIST
 
         """
+
+        if crossing_type_set is None:
+            crossing_type_set = [0, 1, 2, 3, 4, 5, 6]
 
         self.elements = elements
         self.rnd_width = rnd_width
@@ -672,16 +679,16 @@ class teacher_tripletloss_generated(Dataset):
         # Generate a list of crossings; will be then used during the sampling process; is just a list of int s
         osm_types = []
 
-        for crossing_type in range(0, 7):
+        for crossing_type in crossing_type_set:
             for _ in range(0, elements):
                 # sample = test_crossing_pose(crossing_type=crossing_type, noise=True, rnd_width=1.0,
                 # save=False, random_rate = )
-                osm_types.append([crossing_type])
+                osm_types.append(crossing_type)
 
-        self.samples = osm_types
+        self.samples_triplet = osm_types
 
     def __len__(self):
-        return len(self.samples)
+        return len(self.samples_triplet)
 
     def set_rnd_angle(self, rnd_angle):
         """
@@ -782,24 +789,24 @@ class teacher_tripletloss_generated(Dataset):
         #     print("Random seed to check: " + str(np.random.rand() ))
 
         # identify the typology for anchor item
-        anchor_type = self.samples[idx][0]
+        anchor_type = self.samples_triplet[idx]
 
         # create positive and negative list based on the anchor item typology
-        positive_list = [element for element in self.samples if element[0] == anchor_type]
-        negative_list = [element for element in self.samples if element[0] != anchor_type]
+        positive_list = [element for element in self.samples_triplet if element == anchor_type]
+        negative_list = [element for element in self.samples_triplet if element != anchor_type]
 
         # remove the anchor item from the positive list
-        positive_list.remove(self.samples[idx])
+        positive_list.remove(self.samples_triplet[idx])
         positive_item = random.choice(positive_list)
         negative_item = random.choice(negative_list)
 
         anchor_image = test_crossing_pose(crossing_type=anchor_type, save=False, rnd_width=self.rnd_width,
                                           rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
                                           random_rate=self.random_rate)
-        positive_image = test_crossing_pose(crossing_type=positive_item[0], save=False, rnd_width=self.rnd_width,
+        positive_image = test_crossing_pose(crossing_type=positive_item, save=False, rnd_width=self.rnd_width,
                                             rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
                                             random_rate=self.random_rate)
-        negative_image = test_crossing_pose(crossing_type=negative_item[0], save=False, rnd_width=self.rnd_width,
+        negative_image = test_crossing_pose(crossing_type=negative_item, save=False, rnd_width=self.rnd_width,
                                             rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
                                             random_rate=self.random_rate)
         if self.canonical:  # set canonical to False to speedup this dataloader
@@ -815,8 +822,8 @@ class teacher_tripletloss_generated(Dataset):
                   'negative': negative_image[0],
                   'canonical': canonical_image[0],
                   'label_anchor': anchor_type,
-                  'label_positive': positive_item[0],  # [0] is the type
-                  'label_negative': negative_item[0],  # [0] is the type
+                  'label_positive': positive_item,  # [0] is the type
+                  'label_negative': negative_item,  # [0] is the type
                   'ground_truth_image': anchor_image[0],  # for debugging purposes | in this dataloader is = the anchor
                   'anchor_xx': anchor_image[1],  # [1] is the xx coordinate
                   'anchor_yy': anchor_image[2],  # [2] is the yy coordinate
@@ -825,7 +832,7 @@ class teacher_tripletloss_generated(Dataset):
                   'negative_xx': negative_image[1],
                   'negative_yy': negative_image[2],
 
-                  # the following are not used; are here to mantain the compatibility with "teacher_tripletloss" 
+                  # the following are not used; are here to maintain the compatibility with "teacher_tripletloss"
                   'filename_anchor': 0, 'filename_positive': 0, 'filename_negative': 0, 'anchor_oxts_lat': 0,
                   'anchor_oxts_lon': 0, 'positive_oxts_lat': 0, 'positive_oxts_lon': 0, 'negative_oxts_lat': 0,
                   'negative_oxts_lon': 0}
@@ -840,24 +847,32 @@ class teacher_tripletloss_generated(Dataset):
 
 class triplet_OBB(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
 
+    """
+        fromGeneratedDataset: no sense to decimate this dataset, the speedup is achieved decreasing
+                              teacher_tripletloss_generated
+    """
+
+
     def __init__(self, folders, distance, elements=1000, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
                  canonical=True, transform_obs=None, transform_bev=None, random_rate=1.0, loadlist=True, savelist=False,
                  decimateStep=1):
-        # TODO Use diferent transforms for each dataset (fromgenerated, teacher_triplet_loss)
-        teacher_tripletloss_generated.__init__(self, elements=elements, rnd_width=rnd_width, rnd_angle=rnd_angle,
-                                               rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
-                                               transform=transform_obs, random_rate=random_rate)
 
         fromGeneratedDataset.__init__(self, folders, distance, transform=transform_bev, rnd_width=rnd_width,
                                       rnd_angle=rnd_angle, rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
-                                      addGeneratedOSM=True, decimateStep=decimateStep,
-                                      savelist=savelist, loadlist=loadlist)
+                                      addGeneratedOSM=True, savelist=savelist, loadlist=loadlist, decimateStep=1)
+
+        teacher_tripletloss_generated.__init__(self, elements=elements, rnd_width=rnd_width, rnd_angle=rnd_angle,
+                                               rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
+                                               transform=transform_obs, random_rate=random_rate,
+                                               crossing_type_set=self.feasible_intersections)
+
+
 
     def __len__(self):
         # In this multi inherit class we have both [teacher_tripletloss_generated] and [fromGeneratedDataset] items.
         # in OBB , OSM + BEV + BEV we want that our list of elements is like the teacher_tripletloss_generated one.
         # in BOO , BEV + OSM + OSM we want that our list of elements is like the fromGeneratedDataset
-        return len(self.samples)
+        return len(self.samples_triplet)
 
     def __getitem__(self, idx):
         # OBB ... so to get the OSM we can simply get the anchor from the teacher_tripletloss_generated triplet
@@ -869,8 +884,15 @@ class triplet_OBB(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
         positive_list = [idx for idx, element in enumerate(self.bev_labels) if element == sample_ttg['label_anchor']]
         negative_list = [idx for idx, element in enumerate(self.bev_labels) if element != sample_ttg['label_anchor']]
 
-        positive_item = random.choice(positive_list)
-        negative_item = random.choice(negative_list)
+        try:
+            positive_item = random.choice(positive_list)
+            negative_item = random.choice(negative_list)
+        except:
+            print("lenght of positive_list: ", len(positive_list))
+            print("lenght of negative_list: ", len(negative_list))
+            print("index was: ", idx)
+            print("sample_ttg['label_anchor']: ", sample_ttg['label_anchor'])
+            exit(-1)
 
         # once you have the items, simply call teh getitem of fromGeneratedDataset! this will return a sample.
         SAMPLE_POSITIVE = fromGeneratedDataset.__getitem__(self, positive_item)
