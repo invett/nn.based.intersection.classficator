@@ -398,10 +398,11 @@ def main(args, model=None):
             elif args.dataloader == "triplet_OBB":
 
                 val_dataset = triplet_OBB(val_path, args.distance, elements=200, canonical=False,
-                                          transform_obs=obsTransforms, transform_bev=generateTransforms)
+                                          transform_obs=obsTransforms, transform_bev=generateTransforms, loadlist=False)
 
                 train_dataset = triplet_OBB(train_path, args.distance, elements=2000, canonical=False,
-                                            transform_obs=obsTransforms, transform_bev=generateTransforms)
+                                            transform_obs=obsTransforms,
+                                            transform_bev=generateTransforms, loadlist=False)
 
             elif args.dataloader == "triplet_BOO":
 
