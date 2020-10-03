@@ -843,7 +843,6 @@ class triplet_OBB(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
     def __init__(self, folders, distance, elements=1000, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
                  canonical=True, transform_obs=None, transform_bev=None, random_rate=1.0, loadlist=True, savelist=False,
                  decimateStep=1):
-        # TODO Use diferent transforms for each dataset (fromgenerated, teacher_triplet_loss)
         teacher_tripletloss_generated.__init__(self, elements=elements, rnd_width=rnd_width, rnd_angle=rnd_angle,
                                                rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
                                                transform=transform_obs, random_rate=random_rate)

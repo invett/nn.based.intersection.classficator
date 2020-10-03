@@ -261,50 +261,54 @@ def main(args, model=None):
     # torch.backends.cudnn.deterministic = True
     # torch.backends.cudnn.benchmark = False
 
-    hyperparameter_defaults = dict(batch_size=64, cuda='0', dataloader='BaseLine', decimate=1.0,
-                                   distance=20.0, embedding=False, embedding_class=False, grayscale=False, lr=0.0001,
-                                   margin=0.5, momentum=0.9, nowandb=False, num_classes=7, num_epochs=50, num_workers=4,
-                                   optimizer='sgd', patience=-1, patience_start=50, pretrained=False,
-                                   resnetmodel='resnet18', save_model_path='./trainedmodels/', scheduler=False, seed=0,
-                                   sweep=True, telegram=False, train=True, test=False,
-                                   transfer=False, triplet=False, use_gpu=True, validation_step=5, weighted=False)
+    if args.sweep:
+        hyperparameter_defaults = dict(batch_size=64, cuda='0', dataloader='BaseLine', decimate=1.0,
+                                       distance=20.0, embedding=False, embedding_class=False, grayscale=False,
+                                       lr=0.0001,
+                                       margin=0.5, momentum=0.9, nowandb=False, num_classes=7, num_epochs=50,
+                                       num_workers=4,
+                                       optimizer='sgd', patience=-1, patience_start=50, pretrained=False,
+                                       resnetmodel='resnet18', save_model_path='./trainedmodels/', scheduler=False,
+                                       seed=0,
+                                       sweep=True, telegram=False, train=True, test=False,
+                                       transfer=False, triplet=False, use_gpu=True, validation_step=5, weighted=False)
 
-    sweep = wandb.init(project="test-kfold", entity="chiringuito", config=hyperparameter_defaults, job_type="sweep",
-                       reinit=True)
+        sweep = wandb.init(project="test-kfold", entity="chiringuito", config=hyperparameter_defaults, job_type="sweep",
+                           reinit=True)
 
-    # the part passed from wandb through the sweep does not contain the command line parameters in the "config" but
-    # they are inside the "args" because the train.py was called... little mess.. update the config with the FEW values
-    # you have in "args".
-    # Example:
-    # 2020-10-01 18:53:18,896 - wandb.wandb_agent - INFO - About to run command:
-    # /usr/bin/env python train.py
-    # --lr=0.00075 --optimizer=Adamax                                                      <<<< SWEEP PARAMETERS   !!!!
-    # --embedding --teacher_path ./trainedmodels/teacher/teacher_model_sunny-sweep-1.pth   <<<< THESE ARE COMMANDS !!!!
-    # --dataset ../DualBiSeNet/data_raw --sweep --train True                               <<<< THESE ARE COMMANDS !!!!
-    # commands are not set in "sweep.config" so if you overwrite args with sweep.config, you'll loose some part of
-    # the commands you want to give to the script
+        # the part passed from wandb through the sweep does not contain the command line parameters in the "config" but
+        # they are inside the "args" because the train.py was called... little mess.. update the config with the FEW values
+        # you have in "args".
+        # Example:
+        # 2020-10-01 18:53:18,896 - wandb.wandb_agent - INFO - About to run command:
+        # /usr/bin/env python train.py
+        # --lr=0.00075 --optimizer=Adamax                                                      <<<< SWEEP PARAMETERS   !!!!
+        # --embedding --teacher_path ./trainedmodels/teacher/teacher_model_sunny-sweep-1.pth   <<<< THESE ARE COMMANDS !!!!
+        # --dataset ../DualBiSeNet/data_raw --sweep --train True                               <<<< THESE ARE COMMANDS !!!!
+        # commands are not set in "sweep.config" so if you overwrite args with sweep.config, you'll loose some part of
+        # the commands you want to give to the script
 
-    sweep.config.update(args, allow_val_change=True)
-    args = sweep.config  # get the config from the sweep
+        sweep.config.update(args, allow_val_change=True)
+        args = sweep.config  # get the config from the sweep
 
-    sweep_id = sweep.sweep_id or "unknown"
-    sweep_url = sweep._get_sweep_url()
-    project_url = sweep._get_project_url()
-    sweep.notes = "{}/groups/{}".format(project_url, sweep_id)
-    sweep_run_name = sweep.name or sweep.id or "unknown"
-    sweep.join()
+        sweep_id = sweep.sweep_id or "unknown"
+        sweep_url = sweep._get_sweep_url()
+        project_url = sweep._get_project_url()
+        sweep.notes = "{}/groups/{}".format(project_url, sweep_id)
+        sweep_run_name = sweep.name or sweep.id or "unknown"
+        sweep.join()
 
-    print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-    print("Starting from outer --for loop--. This is the config:")
-    print("sweep.config:\n", sweep.config)
-    print("sweep_id: ", sweep_id)         # this is the 'group'
-    print("sweep_run_name: ", sweep_run_name)
-    print("sweep project_name: ", sweep.project_name())
-    print("sweep entity: ", sweep.entity)
-    print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+        print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+        print("Starting from outer --for loop--. This is the config:")
+        print("sweep.config:\n", sweep.config)
+        print("sweep_id: ", sweep_id)  # this is the 'group'
+        print("sweep_run_name: ", sweep_run_name)
+        print("sweep project_name: ", sweep.project_name())
+        print("sweep entity: ", sweep.entity)
+        print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
-    # Getting the hostname to add to wandb (seem useful for sweeps)
-    hostname = str(socket.gethostname())
+        # Getting the hostname to add to wandb (seem useful for sweeps)
+        hostname = str(socket.gethostname())
 
     GLOBAL_EPOCH = multiprocessing.Value('i', 0)
     seed = multiprocessing.Value('i', args.seed)
@@ -333,8 +337,10 @@ def main(args, model=None):
         aanetTransforms = transforms.Compose(
             [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), ToTensor()])
         generateTransforms = transforms.Compose([Rescale((224, 224)), Normalize(), ToTensor()])
-        obsTransforms = transforms.Compose(
-            [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
+        obsTransforms = transforms.Compose([transforms.ToPILImage(),
+                                            transforms.Resize((224, 224)),
+                                            transforms.ToTensor(),
+                                            ])
 
     if args.train:
         loo = LeaveOneOut()
@@ -348,12 +354,11 @@ def main(args, model=None):
                 print("******* BEGIN *******")
                 reset_wandb_env()
                 wandb_local_name = str(sweep_run_name) + "-split-" + str(val_index[0])
-                print("Initializing wandb_current_run with name: " , wandb_local_name)
+                print("Initializing wandb_current_run with name: ", wandb_local_name)
                 wandb_id = wandb.util.generate_id()
 
                 wandb_current_run = wandb.init(id=wandb_id, group=sweep_id, name=wandb_local_name, job_type=sweep.name,
-                                 tags=["Teacher", "sweep", "class", hostname])
-
+                                               tags=["Teacher", "sweep", "class", hostname])
 
                 # todo delete when ok -----| if "sweep" in args and args.sweep:
                 # todo delete when ok -----|     print("YES IT IS A SWEEP! and should be called ---> " + wandb_local_name)
@@ -605,13 +610,13 @@ if __name__ == '__main__':
                         help='Starting epoch for patience of validation. Default, 50. ')
 
     parser.add_argument('--decimate', type=int, default=1, help='How much of the points will remain after '
-                                                                    'decimation')
+                                                                'decimation')
     parser.add_argument('--distance', type=float, default=20.0, help='Distance from the cross')
 
     parser.add_argument('--weighted', action='store_true', help='Weighted losses')
-######    parser.add_argument('--pretrained', type=bool, default=True, help='pretrained net')
+    ######    parser.add_argument('--pretrained', type=bool, default=True, help='pretrained net')
     parser.add_argument('--pretrained', type=bool, default=True, help='whether to use a pretrained net, or not')
-#####    parser.add_argument('--scheduler', type=bool, default=True, help='scheduling lr')
+    #####    parser.add_argument('--scheduler', type=bool, default=True, help='scheduling lr')
     parser.add_argument('--scheduler', type=bool, default=False, help='scheduling lr')
     parser.add_argument('--grayscale', action='store_true', help='Use Grayscale Images')
 
