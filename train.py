@@ -66,12 +66,10 @@ def test(args, dataloader_test, gt_model=None):
             gt_model = gt_model.cuda()
 
     # Start testing
-    if args.embedding:
+    if args.embedding or args.triplet:
         acc_val, loss_val = validation(args, model, criterion, dataloader_test, gtmodel=gt_model)
         if not args.nowandb:  # if nowandb flag was set, skip
             wandb.log({"Test/loss": loss_val, "Test/Acc": acc_val})
-    elif args.triplet:
-        pass
     else:
         confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test)
 
@@ -629,6 +627,7 @@ if __name__ == '__main__':
                                                                                        'generatedDataset',
                                                                                        'BaseLine',
                                                                                        'triplet_OBB',
+                                                                                       'triplet_BOO',
                                                                                        'TestDataset'],
                         help='One of the supported datasets')
 
@@ -656,6 +655,10 @@ if __name__ == '__main__':
     if args.dataset == "":
         print("Empty path. Please provide the path of the dataset you want to use."
               "Ex: --dataset=../DualBiSeNet/data_raw")
+        exit(-1)
+
+    if args.triplet != (args.dataloader == 'triplet_OBB' or args.dataloader == 'triplet_BOO'):
+        print("Args triplet and triplet dataloaders must be called together")
         exit(-1)
 
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
