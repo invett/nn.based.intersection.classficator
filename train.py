@@ -122,7 +122,31 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None):
         return acc, loss_val_mean
 
 
-def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, valfolder, gtmodel=None, GLOBAL_EPOCH):
+def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, valfolder, GLOBAL_EPOCH, gtmodel=None,
+          kfold_index=None):
+    """
+
+    Do the training. The LOSS depends on the value of
+        weighted    : standard classifier with weighted classes
+        embedding   : student-case
+        triple      : BOO and OBB
+        .. else ..  : standard classifier
+
+    Args:
+        args: from the main, all the args
+        model:
+        optimizer:
+        dataloader_train:
+        dataloader_val:
+        acc_pre:
+        valfolder:
+        GLOBAL_EPOCH:
+        gtmodel:
+        kfold_index: this index is used to store indexed wandb per-batch metrics
+
+    Returns:
+
+    """
     if not os.path.isdir(args.save_model_path):
         os.mkdir(args.save_model_path)
 
@@ -152,6 +176,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
     if not args.nowandb:  # if nowandb flag was set, skip
         wandb.watch(model, log="all")
 
+    current_batch = 0
     for epoch in range(args.num_epochs):
         with GLOBAL_EPOCH.get_lock():
             GLOBAL_EPOCH.value = epoch
@@ -177,6 +202,19 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
             loss_record += loss.item()
             acc_record += acc
+
+            if not args.nowandb:  # if nowandb flag was set, skip
+                if kfold_index is None:
+                    kfold_index = 0
+                    print("Warning, k-fold index is not passed. Ignore if not k-folding")
+
+                wandb.log({"batch_training_accuracy": acc,
+                           "batch_training_loss": loss,
+                           "batch_current_batch": current_batch,
+                           "batch_current_epoch": epoch,
+                           "batch_kfold_index": kfold_index})
+
+                current_batch += 1
 
         tq.close()
 
@@ -500,10 +538,11 @@ def main(args, model=None):
             # train model
             if args.embedding:
                 acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc,
-                            os.path.basename(val_path[0]), gtmodel=gt_model)
+                            os.path.basename(val_path[0]), gtmodel=gt_model, GLOBAL_EPOCH=GLOBAL_EPOCH,
+                            kfold_index=val_index[0])
             else:
                 acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc,
-                            os.path.basename(val_path[0]))
+                            os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH, kfold_index=val_index[0])
 
             k_fold_acc_list.append(acc)
 

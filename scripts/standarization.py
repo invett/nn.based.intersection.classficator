@@ -16,7 +16,8 @@ loader = DataLoader(
     dataset,
     batch_size=10,
     num_workers=1,
-    shuffle=False
+    shuffle=False,
+    drop_last=True
 )
 
 mean = 0.
