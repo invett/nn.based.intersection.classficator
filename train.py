@@ -453,11 +453,13 @@ def main(args, model=None):
 
             elif args.dataloader == "triplet_BOO":
 
-                val_dataset = triplet_BOO(val_path, args.distance, elements=200, canonical=False,
-                                          transform_obs=obsTransforms, transform_bev=generateTransforms)
+                val_dataset = triplet_BOO(val_path, args.distance, canonical=False,
+                                          transform_obs=obsTransforms, transform_bev=generateTransforms,
+                                          decimateStep=args.decimate)
 
-                train_dataset = triplet_BOO(train_path, args.distance, elements=2000, canonical=False,
-                                            transform_obs=obsTransforms, transform_bev=generateTransforms)
+                train_dataset = triplet_BOO(train_path, args.distance, canonical=False,
+                                            transform_obs=obsTransforms, transform_bev=generateTransforms,
+                                            decimateStep=args.decimate)
 
             elif args.dataloader == "BaseLine":
                 val_dataset = BaseLine(val_path, transform=transforms.Compose([transforms.Resize((224, 224)),
