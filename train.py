@@ -208,8 +208,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
                     kfold_index = 0
                     print("Warning, k-fold index is not passed. Ignore if not k-folding")
 
-                wandb.log({"batch_training_accuracy": acc,
-                           "batch_training_loss": loss,
+                wandb.log({"batch_training_accuracy": acc / args.batch_size,
+                           "batch_training_loss": loss / args.batch_size,
                            "batch_current_batch": current_batch,
                            "batch_current_epoch": epoch,
                            "batch_kfold_index": kfold_index})
@@ -235,13 +235,15 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
             wandb.log({"Train/loss": loss_train_mean,
                        "Train/acc": acc_train,
                        "Train/lr": lr,
-                       "Completed epoch": epoch}, step=epoch)
+                       "Completed epoch": epoch})
 
         if epoch % args.validation_step == 0:
             if args.embedding or args.triplet:
                 acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gtmodel=gtmodel)
                 if not args.nowandb:  # if nowandb flag was set, skip
-                    wandb.log({"Val/loss": loss_val, "Val/Acc": acc_val}, step=epoch)
+                    wandb.log({"Val/loss": loss_val,
+                               "Val/Acc": acc_val,
+                               "Completed epoch": epoch})
             else:
                 confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val)
                 plt.figure(figsize=(10, 7))
@@ -253,7 +255,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
                 if not args.nowandb:  # if nowandb flag was set, skip
                     wandb.log({"Val/loss": loss_val,
                                "Val/Acc": acc_val,
-                               "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)}, step=epoch)
+                               "Completed epoch": epoch,
+                               "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)})
 
             if (kfold_acc < acc_val) or (kfold_loss > loss_val):
 
@@ -488,9 +491,9 @@ def main(args, model=None):
                 raise Exception("Dataloader not found")
 
             dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                                          num_workers=args.num_workers, worker_init_fn=init_fn)
+                                          num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
             dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False,
-                                        num_workers=args.num_workers, worker_init_fn=init_fn)
+                                        num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
 
             # Build model
             if args.resnetmodel[0:6] == 'resnet':
