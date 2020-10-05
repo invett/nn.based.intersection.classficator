@@ -591,7 +591,7 @@ class teacher_tripletloss(Dataset):
             canonical_image = test_crossing_pose(crossing_type=anchor_type, save=False, noise=self.noise,
                                                  sampling=False, random_rate=self.random_rate)[0]
         else:
-            canonical_image = 0
+            canonical_image = [0]
 
         ground_truth_img = cv2.imread(
             os.path.dirname(str(self.osm_data[idx][0])) + "_TYPES/" + str(self.osm_data[idx][2]) + ".png",
@@ -613,7 +613,7 @@ class teacher_tripletloss(Dataset):
         sample = {'anchor': anchor_image,
                   'positive': positive_image,
                   'negative': negative_image,
-                  'canonical': canonical_image,
+                  'canonical': canonical_image[0],
                   'label_anchor': anchor_type, 'label_positive': positive_item[2],  # [2] is the type
                   'label_negative': negative_item[2],  # [2] is the type
                   'filename_anchor': self.osm_data[idx][0],  # [0] is the filename
@@ -846,12 +846,10 @@ class teacher_tripletloss_generated(Dataset):
 
 
 class triplet_OBB(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
-
     """
         fromGeneratedDataset: no sense to decimate this dataset, the speedup is achieved decreasing
                               teacher_tripletloss_generated
     """
-
 
     def __init__(self, folders, distance, elements=1000, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
                  canonical=True, transform_obs=None, transform_bev=None, random_rate=1.0, loadlist=True, savelist=False,
@@ -865,8 +863,6 @@ class triplet_OBB(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
                                                rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
                                                transform=transform_obs, random_rate=random_rate,
                                                crossing_type_set=self.feasible_intersections)
-
-
 
     def __len__(self):
         # In this multi inherit class we have both [teacher_tripletloss_generated] and [fromGeneratedDataset] items.
@@ -944,9 +940,9 @@ class triplet_BOO(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
     def __init__(self, folders, distance, elements=1000, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
                  canonical=True, transform_obs=None, transform_bev=None, random_rate=1.0, loadlist=True, savelist=False,
                  decimateStep=1):
-        teacher_tripletloss_generated.__init__(self, elements=elements, rnd_width=rnd_width, rnd_angle=rnd_angle,
-                                               rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
-                                               transform=transform_obs, random_rate=random_rate)
+        # teacher_tripletloss_generated.__init__(self, elements=elements, rnd_width=rnd_width, rnd_angle=rnd_angle,
+        # rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
+        # transform=transform_obs, random_rate=random_rate)
 
         fromGeneratedDataset.__init__(self, folders, distance, transform=transform_bev, rnd_width=rnd_width,
                                       rnd_angle=rnd_angle, rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
@@ -961,6 +957,7 @@ class triplet_BOO(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
         self.noise = noise
         self.random_rate = random_rate
         self.canonical = canonical
+        self.transform_obs = transform_obs
 
     def __len__(self):
         # In this multi inherit class we have both [teacher_tripletloss_generated] and [fromGeneratedDataset] items.
@@ -991,20 +988,23 @@ class triplet_BOO(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
                   'label_negative': item_negative,
                   'filename_anchor': sample_fgd['image_path']
                   }
+        if self.transform_obs:
+            sample['OSM_positive'] = self.transform_obs(sample['OSM_positive'])
+            sample['OSM_negative'] = self.transform_obs(sample['OSM_negative'])
 
-        # DEBUG -- send in telegram. Little HACK for the ANCHOR, get a sub-part of image ...
-        emptyspace = 255 * torch.ones([224, 30, 3], dtype=torch.uint8)
-        a = plt.figure()
-        plt.imshow(torch.cat((torch.tensor(sample['BEV_anchor']), emptyspace,
-                              torch.tensor(sample['OSM_positive'])[38:262, 38:262, :], emptyspace,
-                              torch.tensor(sample['OSM_negative'])[38:262, 38:262, :]), 1))
-        send_telegram_picture(a, \
-                              "OSM | BEV(positive) | BEV(negative)" + \
-                              "\nWarning: images of OSM_positive and OSM_negative are CROPPED!\n" + \
-                              "\nlabel_anchor: " + str(sample['label_anchor']) + \
-                              "\nlabel_positive: " + str(sample['label_positive']) + \
-                              "\nlabel_negative: " + str(sample['label_negative']) + \
-                              "\nfilename positive: " + str(sample['filename_anchor']) \
-                              )
+            # DEBUG -- send in telegram. Little HACK for the ANCHOR, get a sub-part of image ...
+        #emptyspace = 255 * torch.ones([224, 30, 3], dtype=torch.uint8)
+        #a = plt.figure()
+        #plt.imshow(torch.cat((torch.tensor(sample['BEV_anchor']), emptyspace,
+                              #torch.tensor(sample['OSM_positive'])[38:262, 38:262, :], emptyspace,
+                              #torch.tensor(sample['OSM_negative'])[38:262, 38:262, :]), 1))
+        #send_telegram_picture(a, \
+                              #"OSM | BEV(positive) | BEV(negative)" + \
+                              #"\nWarning: images of OSM_positive and OSM_negative are CROPPED!\n" + \
+                              #"\nlabel_anchor: " + str(sample['label_anchor']) + \
+                              #"\nlabel_positive: " + str(sample['label_positive']) + \
+                              #"\nlabel_negative: " + str(sample['label_negative']) + \
+                              #"\nfilename positive: " + str(sample['filename_anchor']) \
+                              #)
 
         return sample
