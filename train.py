@@ -29,7 +29,7 @@ from miscellaneous.utils import init_function, reset_wandb_env, send_telegram_me
 from model.resnet_models import Personalized, Personalized_small, get_model_resnet, get_model_resnext
 
 
-def test(args, dataloader_test, gt_model=None):
+def test(args, dataloader_test, gt_model=None, classifier=None):
     print('start Test!')
 
     if args.triplet:
@@ -71,6 +71,14 @@ def test(args, dataloader_test, gt_model=None):
         acc_val, loss_val = validation(args, model, criterion, dataloader_test, gtmodel=gt_model)
         if not args.nowandb:  # if nowandb flag was set, skip
             wandb.log({"Test/loss": loss_val, "Test/Acc": acc_val})
+    elif args.svm:
+        confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test, classifier=classifier)
+
+        plt.figure(figsize=(10, 7))
+        sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
+
+        if not args.nowandb:  # if nowandb flag was set, skip
+            wandb.log({"Test/Acc": acc, "conf-matrix_test": wandb.Image(plt)})
     else:
         confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test)
 
@@ -81,7 +89,7 @@ def test(args, dataloader_test, gt_model=None):
             wandb.log({"Test/Acc": acc, "conf-matrix_test": wandb.Image(plt)})
 
 
-def validation(args, model, criterion, dataloader_val, gtmodel=None):
+def validation(args, model, criterion, dataloader_val, gtmodel=None, classifier=None):
     print('\nstart val!')
 
     loss_record = 0.0
@@ -94,9 +102,11 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None):
 
         for sample in dataloader_val:
             if args.embedding or args.triplet:
-                acc, loss = student_network_pass(args, sample, criterion, model, gtmodel)
+                acc, loss = student_network_pass(args, sample, criterion, model, gtmodel=gtmodel)
             elif args.svm:
-                pass
+                acc, loss, label, predict = student_network_pass(args, sample, criterion, model, svm=classifier)
+                labelRecord = np.append(labelRecord, label)
+                predRecord = np.append(predRecord, predict)
             else:
                 acc, loss, label, predict = student_network_pass(args, sample, criterion, model)
                 labelRecord = np.append(labelRecord, label)
@@ -115,7 +125,7 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None):
         acc = acc_record / len(dataloader_val)
     print('Accuracy for test/validation : %f\n' % acc)
 
-    if not (args.embedding or args.triplet):
+    if not (args.embedding or args.triplet or args.svm):
         conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'], margins=True,
                                   normalize='all')
         conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6, 'All'], columns=[0, 1, 2, 3, 4, 5, 6, 'All'],
@@ -564,7 +574,7 @@ def main(args, model=None):
                     wandb.join()
 
     if not args.nowandb:  # if nowandb flag was set, skip
-        wandb.log({"Train/acc": np.average(np.array(k_fold_acc_list))})
+        wandb.log({"Val/acc": np.average(np.array(k_fold_acc_list))})
 
     # todo delete when ok -----| print("==============================================================================")
     # todo delete when ok -----| print("=============the end of the test ===eh===eh===eh=====:-)======================")
@@ -615,7 +625,12 @@ def main(args, model=None):
                        job_type="eval")
             wandb.config.update(args)
 
-        test(args, dataloader_test)
+        if args.svm:
+            filename = os.path.join(args.save_model_path, 'svm_classsifier.sav')
+            loaded_model = pickle.load(open(filename, 'rb'))
+            test(args, dataloader_test, classifier=loaded_model)
+        else:
+            test(args, dataloader_test)
 
     if args.telegram:
         send_telegram_message("Finish successfully")
