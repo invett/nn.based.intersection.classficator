@@ -2,6 +2,7 @@ import argparse
 import copy
 import multiprocessing
 import os
+import pickle
 import socket  # to get the machine name
 import time
 import warnings
@@ -24,7 +25,7 @@ from dataloaders.sequencedataloader import BaseLine, TestDataset, fromAANETandDu
 from dataloaders.transforms import GenerateBev, GrayScale, Mirror, Normalize, Rescale, ToTensor
 from dropout_models import get_resnet, get_resnext
 from miscellaneous.utils import init_function, reset_wandb_env, send_telegram_message, send_telegram_picture, \
-    student_network_pass
+    student_network_pass, svm_train
 from model.resnet_models import Personalized, Personalized_small, get_model_resnet, get_model_resnext
 
 
@@ -41,7 +42,7 @@ def test(args, dataloader_test, gt_model=None):
     # Build model
     if args.resnetmodel[0:6] == 'resnet':
         model = get_model_resnet(args.resnetmodel, args.num_classes, transfer=args.transfer, pretrained=args.pretrained,
-                                 embedding=(args.embedding or args.triplet))
+                                 embedding=(args.embedding or args.triplet or args.svm))
     elif args.resnetmodel[0:7] == 'resnext':
         model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
     elif args.resnetmodel == 'personalized':
@@ -66,7 +67,7 @@ def test(args, dataloader_test, gt_model=None):
             gt_model = gt_model.cuda()
 
     # Start testing
-    if args.embedding or args.triplet:
+    if (args.embedding or args.triplet) and not args.svm:
         acc_val, loss_val = validation(args, model, criterion, dataloader_test, gtmodel=gt_model)
         if not args.nowandb:  # if nowandb flag was set, skip
             wandb.log({"Test/loss": loss_val, "Test/Acc": acc_val})
@@ -94,6 +95,8 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None):
         for sample in dataloader_val:
             if args.embedding or args.triplet:
                 acc, loss = student_network_pass(args, sample, criterion, model, gtmodel)
+            elif args.svm:
+                pass
             else:
                 acc, loss, label, predict = student_network_pass(args, sample, criterion, model)
                 labelRecord = np.append(labelRecord, label)
@@ -568,6 +571,13 @@ def main(args, model=None):
     # todo delete when ok -----| print("==============================================================================")
     # todo delete when ok -----| sweep.join()
     # todo delete when ok -----| exit(-2)
+
+    if args.svm:
+        # save the model to disk
+        # TODO obtain embeddings and labels from the best trained model and de train + val datasets
+        model = svm_train(embeddings, labels, mode='rbf')  # embeddings: (Samples x Features); labels(Samples)
+        filename = os.path.join(args.save_model_path, 'svm_classsifier.sav')
+        pickle.dump(model, open(filename, 'wb'))
 
     if args.test:
         # Final Test on 2011_10_03_drive_0027_sync

@@ -8,6 +8,8 @@ from functools import reduce
 from io import BytesIO
 from math import asin, atan2, cos, pi, sin
 
+from sklearn import svm
+
 import numpy as np
 import requests
 import torch
@@ -302,7 +304,7 @@ def teacher_network_pass(args, sample, model, criterion):
         return acc, loss, label, predict
 
 
-def student_network_pass(args, sample, criterion, model, gtmodel=None):
+def student_network_pass(args, sample, criterion, model, gtmodel=None, svm=None):
     cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
 
     if args.triplet:
@@ -355,10 +357,15 @@ def student_network_pass(args, sample, criterion, model, gtmodel=None):
         output = model(data)
 
         loss = criterion(output, label)
+        if args.svm:
+            dec = svm.decision_function(output.cpu().squeeze().numpy()) # --> (samples x classes)
+            predict = np.argmax(dec, 1)
+            label = label.cpu().numpy()
 
-        predict = torch.argmax(output, 1)
-        label = label.cpu().numpy()
-        predict = predict.cpu().numpy()
+        else:
+            predict = torch.argmax(output, 1)
+            label = label.cpu().numpy()
+            predict = predict.cpu().numpy()
 
         acc = accuracy_score(label, predict)
 
@@ -397,3 +404,16 @@ def reset_wandb_env():
     for k, v in os.environ.items():
         if k.startswith("WANDB_") and k not in exclude:
             del os.environ[k]
+
+
+def svm_train(features, labels, mode='Linear'):
+    assert len(features[0]) == len(labels), 'The number of feature vectors should be same as number of labels'
+    if mode == 'Linear':
+        classifier = svm.LinearSVC()
+        classifier.fit(features, labels)
+    else:
+        classifier = svm.SVC(decision_function_shape='ovo')
+        classifier.fit(features, labels)
+        classifier.decision_function_shape = "ovr"
+
+    return classifier
