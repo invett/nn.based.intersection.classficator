@@ -706,7 +706,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_model_path', type=str, default='./trainedmodels/', help='path to save model')
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
     parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
-    parser.add_argument('--patience_start', type=int, default=50,
+    parser.add_argument('--patience_start', type=int, default=2,
                         help='Starting epoch for patience of validation. Default, 50. ')
 
     parser.add_argument('--decimate', type=int, default=1, help='How much of the points will remain after '
@@ -773,7 +773,7 @@ if __name__ == '__main__':
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
     # group_id = wandb.util.generate_id()
-    group_id = 'Teacher_Student_embedding'
+    group_id = 'Teacher_Student_Ultimate'
     print(args)
     warnings.filterwarnings("ignore")
 

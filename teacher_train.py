@@ -63,13 +63,13 @@ def main(args):
         else:
             if args.test:
                 wandb.init(project="nn-based-intersection-classficator", entity="chiringuito",
-                           group="Teacher_train_sweep",
-                           job_type="eval", tags=["Teacher", "sweep", "class", hostname],
+                           group="Teacher_train_ultimate",
+                           job_type="eval", tags=["Teacher", "ultimate", "class", hostname],
                            config=hyperparameter_defaults)
             else:
                 wandb.init(project="nn-based-intersection-classficator", entity="chiringuito",
-                           group="Teacher_train_sweep",
-                           job_type="training", tags=["Teacher", "sweep", "class", hostname],
+                           group="Teacher_train_ultimate",
+                           job_type="training", tags=["Teacher", "ultimate", "class", hostname],
                            config=hyperparameter_defaults)
             wandb.config.update(args, allow_val_change=True)
 
@@ -226,7 +226,7 @@ def test(args, model, dataloader):
                 # Code to save the PNGs for debugging purposes
                 if args.saveTestCouplesForDebug:
                     emptyspace = 255 * torch.ones([224, 30, 3], dtype=torch.float32)
-                    a = plt.figure()
+                    plt.figure()
                     plt.imshow(np.clip(torch.cat((sample['anchor'][0].transpose(0, 2).transpose(0, 1), emptyspace,
                                                   sample['positive'][0].transpose(0, 2).transpose(0, 1), emptyspace,
                                                   torch.nn.functional.interpolate(
@@ -502,7 +502,7 @@ if __name__ == '__main__':
     # SCRIPT MODALITIES AND NETWORK BEHAVIORS #
     ###########################################
     parser.add_argument('--seed', type=int, default=0, help='Starting seed, for reproducibility. Default is ZERO!')
-    parser.add_argument('--train', type=bool, default=True, help='Train/Validate the model')
+    parser.add_argument('--train', action='store_true', help='Train/Validate the model')
     parser.add_argument('--test', type=bool, default=False, help='Test the model')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     parser.add_argument('--sweep', action='store_true', help='if set, this run is part of a wandb-sweep; use it with'
@@ -552,8 +552,8 @@ if __name__ == '__main__':
     parser.add_argument('--model', type=str, default="resnet18",
                         choices=['resnet18', 'vgg11', 'vgg13', 'vgg16', 'vgg19'],
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
-    parser.add_argument('--batch_size', type=int, default=8, help='Number of images in each batch')
-    parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
+    parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
+    parser.add_argument('--num_epochs', type=int, default=15, help='Number of epochs to train for')
     parser.add_argument('--validation_step', type=int, default=2, help='How often to perform validation and a '
                                                                        'checkpoint (epochs)')
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate used for train')
