@@ -358,7 +358,7 @@ def student_network_pass(args, sample, criterion, model, gtmodel=None, svm=None)
 
         loss = criterion(output, label)
         if args.svm:
-            dec = svm.decision_function(output.cpu().squeeze().numpy()) # --> (samples x classes)
+            dec = svm.decision_function(output.cpu().squeeze().numpy())  # --> (samples x classes)
             predict = np.argmax(dec, 1)
             label = label.cpu().numpy()
 
@@ -417,3 +417,34 @@ def svm_train(features, labels, mode='Linear'):
         classifier.decision_function_shape = "ovr"
 
     return classifier
+
+
+def svm_data(args, model, dataloader_train, dataloader_val):
+    embeddingRecord = np.array([], dtype=np.float32)
+    labelRecord = np.array([], dtype=np.uint8)
+
+    for sample in dataloader_train:
+        data = sample['data']
+        label = sample['label']
+
+        if torch.cuda.is_available() and args.use_gpu:
+            data = data.cuda()
+
+        output = model(data)  # --> (Batch x 512)
+
+        embeddingRecord = np.append(embeddingRecord, output.cpu().numpy(), axis=0)
+        labelRecord = np.append(labelRecord, label)
+
+    for sample in dataloader_val:
+        data = sample['data']
+        label = sample['label']
+
+        if torch.cuda.is_available() and args.use_gpu:
+            data = data.cuda()
+
+        output = model(data)  # --> (Batch x 512)
+
+        embeddingRecord = np.append(embeddingRecord, output.cpu().numpy(), axis=0)
+        labelRecord = np.append(labelRecord, label)
+
+    return embeddingRecord, labelRecord

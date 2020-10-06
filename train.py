@@ -25,7 +25,7 @@ from dataloaders.sequencedataloader import BaseLine, TestDataset, fromAANETandDu
 from dataloaders.transforms import GenerateBev, GrayScale, Mirror, Normalize, Rescale, ToTensor
 from dropout_models import get_resnet, get_resnext
 from miscellaneous.utils import init_function, reset_wandb_env, send_telegram_message, send_telegram_picture, \
-    student_network_pass, svm_train
+    student_network_pass, svm_train, svm_data
 from model.resnet_models import Personalized, Personalized_small, get_model_resnet, get_model_resnext
 
 
@@ -583,8 +583,14 @@ def main(args, model=None):
     # todo delete when ok -----| exit(-2)
 
     if args.svm:
+        # load best trained model
+        if args.nowandb:
+            savepath = './trainedmodels/model_' + args.resnetmodel + '.pth'
+        else:
+            savepath = './trainedmodels/model_' + wandb.run.name + '.pth'
+        model.load_state_dict(torch.load(savepath))
         # save the model to disk
-        # TODO obtain embeddings and labels from the best trained model and de train + val datasets
+        embeddings, labels = svm_data(args, model, dataloader_train, dataloader_val)
         model = svm_train(embeddings, labels, mode='rbf')  # embeddings: (Samples x Features); labels(Samples)
         filename = os.path.join(args.save_model_path, 'svm_classsifier.sav')
         pickle.dump(model, open(filename, 'wb'))
@@ -738,6 +744,9 @@ if __name__ == '__main__':
     if args.embedding and not args.teacher_path:
         print("Parameter --teacher_path is REQUIRED when --embedding is set")
         exit(-1)
+
+    if args.svm and not args.embedding:
+        print("Parameter --embedding is REQUIRED when --svm is set")
 
     if args.dataset == "":
         print("Empty path. Please provide the path of the dataset you want to use."
