@@ -512,7 +512,7 @@ def main(args, model=None):
             if args.resnetmodel[0:6] == 'resnet':
                 model = get_model_resnet(args.resnetmodel, args.num_classes, transfer=args.transfer,
                                          pretrained=args.pretrained,
-                                         embedding=(args.embedding or args.triplet) and not args.embedding_class)
+                                         embedding=(args.embedding or args.triplet or args.freeze) and not args.embedding_class)
             elif args.resnetmodel[0:7] == 'resnext':
                 model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
             elif args.resnetmodel == 'personalized':
@@ -532,6 +532,17 @@ def main(args, model=None):
                     model = torch.nn.Sequential(*(list(model.children())[:-1]))
                     gt_model = torch.nn.Sequential(*(list(gt_model.children())[:-1]))
                 gt_model.eval()
+
+            if args.freeze:
+                # load best trained model
+                if args.nowandb:
+                    savepath = './trainedmodels/model_' + args.resnetmodel + '.pth'
+                else:
+                    savepath = './trainedmodels/model_' + wandb.run.name + '.pth'
+                model.load_state_dict(torch.load(savepath))
+                for param in model.parameters():
+                    param.requires_grad = False
+                model = torch.nn.Sequential(model, torch.nn.Linear(512, 7))
 
             if torch.cuda.is_available() and args.use_gpu:
                 model = model.cuda()
@@ -673,6 +684,8 @@ if __name__ == '__main__':
                                                              'in https://docs.wandb.com/sweeps/configuration#command')
 
     parser.add_argument('--telegram', action='store_true', help='Send info through Telegram')
+    parser.add_argument('--freeze', action='store_true', help='fc finetuning of student model')
+    parser.add_argument('--svm', action='store_true', help='support vector machine for student classification')
 
     parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
     parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '

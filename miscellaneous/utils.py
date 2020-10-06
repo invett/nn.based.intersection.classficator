@@ -419,7 +419,7 @@ def svm_train(features, labels, mode='Linear'):
     return classifier
 
 
-def svm_data(args, model, dataloader_train, dataloader_val):
+def svm_data(args, model, dataloader_train, dataloader_val, save=False):
     embeddingRecord = np.array([], dtype=np.float32)
     labelRecord = np.array([], dtype=np.uint8)
 
@@ -446,5 +446,11 @@ def svm_data(args, model, dataloader_train, dataloader_val):
 
         embeddingRecord = np.append(embeddingRecord, output.cpu().numpy(), axis=0)
         labelRecord = np.append(labelRecord, label)
+
+    if save:
+        with open('./trainedmodels/embeddings/embeddings.npy', 'wb') as f:
+            np.save(f, embeddingRecord)
+        with open('./trainedmodels/embeddings/labels.npy', 'wb') as f:
+            np.save(f, labelRecord)
 
     return embeddingRecord, labelRecord
