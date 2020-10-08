@@ -338,14 +338,15 @@ def student_network_pass(args, sample, criterion, model, gtmodel=None, svm=None,
         if torch.cuda.is_available() and args.use_gpu:
             data = data.cuda()
             osm = osm.cuda()
+            osm_neg = osm_neg.cuda()
 
         output = model(data)
         output_gt = gtmodel(osm)  # (Batch x 512) Tensor
         output_gt_neg = gtmodel(osm_neg)
 
-        # mask = torch.ones((64, 512)).cuda()
-        # loss = criterion(output, output_gt, mask)
-        loss = criterion(output, output_gt, output_gt_neg)
+        mask = torch.ones((64, 512)).cuda()
+        loss = criterion(output, output_gt, mask) + criterion(output, output_gt_neg, mask*-1)
+        # loss = criterion(output, output_gt, output_gt_neg)
 
         if gt_list is not None:
             predict = gt_validation(output, gtmodel, gt_list)

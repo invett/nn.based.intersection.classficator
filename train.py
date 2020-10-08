@@ -166,10 +166,10 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         traincriterion = torch.nn.CrossEntropyLoss(weight=class_weights)
         valcriterion = torch.nn.CrossEntropyLoss()
     elif args.embedding:
-        #traincriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='sum')
-        #valcriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='sum')
-        traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
-        valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
+        traincriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='sum')
+        valcriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='sum')
+        # traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
+        # valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
     elif args.triplet:
         traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
         valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
@@ -187,8 +187,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         for crossing_type in range(7):
             gt_OSM = test_crossing_pose(crossing_type=crossing_type, save=False, noise=True, sampling=False,
                                         random_rate=1.0)
-            gt_OSM = obsTransforms(gt_OSM)
-            gt_list.append(gt_OSM)
+            gt_OSM = obsTransforms(gt_OSM[0])
+            gt_list.append(gt_OSM.unsqueeze(0))
     else:
         gt_list = None  # This is made to better structure of the code ahead
 
@@ -509,7 +509,7 @@ def main(args, model=None):
 
             dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                           num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
-            dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False,
+            dataloader_val = DataLoader(val_dataset, batch_size=1, shuffle=False,
                                         num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
 
             # Build model

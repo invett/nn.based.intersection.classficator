@@ -395,7 +395,8 @@ class fromGeneratedDataset(Dataset):
 
         if self.addGeneratedOSM:
             # Sample an intersection given a label; this is used in the STUDENT training
-            r = range(1, bev_label) + range(bev_label + 1, 7)
+            r = [0, 1, 2, 3, 4, 5, 6]
+            r.remove(bev_label)
             negative_label = random.choice(r)
 
             generated_osm = test_crossing_pose(crossing_type=bev_label, save=False, rnd_width=self.rnd_width,
