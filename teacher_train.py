@@ -21,6 +21,7 @@ from torch.utils.data import DataLoader
 from dataloaders.sequencedataloader import teacher_tripletloss, teacher_tripletloss_generated
 from miscellaneous.utils import init_function, send_telegram_picture, teacher_network_pass
 from model.resnet_models import get_model_resnet, get_model_vgg
+from scripts.OSM_generator import test_crossing_pose
 
 warnings.filterwarnings("ignore")
 
@@ -73,7 +74,6 @@ def main(args):
                            config=hyperparameter_defaults)
             wandb.config.update(args, allow_val_change=True)
 
-
     # Build Model
     if 'vgg' in args.model:
         model = get_model_vgg(args.model, args.num_classes, pretrained=args.pretrained, embedding=args.triplet)
@@ -124,6 +124,16 @@ def main(args):
 
     # List all test folders
     if args.test:
+        # Create ground truth list
+        gt_list = []
+        obsTransforms = transforms.Compose(
+            [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
+        for crossing_type in range(7):
+            gt_OSM = test_crossing_pose(crossing_type=crossing_type, save=False, noise=True, sampling=False,
+                                        random_rate=1.0)
+            gt_OSM = obsTransforms(gt_OSM[0])
+            gt_list.append(gt_OSM.unsqueeze(0))
+
         folders = np.array([os.path.join(args.dataset, folder) for folder in os.listdir(args.dataset) if
                             os.path.isdir(os.path.join(args.dataset, folder))])
 
@@ -139,25 +149,16 @@ def main(args):
         dataloader_test = DataLoader(dataset_test, batch_size=1, shuffle=False, num_workers=args.num_workers)
 
         # load Saved Model
-        if args.nowandb:
-            if args.triplet:
-                loadpath = './trainedmodels/teacher/teacher_model_{}.pth'.format(args.model)
-            else:
-                loadpath = './trainedmodels/teacher/teacher_model_class_{}.pth'.format(args.model)
-        else:
-            if args.triplet:
-                loadpath = './trainedmodels/teacher/teacher_model_{}.pth'.format(wandb.run.name)
-            else:
-                loadpath = './trainedmodels/teacher/teacher_model_class_{}.pth'.format(wandb.run.name)
+        loadpath = args.trainedmodelpath
 
         print('load model from {} ...'.format(loadpath))
         model.load_state_dict(torch.load(loadpath))
         print('Done!')
 
-        test(args, model, dataloader_test)
+        test(args, model, dataloader_test, gt_list)
 
 
-def test(args, model, dataloader):
+def test(args, model, dataloader, gt_list):
     tic = time.time()
     print('\nstart test!' + str(time.strftime("%H:%M:%S", time.gmtime(tic))))
 
@@ -174,9 +175,7 @@ def test(args, model, dataloader):
 
         if args.triplet:
             anchor = sample['anchor']  # OSM Type X
-            positive = sample['positive']  # OSM Type X
             label = sample['label_anchor']
-            canonical = sample['canonical']  # OSM Type X but without sampling noise (ie. angles of branches w/o noise)
         else:
             data = sample['anchor']
             label = sample['label_anchor']
@@ -192,52 +191,47 @@ def test(args, model, dataloader):
         # send_telegram_picture(a, "anchor")
         # plt.close('all')
 
+        predictions = np.array([], dtype=np.float32)
+
         if torch.cuda.is_available() and args.use_gpu:
             if args.triplet:
                 anchor = anchor.cuda()
-                if args.canonical:
-                    positive = canonical.cuda()
-                else:
-                    positive = positive.cuda()
             else:
                 data = data.cuda()
                 label = label.cuda()
 
         if args.triplet:
+            cos = nn.CosineSimilarity(dim=1, eps=1e-6)
             out_anchor = model(anchor)
-            out_positive = model(positive)
+            for gt in gt_list:  # Compare with the 7 canoncial ground truth
+                gt = gt.cuda()
+                gt_prediction = model(gt)
+                prediction = ((cos(out_anchor, gt_prediction) + 1.0) * 0.5)
+                predictions = np.append(predictions, prediction.item())
+            predict = np.argmax(predictions)
+
         else:
             output = model(data)
 
         if args.triplet:
-            cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-            result = (cos(out_anchor, out_positive) + 1.0) * 0.5
-            probability = torch.sum(result).item()
 
             all_embedding_matrix.append(np.asarray(model(anchor)[0].squeeze().cpu().detach().numpy()))
 
-            if probability >= args.threshold:
-                # The prediction
-                predict = label
-            else:
-                # The prediction is wrong, but we don't know by now what label was predicted
-                predict = 7
-
-                # Code to save the PNGs for debugging purposes
-                if args.saveTestCouplesForDebug:
-                    emptyspace = 255 * torch.ones([224, 30, 3], dtype=torch.float32)
-                    plt.figure()
-                    plt.imshow(np.clip(torch.cat((sample['anchor'][0].transpose(0, 2).transpose(0, 1), emptyspace,
-                                                  sample['positive'][0].transpose(0, 2).transpose(0, 1), emptyspace,
-                                                  torch.nn.functional.interpolate(
-                                                      (sample['ground_truth_image'] / 255.0).float().transpose(1, 3),
-                                                      (224, 224)).squeeze().transpose(0, 2)), 1).squeeze(), 0, 1))
-                    filename = os.path.join(args.saveTestCouplesForDebugPath,
-                                            str(sample['filename_anchor'][0]).split(sep="/")[6] + "-" +
-                                            str(sample['filename_anchor'][0]).split(sep="/")[8])
-                    plt.savefig(filename)
-                    print(filename)
-                    plt.close('all')
+            # Code to save the PNGs for debugging purposes
+            if args.saveTestCouplesForDebug:
+                emptyspace = 255 * torch.ones([224, 30, 3], dtype=torch.float32)
+                plt.figure()
+                plt.imshow(np.clip(torch.cat((sample['anchor'][0].transpose(0, 2).transpose(0, 1), emptyspace,
+                                              sample['positive'][0].transpose(0, 2).transpose(0, 1), emptyspace,
+                                              torch.nn.functional.interpolate(
+                                                  (sample['ground_truth_image'] / 255.0).float().transpose(1, 3),
+                                                  (224, 224)).squeeze().transpose(0, 2)), 1).squeeze(), 0, 1))
+                filename = os.path.join(args.saveTestCouplesForDebugPath,
+                                        str(sample['filename_anchor'][0]).split(sep="/")[6] + "-" +
+                                        str(sample['filename_anchor'][0]).split(sep="/")[8])
+                plt.savefig(filename)
+                print(filename)
+                plt.close('all')
 
             labelRecord = np.append(labelRecord, label)
             predRecord = np.append(predRecord, predict)
@@ -258,7 +252,7 @@ def test(args, model, dataloader):
     acc = accuracy_score(labelRecord, predRecord)
     print('Accuracy for test: %f\n' % acc)
     conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'])
-    conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6, 7], columns=[0, 1, 2, 3, 4, 5, 6, 7],
+    conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6],
                                       fill_value=0)
     plt.figure(figsize=(10, 7))
     heatmap = sn.heatmap(conf_matrix, annot=True, fmt='d')  # give a name to the heatmap, so u can call telegram
@@ -317,6 +311,8 @@ def validation(args, model, criterion, dataloader_val, random_rate):
 
             tq.update(args.batch_size)
 
+    tq.close()
+
     # Calculate validation metrics
     loss_val_mean = loss_record / len(dataloader_val)
     print('Loss for test/validation : %f' % loss_val_mean)
@@ -347,7 +343,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
 
     # Build criterion
     if args.triplet:
-        criterion = torch.nn.TripletMarginLoss(margin=args.margin, swap=args.swap)
+        criterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
     else:
         criterion = torch.nn.CrossEntropyLoss()
 
@@ -512,7 +508,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--triplet', type=bool, default=True, help='Triplet Loss')
     parser.add_argument('--swap', action='store_true', help='Triplet Loss swap')
-    parser.add_argument('--margin', type=float, default=1, help='margin in triplet')
+    parser.add_argument('--margin', type=float, default=2.0, help='margin in triplet')
     parser.add_argument('--no_noise', action='store_true', help='In case you want to disable the noise injection in '
                                                                 'the OSM images')
 
@@ -545,6 +541,8 @@ if __name__ == '__main__':
     parser.add_argument('--saveEmbeddings', action='store_true', help='Save all the embeddings for debug')
     parser.add_argument('--saveEmbeddingsPath', type=str,
                         help='Where to save the Embeddings. Required when --saveEmbeddings is set')
+    parser.add_argument('--trainedmodelpath', type=str,
+                        help='Path where the weights of the trained model were saved')
 
     #####################################
     # NETWORK PARAMETERS (FOR BACKBONE) #
@@ -575,6 +573,10 @@ if __name__ == '__main__':
     if args.train and args.canonical:
         print("Mmmmm... please consider to change your mind! Creating the canonical images can speed-down the "
               "process. use --train without --canonical")
+        exit(-1)
+
+    if args.test and not args.trainedmodelpath:
+        print("Mmmmm... please consider to select a trained network to test.")
         exit(-1)
 
     if args.saveEmbeddings and not args.saveEmbeddingsPath:

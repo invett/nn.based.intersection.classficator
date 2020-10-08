@@ -395,13 +395,20 @@ class fromGeneratedDataset(Dataset):
 
         if self.addGeneratedOSM:
             # Sample an intersection given a label; this is used in the STUDENT training
+            r = range(1, bev_label) + range(bev_label + 1, 7)
+            negative_label = random.choice(r)
+
             generated_osm = test_crossing_pose(crossing_type=bev_label, save=False, rnd_width=self.rnd_width,
+                                               rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
+                                               sampling=not self.canonical, random_rate=self.random_rate)
+            generated_osm_negative = test_crossing_pose(crossing_type=negative_label, save=False, rnd_width=self.rnd_width,
                                                rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
                                                sampling=not self.canonical, random_rate=self.random_rate)
             sample = {'data': bev_image,
                       'label': bev_label,
                       'image_path': self.bev_images[idx],
-                      'generated_osm': generated_osm[0]}  # TODO this [0] might be a bug
+                      'generated_osm': generated_osm[0],
+                      'negative_osm': generated_osm_negative[0]}
         else:
             sample = {'data': bev_image,
                       'label': bev_label,
@@ -613,7 +620,7 @@ class teacher_tripletloss(Dataset):
         sample = {'anchor': anchor_image,
                   'positive': positive_image,
                   'negative': negative_image,
-                  'canonical': canonical_image[0],
+                  'canonical': canonical_image,
                   'label_anchor': anchor_type, 'label_positive': positive_item[2],  # [2] is the type
                   'label_negative': negative_item[2],  # [2] is the type
                   'filename_anchor': self.osm_data[idx][0],  # [0] is the filename

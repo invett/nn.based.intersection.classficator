@@ -166,8 +166,10 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         traincriterion = torch.nn.CrossEntropyLoss(weight=class_weights)
         valcriterion = torch.nn.CrossEntropyLoss()
     elif args.embedding:
-        traincriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='mean')
-        valcriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='mean')
+        #traincriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='sum')
+        #valcriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='sum')
+        traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
+        valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
     elif args.triplet:
         traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
         valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')

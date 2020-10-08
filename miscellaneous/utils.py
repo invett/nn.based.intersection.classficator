@@ -332,6 +332,7 @@ def student_network_pass(args, sample, criterion, model, gtmodel=None, svm=None,
     elif args.embedding:
         data = sample['data']
         osm = sample['generated_osm']
+        osm_neg = sample['negative_osm']
         label = sample['label']
 
         if torch.cuda.is_available() and args.use_gpu:
@@ -340,9 +341,11 @@ def student_network_pass(args, sample, criterion, model, gtmodel=None, svm=None,
 
         output = model(data)
         output_gt = gtmodel(osm)  # (Batch x 512) Tensor
+        output_gt_neg = gtmodel(osm_neg)
 
-        mask = torch.ones((64, 512)).cuda()
-        loss = criterion(output, output_gt, mask)
+        # mask = torch.ones((64, 512)).cuda()
+        # loss = criterion(output, output_gt, mask)
+        loss = criterion(output, output_gt, output_gt_neg)
 
         if gt_list is not None:
             predict = gt_validation(output, gtmodel, gt_list)

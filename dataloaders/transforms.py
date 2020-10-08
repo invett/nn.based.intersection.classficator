@@ -52,6 +52,8 @@ class Rescale(object):
         image = sample['data']
         if sample['generated_osm'] is not None:
             osm = sample['generated_osm']
+        if sample['negative_osm'] is not None:
+            osm_neg = sample['negative_osm']
 
         h, w = image.shape[:2]
         if isinstance(self.output_size, int):
@@ -67,16 +69,21 @@ class Rescale(object):
         image = resize(image, (new_h, new_w), anti_aliasing=True)
         if sample['generated_osm'] is not None:
             osm = resize(osm, (new_h, new_w), anti_aliasing=True)
+        if sample['negative_osm'] is not None:
+            osm_neg = resize(osm_neg, (new_h, new_w), anti_aliasing=True)
 
         sample['data'] = image
         if sample['generated_osm'] is not None:
             sample['generated_osm'] = osm
+        if sample['negative_osm'] is not None:
+            sample['negative_osm'] = osm_neg
 
         return sample
 
 
 class GrayScale(object):
     """Convert BGR images in GrayScale images"""
+
     def __call__(self, sample):
         image = sample['data']
         image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -100,11 +107,19 @@ class ToTensor(object):
         if sample['generated_osm'] is not None:
             generated_osm = sample['generated_osm']
             generated_osm = generated_osm.transpose((2, 0, 1))
-
-            return {'data': torch.from_numpy(image),
-                    'generated_osm': torch.from_numpy(generated_osm).float(),
-                    'label': label,
-                    'image_path': sample['image_path']}
+            if sample['negative_osm'] is not None:
+                negative_osm = sample['negative_osm']
+                negative_osm = negative_osm.transpose((2, 0, 1))
+                return {'data': torch.from_numpy(image),
+                        'generated_osm': torch.from_numpy(generated_osm).float(),
+                        'negative_osm': torch.from_numpy(negative_osm).float(),
+                        'label': label,
+                        'image_path': sample['image_path']}
+            else:
+                return {'data': torch.from_numpy(image),
+                        'generated_osm': torch.from_numpy(generated_osm).float(),
+                        'label': label,
+                        'image_path': sample['image_path']}
         else:
             return {'data': torch.from_numpy(image),
                     'label': label}
