@@ -402,7 +402,6 @@ class fromGeneratedDataset(Dataset):
                       'label': bev_label,
                       'image_path': self.bev_images[idx],
                       'generated_osm': generated_osm[0]}  # TODO this [0] might be a bug
-                                                          # TODO why we don't use the real OSM?
         else:
             sample = {'data': bev_image,
                       'label': bev_label,
@@ -443,7 +442,7 @@ class fromGeneratedDataset(Dataset):
         self.bev_labels = labels
 
 
-class teacher_tripletloss(Dataset):
+class teacher_tripletloss(Dataset): 
 
     def __init__(self, folders, distance, include_insidecrossing=False, transform=None, noise=True, canonical=True,
                  random_rate=1.0):

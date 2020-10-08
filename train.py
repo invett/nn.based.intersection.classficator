@@ -27,6 +27,7 @@ from dropout_models import get_resnet, get_resnext
 from miscellaneous.utils import init_function, reset_wandb_env, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_train, svm_data
 from model.resnet_models import Personalized, Personalized_small, get_model_resnet, get_model_resnext
+from scripts.OSM_generator import test_crossing_pose
 
 
 def test(args, dataloader_test, gt_model=None, classifier=None):
@@ -38,6 +39,20 @@ def test(args, dataloader_test, gt_model=None, classifier=None):
         criterion = torch.nn.CosineEmbeddingLoss(margin=args.margin)
     else:
         criterion = torch.nn.CrossEntropyLoss()
+
+    if args.embedding and not args.svm:
+        gt_list = []
+        obsTransforms = transforms.Compose([transforms.ToPILImage(),
+                                            transforms.Resize((224, 224)),
+                                            transforms.ToTensor(),
+                                            ])
+        for crossing_type in range(7):
+            gt_OSM = test_crossing_pose(crossing_type=crossing_type, save=False, noise=True, sampling=False,
+                                        random_rate=1.0)
+            gt_OSM = obsTransforms(gt_OSM[0])
+            gt_list.append(gt_OSM.unsqueeze(0))
+    else:
+        gt_list = None  # This is made to better structure of the code ahead
 
     # Build model
     if args.resnetmodel[0:6] == 'resnet':
@@ -51,45 +66,29 @@ def test(args, dataloader_test, gt_model=None, classifier=None):
         model = Personalized_small(args.num_classes)
 
     # load Saved Model
-    savepath = './trainedmodels/model_' + args.resnetmodel + '.pth'
+    savepath = args.student_path
     print('load model from {} ...'.format(savepath))
     model.load_state_dict(torch.load(savepath))
     print('Done!')
 
-    if args.embedding:
+    if args.embedding and not args.svm:
         gt_model = copy.deepcopy(model)
         gt_model.load_state_dict(torch.load(args.teacher_path))
         gt_model.eval()
 
     if torch.cuda.is_available() and args.use_gpu:
         model = model.cuda()
-        if args.embedding:
+        if args.embedding and not args.svm:
             gt_model = gt_model.cuda()
 
     # Start testing
-    if (args.embedding or args.triplet) and not args.svm:
-        acc_val, loss_val = validation(args, model, criterion, dataloader_test, gtmodel=gt_model)
-        if not args.nowandb:  # if nowandb flag was set, skip
-            wandb.log({"Test/loss": loss_val, "Test/Acc": acc_val})
-    elif args.svm:
-        confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test, classifier=classifier)
-
-        plt.figure(figsize=(10, 7))
-        sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
-
-        if not args.nowandb:  # if nowandb flag was set, skip
-            wandb.log({"Test/Acc": acc, "conf-matrix_test": wandb.Image(plt)})
-    else:
-        confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test)
-
-        plt.figure(figsize=(10, 7))
-        sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
-
-        if not args.nowandb:  # if nowandb flag was set, skip
-            wandb.log({"Test/Acc": acc, "conf-matrix_test": wandb.Image(plt)})
+    confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test, gtmodel=gt_model,
+                                          classifier=classifier, gt_list=gt_list)
+    if not args.nowandb:  # if nowandb flag was set, skip
+        wandb.log({"Test/Acc": acc, "conf-matrix_test": wandb.Image(plt)})
 
 
-def validation(args, model, criterion, dataloader_val, gtmodel=None, classifier=None):
+def validation(args, model, criterion, dataloader_val, gtmodel=None, classifier=None, gt_list=None):
     print('\nstart val!')
 
     loss_record = 0.0
@@ -101,16 +100,10 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None, classifier=
         model.eval()
 
         for sample in dataloader_val:
-            if args.embedding or args.triplet:
-                acc, loss = student_network_pass(args, sample, criterion, model, gtmodel=gtmodel)
-            elif args.svm:
-                acc, loss, label, predict = student_network_pass(args, sample, criterion, model, svm=classifier)
-                labelRecord = np.append(labelRecord, label)
-                predRecord = np.append(predRecord, predict)
-            else:
-                acc, loss, label, predict = student_network_pass(args, sample, criterion, model)
-                labelRecord = np.append(labelRecord, label)
-                predRecord = np.append(predRecord, predict)
+            acc, loss, label, predict = student_network_pass(args, sample, criterion, model, gtmodel=gtmodel,
+                                                             svm=classifier, gt_list=gt_list)
+            labelRecord = np.append(labelRecord, label)
+            predRecord = np.append(predRecord, predict)
 
             loss_record += loss.item()
             acc_record += acc
@@ -125,14 +118,14 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None, classifier=
         acc = acc_record / len(dataloader_val)
     print('Accuracy for test/validation : %f\n' % acc)
 
-    if not (args.embedding or args.triplet or args.svm):
+    if not args.triplet:
         conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'], margins=True,
                                   normalize='all')
         conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6, 'All'], columns=[0, 1, 2, 3, 4, 5, 6, 'All'],
                                           fill_value=0)
         return conf_matrix, acc, loss_val_mean
     else:
-        return acc, loss_val_mean
+        return None, acc, loss_val_mean
 
 
 def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, valfolder, GLOBAL_EPOCH, gtmodel=None,
@@ -182,6 +175,21 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         traincriterion = torch.nn.CrossEntropyLoss()
         valcriterion = torch.nn.CrossEntropyLoss()
 
+    # Build gt images for validation
+    if args.embedding:
+        gt_list = []
+        obsTransforms = transforms.Compose([transforms.ToPILImage(),
+                                            transforms.Resize((224, 224)),
+                                            transforms.ToTensor(),
+                                            ])
+        for crossing_type in range(7):
+            gt_OSM = test_crossing_pose(crossing_type=crossing_type, save=False, noise=True, sampling=False,
+                                        random_rate=1.0)
+            gt_OSM = obsTransforms(gt_OSM)
+            gt_list.append(gt_OSM)
+    else:
+        gt_list = None  # This is made to better structure of the code ahead
+
     model.zero_grad()
     model.train()
     scheduler = MultiStepLR(optimizer, milestones=[10, 40, 80], gamma=0.5)
@@ -201,7 +209,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
         for sample in dataloader_train:
             if args.embedding or args.triplet:
-                acc, loss = student_network_pass(args, sample, traincriterion, model, gtmodel)
+                acc, loss = student_network_pass(args, sample, traincriterion, model, gtmodel=gtmodel)
             else:
                 acc, loss, _, _ = student_network_pass(args, sample, traincriterion, model)
 
@@ -251,25 +259,19 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
                        "Completed epoch": epoch})
 
         if epoch % args.validation_step == 0:
-            if args.embedding or args.triplet:
-                acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gtmodel=gtmodel)
-                if not args.nowandb:  # if nowandb flag was set, skip
-                    wandb.log({"Val/loss": loss_val,
-                               "Val/Acc": acc_val,
-                               "Completed epoch": epoch})
-            else:
-                confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val)
-                plt.figure(figsize=(10, 7))
-                sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
+            confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gtmodel=gtmodel,
+                                                             gt_list=gt_list)
+            plt.figure(figsize=(10, 7))
+            sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
 
-                if args.telegram:
-                    send_telegram_picture(plt, "Epoch:" + str(epoch))
+            if args.telegram:
+                send_telegram_picture(plt, "Epoch:" + str(epoch))
 
-                if not args.nowandb:  # if nowandb flag was set, skip
-                    wandb.log({"Val/loss": loss_val,
-                               "Val/Acc": acc_val,
-                               "Completed epoch": epoch,
-                               "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)})
+            if not args.nowandb:  # if nowandb flag was set, skip
+                wandb.log({"Val/loss": loss_val,
+                           "Val/Acc": acc_val,
+                           "Completed epoch": epoch,
+                           "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)})
 
             if (kfold_acc < acc_val) or (kfold_loss > loss_val):
 
@@ -512,7 +514,8 @@ def main(args, model=None):
             if args.resnetmodel[0:6] == 'resnet':
                 model = get_model_resnet(args.resnetmodel, args.num_classes, transfer=args.transfer,
                                          pretrained=args.pretrained,
-                                         embedding=(args.embedding or args.triplet or args.freeze) and not args.embedding_class)
+                                         embedding=(
+                                                           args.embedding or args.triplet or args.freeze) and not args.embedding_class)
             elif args.resnetmodel[0:7] == 'resnext':
                 model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
             elif args.resnetmodel == 'personalized':
@@ -593,18 +596,18 @@ def main(args, model=None):
     # todo delete when ok -----| sweep.join()
     # todo delete when ok -----| exit(-2)
 
-    if args.svm:
-        # load best trained model
-        if args.nowandb:
-            savepath = './trainedmodels/model_' + args.resnetmodel + '.pth'
-        else:
-            savepath = './trainedmodels/model_' + wandb.run.name + '.pth'
-        model.load_state_dict(torch.load(savepath))
-        # save the model to disk
-        embeddings, labels = svm_data(args, model, dataloader_train, dataloader_val)
-        model = svm_train(embeddings, labels, mode='rbf')  # embeddings: (Samples x Features); labels(Samples)
-        filename = os.path.join(args.save_model_path, 'svm_classsifier.sav')
-        pickle.dump(model, open(filename, 'wb'))
+        if args.svm:
+            # load best trained model
+            if args.nowandb:
+                savepath = './trainedmodels/model_' + args.resnetmodel + '.pth'
+            else:
+                savepath = './trainedmodels/model_' + wandb.run.name + '.pth'
+            model.load_state_dict(torch.load(savepath))
+            # save the model to disk
+            embeddings, labels = svm_data(args, model, dataloader_train, dataloader_val)
+            model_svm = svm_train(embeddings, labels, mode='rbf')  # embeddings: (Samples x Features); labels(Samples)
+            filename = os.path.join(args.save_model_path, 'svm_classsifier.sav')
+            pickle.dump(model_svm, open(filename, 'wb'))
 
     if args.test:
         # Final Test on 2011_10_03_drive_0027_sync
@@ -622,7 +625,7 @@ def main(args, model=None):
 
         elif args.dataloader == 'generatedDataset':
             if args.embedding:
-                test_dataset = fromGeneratedDataset([test_path], args.distance, transform=generateTransforms)
+                test_dataset = fromGeneratedDataset(np.array([test_path]), args.distance, transform=generateTransforms)
             else:
                 test_path = test_path.replace('data_raw_bev', 'data_raw')
                 test_dataset = TestDataset(test_path, args.distance, transform=generateTransforms)
@@ -634,7 +637,7 @@ def main(args, model=None):
             test_dataset = triplet_BOO([test_path], args.distance, elements=200, canonical=True,
                                        transform_obs=obsTransforms, transform_bev=generateTransforms)
 
-        dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
+        dataloader_test = DataLoader(test_dataset, batch_size=1, shuffle=False,
                                      num_workers=args.num_workers, worker_init_fn=init_fn)
 
         if not args.nowandb:  # if nowandb flag was set, skip
@@ -676,8 +679,8 @@ if __name__ == '__main__':
     ###########################################
 
     parser.add_argument('--seed', type=int, default=0, help='Starting seed, for reproducibility. Default is ZERO!')
-    parser.add_argument('--train', type=bool, default=True, help='Train/Validate the model')
-    parser.add_argument('--test', type=bool, default=False, help='Test the model')
+    parser.add_argument('--train', action='store_true', help='Train/Validate the model')
+    parser.add_argument('--test', action='store_true', help='Test the model')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     parser.add_argument('--sweep', action='store_true', help='if set, this run is part of a wandb-sweep; use it with'
                                                              'as documented in '
@@ -725,6 +728,7 @@ if __name__ == '__main__':
     parser.add_argument('--embedding_class', action='store_true', help='Use embedding matching with classification')
     parser.add_argument('--triplet', action='store_true', help='Use triplet learing')
     parser.add_argument('--teacher_path', type=str, help='Insert teacher path (for student training)')
+    parser.add_argument('--student_path', type=str, help='Insert teacher path (for student training)')
     parser.add_argument('--margin', type=float, default=1, help='margin in triplet and embedding')
 
     # different data loaders, use one from choices; a description is provided in the documentation of each dataloader
@@ -736,20 +740,6 @@ if __name__ == '__main__':
                                                                                        'TestDataset'],
                         help='One of the supported datasets')
     parser.add_argument('--num_elements_OBB', type=int, default=2000, help='Number of OSM in OBB training')
-
-    subparsers = parser.add_subparsers(help='Subparser for dropout models')
-    parser_drop = subparsers.add_parser('dropout', help='Dropout models. Resnext and Resnet')
-    parser_drop.add_argument('--cardinality', type=int, default=10, help='addition, e.g. widen_factor')
-    parser_drop.add_argument('--d_with', type=int, default=64, help='addition arg2, e.g. base_width (ResNeXt)')
-    parser_drop.add_argument('--depth', type=int, default=100, help='depth of network')
-    parser_drop.add_argument('--block_type', type=int, default=1, help='specify block_type (default: 1)')
-    parser_drop.add_argument('--use_gn', action='store_true', default=False,
-                             help='whether to use group norm (default: False)')
-    parser_drop.add_argument('--gn_groups', type=int, default=8, help='group norm groups')
-    parser_drop.add_argument('--drop_type', type=int, default=0,
-                             help='0-drop-neuron, 1-drop-channel, 2-drop-path, 3-drop-layer')
-    parser_drop.add_argument('--drop_rate', default=0.0, type=float, help='dropout rate')
-    parser_drop.add_argument('--report_ratio ', action='store_true', help='Cardinality of the net')
 
     args = parser.parse_args()
 

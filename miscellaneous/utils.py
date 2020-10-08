@@ -304,9 +304,8 @@ def teacher_network_pass(args, sample, model, criterion):
         return acc, loss, label, predict
 
 
-def student_network_pass(args, sample, criterion, model, gtmodel=None, svm=None):
+def student_network_pass(args, sample, criterion, model, gtmodel=None, svm=None, gt_list=None):
     cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
-
     if args.triplet:
         if args.dataloader == 'triplet_OBB':
             anchor = sample['OSM_anchor']  # OSM Anchor
@@ -333,6 +332,7 @@ def student_network_pass(args, sample, criterion, model, gtmodel=None, svm=None)
     elif args.embedding:
         data = sample['data']
         osm = sample['generated_osm']
+        label = sample['label']
 
         if torch.cuda.is_available() and args.use_gpu:
             data = data.cuda()
@@ -344,8 +344,13 @@ def student_network_pass(args, sample, criterion, model, gtmodel=None, svm=None)
         mask = torch.ones((64, 512)).cuda()
         loss = criterion(output, output_gt, mask)
 
-        result = ((cos_sim(output.squeeze(), output_gt.squeeze()) + 1.0) * 0.5)
-        acc = torch.sum(result).item()
+        if gt_list is not None:
+            predict = gt_validation(output, gtmodel, gt_list)
+            label = label.item()
+            acc = accuracy_score([label], [predict])
+        else:
+            result = ((cos_sim(output.squeeze(), output_gt.squeeze()) + 1.0) * 0.5)
+            acc = torch.sum(result).item()
 
     else:
         data = sample['data']
@@ -359,7 +364,7 @@ def student_network_pass(args, sample, criterion, model, gtmodel=None, svm=None)
         loss = criterion(output, label)
         if args.svm:
             dec = svm.decision_function(output.cpu().squeeze().numpy())  # --> (samples x classes)
-            predict = np.argmax(dec, 1)
+            predict = np.argmax(dec)
             label = label.cpu().numpy()
 
         else:
@@ -369,7 +374,7 @@ def student_network_pass(args, sample, criterion, model, gtmodel=None, svm=None)
 
         acc = accuracy_score(label, predict)
 
-    if args.triplet or args.embedding:
+    if (args.triplet or args.embedding) and gt_list is None:
         return acc, loss
     else:
         return acc, loss, label, predict
@@ -407,12 +412,16 @@ def reset_wandb_env():
 
 
 def svm_train(features, labels, mode='Linear'):
-    assert len(features[0]) == len(labels), 'The number of feature vectors should be same as number of labels'
+    print(features.shape)
+    print(labels.shape)
+    assert features.shape[0] == labels.shape[
+        0], 'The number of feature vectors {} should be same as number of labels  {}'.format(
+        features.shape[0], labels.shape[0])
     if mode == 'Linear':
-        classifier = svm.LinearSVC()
+        classifier = svm.LinearSVC(class_weight='balanced')
         classifier.fit(features, labels)
     else:
-        classifier = svm.SVC(decision_function_shape='ovo')
+        classifier = svm.SVC(decision_function_shape='ovo', class_weight='balanced')
         classifier.fit(features, labels)
         classifier.decision_function_shape = "ovr"
 
@@ -420,37 +429,51 @@ def svm_train(features, labels, mode='Linear'):
 
 
 def svm_data(args, model, dataloader_train, dataloader_val, save=False):
-    embeddingRecord = np.array([], dtype=np.float32)
+    embeddingRecord = np.empty((0, 512), dtype=np.float32)
     labelRecord = np.array([], dtype=np.uint8)
+    model.eval()
+    with torch.no_grad():
+        for sample in dataloader_train:
+            data = sample['data']
+            label = sample['label']
 
-    for sample in dataloader_train:
-        data = sample['data']
-        label = sample['label']
+            if torch.cuda.is_available() and args.use_gpu:
+                data = data.cuda()
 
-        if torch.cuda.is_available() and args.use_gpu:
-            data = data.cuda()
+            output = model(data)  # --> (Batch x 512)
+            embeddingRecord = np.append(embeddingRecord, output.squeeze().cpu().numpy(), axis=0)
+            labelRecord = np.append(labelRecord, label.squeeze())
 
-        output = model(data)  # --> (Batch x 512)
+        for sample in dataloader_val:
+            data = sample['data']
+            label = sample['label']
 
-        embeddingRecord = np.append(embeddingRecord, output.cpu().numpy(), axis=0)
-        labelRecord = np.append(labelRecord, label)
+            if torch.cuda.is_available() and args.use_gpu:
+                data = data.cuda()
 
-    for sample in dataloader_val:
-        data = sample['data']
-        label = sample['label']
+            output = model(data)  # --> (Batch x 512)
 
-        if torch.cuda.is_available() and args.use_gpu:
-            data = data.cuda()
-
-        output = model(data)  # --> (Batch x 512)
-
-        embeddingRecord = np.append(embeddingRecord, output.cpu().numpy(), axis=0)
-        labelRecord = np.append(labelRecord, label)
+            embeddingRecord = np.append(embeddingRecord, output.squeeze().cpu().numpy(), axis=0)
+            labelRecord = np.append(labelRecord, label)
 
     if save:
+        print('Saving embeddings')
         with open('./trainedmodels/embeddings/embeddings.npy', 'wb') as f:
             np.save(f, embeddingRecord)
         with open('./trainedmodels/embeddings/labels.npy', 'wb') as f:
             np.save(f, labelRecord)
 
     return embeddingRecord, labelRecord
+
+
+def gt_validation(output, gtmodel, gt_list):
+    cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
+    predictions = np.array([], dtype=np.float32)
+    for gt in gt_list:
+        gt = gt.cuda()
+        gt_prediction = gtmodel(gt)
+        prediction = ((cos_sim(output, gt_prediction) + 1.0) * 0.5)
+        predictions = np.append(predictions, prediction.item())
+    predict = np.argmax(predictions)
+
+    return predict
