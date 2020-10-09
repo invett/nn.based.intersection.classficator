@@ -25,11 +25,21 @@ def main(args):
                         os.path.isdir(os.path.join(args.rootfolder, folder))])
 
     dataset = fromAANETandDualBisenet(folders, transform=transforms.Compose([#Normalize(),
-                                                                             GenerateBev(returnPoints=False),
-                                                                             Mirror(),
+                                                                             GenerateBev(returnPoints=False,
+                                                                                         maxdistance=100.0,
+                                                                                         decimate=1.0,
+                                                                                         random_Rx_degrees=0.0,
+                                                                                         random_Ry_degrees=0.0,
+                                                                                         random_Rz_degrees=0.0,
+                                                                                         random_Tx_meters=0.0,
+                                                                                         random_Ty_meters=0.0,
+                                                                                         random_Tz_meters=0.0
+                                                                                         ),
+                                                                             #Mirror(),
                                                                              Rescale((224, 224)),
                                                                              WriteDebugInfoOnNewDataset(),
-                                                                             GenerateNewDataset(args.savefolder)]))
+                                                                             GenerateNewDataset(args.savefolder)]),
+                                      distance=args.distance)
 
     # num_workers starts from 0
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=args.workers)
@@ -63,6 +73,7 @@ if __name__ == '__main__':
     parser.add_argument('--workers', type=int, default=0, help='How many workers for the dataloader')
     parser.add_argument('--telegram', action='store_true', help='Send info through Telegram')
     parser.add_argument('--debug', action='store_true', help='Print filenames as walking the filesystem')
+    parser.add_argument('--distance', type=float, default=20.0, help='Distance from the cross')
 
     args = parser.parse_args()
 

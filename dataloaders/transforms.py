@@ -279,13 +279,21 @@ class GenerateBev(object):
 
         # ALVARO MASK # TODO this is the right place to disable ALVARO MASK s and so get the FULL - BEVs
         alvaro = sample['alvaromask']
+        alvaro = np.ones(alvaro.shape, dtype=alvaro.dtype)  # furbata
         out_points = out_points[alvaro > 0]
         out_colors = out_colors[alvaro > 0]
 
         # filter by dimension
+        #idx = np.fabs(out_points[:, 2]) < self.maxdistance
+        #out_points = out_points[idx]
+        #out_colors = out_colors.reshape(-1, 3)
+        #out_colors = out_colors[idx]
+
         idx = np.fabs(out_points[:, 2]) < self.maxdistance
         out_points = out_points[idx]
-        out_colors = out_colors.reshape(-1, 3)
+        out_colors = out_colors[idx]
+        idx = np.fabs(out_points[:, 1]) < 3.
+        out_points = out_points[idx]
         out_colors = out_colors[idx]
 
         # Create Virtual Camera for BEV generation
@@ -380,7 +388,9 @@ class GenerateBev(object):
                   'random_Ry': random_Ry,
                   'random_Rz': random_Rz,
                   'starting_points': starting_points,
-                  'remaining_points': remaining_points
+                  'remaining_points': remaining_points,
+                  'generated_osm': np.zeros((int(cy * 2), int(cx * 2), 3), np.float32),
+                  'negative_osm': np.zeros((int(cy * 2), int(cx * 2), 3), np.float32)
                   }
 
         if self.returnPoints:

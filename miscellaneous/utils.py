@@ -332,26 +332,25 @@ def student_network_pass(args, sample, criterion, model, gtmodel=None, svm=None,
     elif args.embedding:
         data = sample['data']
         osm = sample['generated_osm']
-        osm_neg = sample['negative_osm']
+        # osm_neg = sample['negative_osm']
         label = sample['label']
 
         if torch.cuda.is_available() and args.use_gpu:
             data = data.cuda()
             osm = osm.cuda()
-            osm_neg = osm_neg.cuda()
+            # osm_neg = osm_neg.cuda()
 
         output = model(data)
         output_gt = gtmodel(osm)  # (Batch x 512) Tensor
-        output_gt_neg = gtmodel(osm_neg)
+        # output_gt_neg = gtmodel(osm_neg)
 
-        mask = torch.ones((64, 512)).cuda()
-        loss = criterion(output, output_gt, mask) + criterion(output, output_gt_neg, mask*-1)
+        # mask = torch.ones((64, 512)).cuda()
+        loss = criterion(output, output_gt)
         # loss = criterion(output, output_gt, output_gt_neg)
 
         if gt_list is not None:
-            predict = gt_validation(output, gtmodel, gt_list)
-            label = label.item()
-            acc = accuracy_score([label], [predict])
+            predict = gt_validation(output, gtmodel, gt_list, criterion)
+            acc = accuracy_score(label.squeeze().numpy(), predict)
         else:
             result = ((cos_sim(output.squeeze(), output_gt.squeeze()) + 1.0) * 0.5)
             acc = torch.sum(result).item()
@@ -470,14 +469,23 @@ def svm_data(args, model, dataloader_train, dataloader_val, save=False):
     return embeddingRecord, labelRecord
 
 
-def gt_validation(output, gtmodel, gt_list):
-    cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
-    predictions = np.array([], dtype=np.float32)
+def gt_validation(output, gtmodel, gt_list, criterion):
+    #cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
+    #predictions = np.array([], dtype=np.float32)
+    #for gt in gt_list:
+        #gt = gt.cuda()
+        #gt_prediction = gtmodel(gt)
+        #prediction = ((cos_sim(output, gt_prediction) + 1.0) * 0.5)
+        #predictions = np.append(predictions, prediction.item())
+    #predict = np.argmax(predictions)
+    l = []
     for gt in gt_list:
         gt = gt.cuda()
         gt_prediction = gtmodel(gt)
-        prediction = ((cos_sim(output, gt_prediction) + 1.0) * 0.5)
-        predictions = np.append(predictions, prediction.item())
-    predict = np.argmax(predictions)
+        for batch_item in output:
+            l.append(criterion(batch_item, gt_prediction).item())
+    nplist = np.array(l)
+    nplist = nplist.reshape(-1, 7)
+    classification = np.argmin(nplist, axis=1)
 
-    return predict
+    return classification

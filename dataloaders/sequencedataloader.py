@@ -231,14 +231,18 @@ class fromAANETandDualBisenet(Dataset):
         if "path" in bev_with_new_label:
 
             folder, file = os.path.split(image_02_file.replace("data_raw", "data_raw_bev").replace("image_02", ""))
+            dataset_path = os.path.join(bev_with_new_label['path'], os.path.basename(folder))
             base_file_star = str(file.split(".")[0]) + "*"
-            current_filelist = glob.glob1(folder, base_file_star)
+            current_filelist = glob.glob1(dataset_path, base_file_star)
             last_number = len([x for x in current_filelist if "json" not in x])
             final_filename = str(file.split(".")[0]) + '.' + str(last_number + 1).zfill(3) + ".png"
-            bev_path_filename = os.path.join(folder, final_filename)
+            bev_path_filename = os.path.join(dataset_path, final_filename)
 
             # path must already exist!
-            cv2.imwrite(bev_path_filename, bev_with_new_label['data'])
+            if not os.path.exists(dataset_path):
+                os.makedirs(dataset_path)
+            flag = cv2.imwrite(bev_path_filename, bev_with_new_label['data'])
+            assert flag, "can't write file"
             bev_with_new_label['bev_path_filename'] = bev_path_filename
 
             # for debuggin' purposes
@@ -249,7 +253,12 @@ class fromAANETandDualBisenet(Dataset):
 
             if "debug" in bev_with_new_label:
                 debug_values = bev_with_new_label.copy()
+
+                #delete images from the json - these are not json serializable
                 debug_values.pop('data')
+                debug_values.pop('generated_osm')
+                debug_values.pop('negative_osm')
+
                 json_path_filename = bev_path_filename + ".json"
                 with open(json_path_filename, 'w') as outfile:
                     json.dump(debug_values, outfile)

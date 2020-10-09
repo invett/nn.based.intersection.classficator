@@ -25,7 +25,7 @@ from dataloaders.sequencedataloader import BaseLine, TestDataset, fromAANETandDu
 from dataloaders.transforms import GenerateBev, GrayScale, Mirror, Normalize, Rescale, ToTensor
 from dropout_models import get_resnet, get_resnext
 from miscellaneous.utils import init_function, reset_wandb_env, send_telegram_message, send_telegram_picture, \
-    student_network_pass, svm_train, svm_data
+    student_network_pass, svm_data, svm_train
 from model.resnet_models import Personalized, Personalized_small, get_model_resnet, get_model_resnext
 from scripts.OSM_generator import test_crossing_pose
 
@@ -166,10 +166,12 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         traincriterion = torch.nn.CrossEntropyLoss(weight=class_weights)
         valcriterion = torch.nn.CrossEntropyLoss()
     elif args.embedding:
-        traincriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='sum')
-        valcriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='sum')
+        #traincriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='sum')
+        #valcriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='sum')
         # traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
         # valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
+        traincriterion = torch.nn.SmoothL1Loss(reduction='mean')
+        valcriterion = torch.nn.SmoothL1Loss(reduction='mean')
     elif args.triplet:
         traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
         valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
@@ -211,7 +213,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
         for sample in dataloader_train:
             if args.embedding or args.triplet:
-                acc, loss = student_network_pass(args, sample, traincriterion, model, gtmodel=gtmodel)
+                acc, loss, _, _ = student_network_pass(args, sample, traincriterion, model, gtmodel=gtmodel, gt_list=gt_list)
             else:
                 acc, loss, _, _ = student_network_pass(args, sample, traincriterion, model)
 
@@ -515,9 +517,8 @@ def main(args, model=None):
             # Build model
             if args.resnetmodel[0:6] == 'resnet':
                 model = get_model_resnet(args.resnetmodel, args.num_classes, transfer=args.transfer,
-                                         pretrained=args.pretrained,
-                                         embedding=(
-                                                           args.embedding or args.triplet or args.freeze) and not args.embedding_class)
+                                         pretrained=args.pretrained, embedding=(
+                                                                                       args.embedding or args.triplet or args.freeze) and not args.embedding_class)
             elif args.resnetmodel[0:7] == 'resnext':
                 model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
             elif args.resnetmodel == 'personalized':
