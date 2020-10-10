@@ -31,7 +31,7 @@ def main(args):
     # torch.backends.cudnn.deterministic = True
     # torch.backends.cudnn.benchmark = False
 
-    hyperparameter_defaults = dict(batch_size=8, canonical=False, cuda='0', dataset='../DualBiSeNet/data_raw/',
+    hyperparameter_defaults = dict(batch_size=64, canonical=False, cuda='0', dataset='../DualBiSeNet/data_raw/',
                                    dataset_train_elements=2000, dataset_val_elements=200, distance=20,
                                    enable_random_rate=True, lr=0.0001, margin=1, momentum=0.9, no_noise=False,
                                    nowandb=False, num_classes=7, num_epochs=50, num_workers=4, optimizer='sgd',
