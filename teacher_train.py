@@ -120,7 +120,7 @@ def main(args):
         dataloader_val = DataLoader(dataset_val, batch_size=args.batch_size, shuffle=False,
                                     num_workers=args.num_workers, worker_init_fn=init_fn)
 
-        train(args, model, optimizer, dataloader_train, dataloader_val, dataset_train, dataset_val, GLOBAL_EPOCH)
+        savepath = train(args, model, optimizer, dataloader_train, dataloader_val, dataset_train, dataset_val, GLOBAL_EPOCH)
 
     # List all test folders
     if args.test:
@@ -149,7 +149,11 @@ def main(args):
         dataloader_test = DataLoader(dataset_test, batch_size=1, shuffle=False, num_workers=args.num_workers)
 
         # load Saved Model
-        loadpath = args.trainedmodelpath
+        if args.train:
+            loadpath = savepath
+            args.canonical = True
+        else:
+            loadpath = args.trainedmodelpath
 
         print('load model from {} ...'.format(loadpath))
         model.load_state_dict(torch.load(loadpath))
@@ -258,7 +262,7 @@ def test(args, model, dataloader, gt_list):
     heatmap = sn.heatmap(conf_matrix, annot=True, fmt='d')  # give a name to the heatmap, so u can call telegram
 
     if not args.nowandb:  # if nowandb flag was set, skip
-        wandb.log({"Test/Acc": acc, "conf-matrix": wandb.Image(plt)})
+        wandb.log({"Test/acc": acc, "conf-matrix": wandb.Image(plt)})
 
     # This was used to show the vector in https://projector.tensorflow.org/
     if args.saveEmbeddings:
@@ -442,22 +446,27 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
                               os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(args.model)))
                         torch.save(bestModel, os.path.join(args.save_model_path,
                                                            'teacher_model_{}.pth'.format(args.model)))
+                        savepath = os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(args.model))
                     else:
                         print('Saving model: ',
                               os.path.join(args.save_model_path, 'teacher_model_class_{}.pth'.format(args.model)))
                         torch.save(bestModel, os.path.join(args.save_model_path,
                                                            'teacher_model_class_{}.pth'.format(args.model)))
+                        savepath = os.path.join(args.save_model_path,
+                                                'teacher_model_class_{}.pth'.format(args.model))
                 else:
                     if args.triplet:
                         print('Saving model: ',
                               os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(wandb.run.name)))
                         torch.save(bestModel, os.path.join(args.save_model_path,
                                                            'teacher_model_{}.pth'.format(wandb.run.name)))
+                        savepath = os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(wandb.run.name))
                     else:
                         print('Saving model: ',
                               os.path.join(args.save_model_path, 'teacher_model_class_{}.pth'.format(wandb.run.name)))
                         torch.save(bestModel, os.path.join(args.save_model_path,
                                                            'teacher_model_class_{}.pth'.format(wandb.run.name)))
+                        savepath = os.path.join(args.save_model_path, 'teacher_model_class_{}.pth'.format(wandb.run.name))
 
             elif epoch < args.patience_start:
                 patience = 0
@@ -475,6 +484,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
                 current_random_rate = 1.0
         else:
             current_random_rate = 1.0
+
+    return savepath
 
 
 if __name__ == '__main__':
@@ -498,8 +509,8 @@ if __name__ == '__main__':
     # SCRIPT MODALITIES AND NETWORK BEHAVIORS #
     ###########################################
     parser.add_argument('--seed', type=int, default=0, help='Starting seed, for reproducibility. Default is ZERO!')
-    parser.add_argument('--train', action='store_true', help='Train/Validate the model')
-    parser.add_argument('--test', type=bool, default=False, help='Test the model')
+    parser.add_argument('--train', type=bool, default=True, help='Train/Validate the model')
+    parser.add_argument('--test', type=bool, default=True, help='Test the model')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     parser.add_argument('--sweep', action='store_true', help='if set, this run is part of a wandb-sweep; use it with'
                                                              'as documented in '
@@ -518,7 +529,7 @@ if __name__ == '__main__':
                                                                  'having the same comparison images every run')
 
     parser.add_argument('--dataset_train_elements', type=int, default=2000, help='see teacher_tripletloss_generated')
-    parser.add_argument('--dataset_val_elements', type=int, default=200, help='see teacher_tripletloss_generated')
+    parser.add_argument('--dataset_val_elements', type=int, default=100, help='see teacher_tripletloss_generated')
 
     parser.add_argument('--training_rnd_width', type=float, default=2.0, help='see teacher_tripletloss_generated')
     parser.add_argument('--training_rnd_angle', type=float, default=0.4, help='see teacher_tripletloss_generated')
@@ -560,7 +571,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_classes', type=int, default=7, help='num of object classes')
     parser.add_argument('--cuda', type=str, default='0', help='GPU is used for training')
     parser.add_argument('--use_gpu', type=bool, default=True, help='whether to user gpu for training')
-    parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
+    parser.add_argument('--optimizer', type=str, default='adam', help='optimizer, support rmsprop, sgd, adam')
     parser.add_argument('--patience', type=int, default=2, help='Patience of validation. Default, none. ')
     parser.add_argument('--patience_start', type=int, default=2,
                         help='Starting epoch for patience of validation. Default, 50. ')
@@ -575,7 +586,7 @@ if __name__ == '__main__':
               "process. use --train without --canonical")
         exit(-1)
 
-    if args.test and not args.trainedmodelpath:
+    if args.test and not args.train and not args.trainedmodelpath:
         print("Mmmmm... please consider to select a trained network to test.")
         exit(-1)
 
