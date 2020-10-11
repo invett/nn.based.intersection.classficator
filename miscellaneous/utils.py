@@ -347,7 +347,7 @@ def student_network_pass(args, sample, criterion, model, gtmodel=None, svm=None,
         # mask = torch.ones((64, 512)).cuda()
         loss = criterion(output, output_gt)
         # loss = criterion(output, output_gt, output_gt_neg)
-        if args.l1weighted:
+        if args.weighted:
             weights = torch.FloatTensor([0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67])
             weighted_tensor = weights[label.squeeze()]
             loss = loss * weighted_tensor

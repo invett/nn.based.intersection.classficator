@@ -160,7 +160,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
     kfold_loss = np.inf
 
     # Build loss criterion
-    if args.weighted:
+    if args.weighted and not args.embedding:
         weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
         class_weights = torch.FloatTensor(weights).cuda()
         traincriterion = torch.nn.CrossEntropyLoss(weight=class_weights)
@@ -170,7 +170,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         # valcriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='sum')
         # traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
         # valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
-        if args.reduction_none:
+        if args.weighted:
             traincriterion = torch.nn.SmoothL1Loss(reduction='none')
             valcriterion = torch.nn.SmoothL1Loss(reduction='none')
         else:
