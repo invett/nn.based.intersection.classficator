@@ -25,7 +25,7 @@ from dataloaders.sequencedataloader import BaseLine, TestDataset, fromAANETandDu
 from dataloaders.transforms import GenerateBev, GrayScale, Mirror, Normalize, Rescale, ToTensor
 from dropout_models import get_resnet, get_resnext
 from miscellaneous.utils import init_function, reset_wandb_env, send_telegram_message, send_telegram_picture, \
-    student_network_pass, svm_data, svm_train
+    student_network_pass, svm_train, svm_data
 from model.resnet_models import Personalized, Personalized_small, get_model_resnet, get_model_resnext
 from scripts.OSM_generator import test_crossing_pose
 
@@ -160,18 +160,22 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
     kfold_loss = np.inf
 
     # Build loss criterion
-    if args.weighted:
+    if args.weighted and not args.embedding:
         weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
         class_weights = torch.FloatTensor(weights).cuda()
         traincriterion = torch.nn.CrossEntropyLoss(weight=class_weights)
         valcriterion = torch.nn.CrossEntropyLoss()
     elif args.embedding:
-        #traincriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='sum')
-        #valcriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='sum')
+        # traincriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='sum')
+        # valcriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='sum')
         # traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
         # valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
-        traincriterion = torch.nn.SmoothL1Loss(reduction='mean')
-        valcriterion = torch.nn.SmoothL1Loss(reduction='mean')
+        if args.weighted:
+            traincriterion = torch.nn.SmoothL1Loss(reduction='none')
+            valcriterion = torch.nn.SmoothL1Loss(reduction='none')
+        else:
+            traincriterion = torch.nn.SmoothL1Loss(reduction='mean')
+            valcriterion = torch.nn.SmoothL1Loss(reduction='mean')
     elif args.triplet:
         traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
         valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
@@ -266,7 +270,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
             confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gtmodel=gtmodel,
                                                              gt_list=gt_list)
             plt.figure(figsize=(10, 7))
-            sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
+            sn.heatmap(confusion_matrix, annot=True, fmt='.2f')
 
             if args.telegram:
                 send_telegram_picture(plt, "Epoch:" + str(epoch))
@@ -517,8 +521,9 @@ def main(args, model=None):
             # Build model
             if args.resnetmodel[0:6] == 'resnet':
                 model = get_model_resnet(args.resnetmodel, args.num_classes, transfer=args.transfer,
-                                         pretrained=args.pretrained, embedding=(
-                                                                                       args.embedding or args.triplet or args.freeze) and not args.embedding_class)
+                                         pretrained=args.pretrained,
+                                         embedding=(
+                                                           args.embedding or args.triplet or args.freeze) and not args.embedding_class)
             elif args.resnetmodel[0:7] == 'resnext':
                 model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
             elif args.resnetmodel == 'personalized':
@@ -732,7 +737,7 @@ if __name__ == '__main__':
     parser.add_argument('--triplet', action='store_true', help='Use triplet learing')
     parser.add_argument('--teacher_path', type=str, help='Insert teacher path (for student training)')
     parser.add_argument('--student_path', type=str, help='Insert teacher path (for student training)')
-    parser.add_argument('--margin', type=float, default=1, help='margin in triplet and embedding')
+    parser.add_argument('--margin', type=float, default=1., help='margin in triplet and embedding')
 
     # different data loaders, use one from choices; a description is provided in the documentation of each dataloader
     parser.add_argument('--dataloader', type=str, default='generatedDataset', choices=['fromAANETandDualBisenet',
