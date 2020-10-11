@@ -26,20 +26,22 @@ def main(args):
 
     dataset = fromAANETandDualBisenet(folders, transform=transforms.Compose([#Normalize(),
                                                                              GenerateBev(returnPoints=False,
-                                                                                         maxdistance=100.0,
+                                                                                         max_front_distance=args.max_front_distance,
+                                                                                         max_height=args.max_height,
+                                                                                         excludeMask=args.excludeMask,
                                                                                          decimate=1.0,
-                                                                                         random_Rx_degrees=0.0,
-                                                                                         random_Ry_degrees=0.0,
-                                                                                         random_Rz_degrees=0.0,
-                                                                                         random_Tx_meters=0.0,
-                                                                                         random_Ty_meters=0.0,
-                                                                                         random_Tz_meters=0.0
+                                                                                         random_Rx_degrees=args.random_Rx_degrees,
+                                                                                         random_Ry_degrees=args.random_Ry_degrees,
+                                                                                         random_Rz_degrees=args.random_Rz_degrees,
+                                                                                         random_Tx_meters=args.random_Tx_meters,
+                                                                                         random_Ty_meters=args.random_Ty_meters,
+                                                                                         random_Tz_meters=args.random_Tz_meters
                                                                                          ),
                                                                              #Mirror(),
                                                                              Rescale((224, 224)),
                                                                              WriteDebugInfoOnNewDataset(),
                                                                              GenerateNewDataset(args.savefolder)]),
-                                      distance=args.distance)
+                                      distance=args.distance_from_intersection)
 
     # num_workers starts from 0
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=args.workers)
@@ -73,7 +75,17 @@ if __name__ == '__main__':
     parser.add_argument('--workers', type=int, default=0, help='How many workers for the dataloader')
     parser.add_argument('--telegram', action='store_true', help='Send info through Telegram')
     parser.add_argument('--debug', action='store_true', help='Print filenames as walking the filesystem')
-    parser.add_argument('--distance', type=float, default=20.0, help='Distance from the cross')
+    parser.add_argument('--max_front_distance', type=float, default=50.0, help='Distance from the cross')
+    parser.add_argument('--max_height', type=float, default=10.0, help='desired up-to-height from the ground')
+    parser.add_argument('--distance_from_intersection', type=float, default=20.0, help='Distance from the cross')
+    parser.add_argument('--excludeMask', action='store_true', help='If true, don\'t mask the images with 3D-DEEP')
+
+    parser.add_argument('--random_Rx_degrees', type=float, help='random_Rx_degrees')
+    parser.add_argument('--random_Ry_degrees', type=float, help='random_Ry_degrees')
+    parser.add_argument('--random_Rz_degrees', type=float, help='random_Rz_degrees')
+    parser.add_argument('--random_Tx_meters', type=float, help='random_Tx_meters')
+    parser.add_argument('--random_Ty_meters', type=float, help='random_Ty_meters')
+    parser.add_argument('--random_Tz_meters', type=float, help='random_Tz_meters')
 
     args = parser.parse_args()
 

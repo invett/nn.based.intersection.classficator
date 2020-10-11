@@ -224,7 +224,8 @@ class GenerateBev(object):
     """
 
     def __init__(self,
-                 maxdistance=50.0,
+                 max_front_distance=50.0,
+                 max_height=3.0,
                  decimate=1.0,
                  random_Rx_degrees=2.0,
                  random_Ry_degrees=15.0,
@@ -232,9 +233,11 @@ class GenerateBev(object):
                  random_Tx_meters=2.0,
                  random_Ty_meters=2.0,
                  random_Tz_meters=2.0,
-                 returnPoints=False
+                 returnPoints=False,
+                 excludeMask=False
                  ):
-        self.maxdistance = maxdistance
+        self.max_front_distance = max_front_distance
+        self.max_height = max_height
         self.decimate = decimate
         self.random_Rx_degrees = random_Rx_degrees
         self.random_Ry_degrees = random_Ry_degrees
@@ -243,6 +246,7 @@ class GenerateBev(object):
         self.random_Ty_meters = random_Ty_meters
         self.random_Tz_meters = random_Tz_meters
         self.returnPoints = returnPoints
+        self.excludeMask = excludeMask
 
     def __call__(self, sample):
 
@@ -272,27 +276,31 @@ class GenerateBev(object):
             save_out_colors = out_colors.copy()
 
             # filter by dimension
-            idx = np.fabs(save_out_points[:, :, 2]) < self.maxdistance
+            idx = np.fabs(save_out_points[:, :, 2]) < self.max_front_distance
             save_out_points = save_out_points[idx]
             save_out_colors = save_out_colors
             save_out_colors = save_out_colors[idx]
 
         # ALVARO MASK # TODO this is the right place to disable ALVARO MASK s and so get the FULL - BEVs
         alvaro = sample['alvaromask']
-        alvaro = np.ones(alvaro.shape, dtype=alvaro.dtype)  # furbata
+
+        #nice trick to avoid touching more code than needed...
+        if self.excludeMask:
+            alvaro = np.ones(alvaro.shape, dtype=alvaro.dtype)
         out_points = out_points[alvaro > 0]
         out_colors = out_colors[alvaro > 0]
 
         # filter by dimension
-        #idx = np.fabs(out_points[:, 2]) < self.maxdistance
+        #idx = np.fabs(out_points[:, 2]) < self.max_front_distance
         #out_points = out_points[idx]
         #out_colors = out_colors.reshape(-1, 3)
         #out_colors = out_colors[idx]
 
-        idx = np.fabs(out_points[:, 2]) < self.maxdistance
+        # filter by dimension : "front" first, then "height"
+        idx = np.fabs(out_points[:, 2]) < self.max_front_distance
         out_points = out_points[idx]
         out_colors = out_colors[idx]
-        idx = np.fabs(out_points[:, 1]) < 3.
+        idx = np.fabs(out_points[:, 1]) < self.max_height
         out_points = out_points[idx]
         out_colors = out_colors[idx]
 
@@ -314,6 +322,10 @@ class GenerateBev(object):
         random_Tx = np.random.uniform(-self.random_Tx_meters, self.random_Tx_meters)
         random_Ty = np.random.uniform(-self.random_Ty_meters, self.random_Ty_meters)
         random_Tz = np.random.uniform(-self.random_Tz_meters, self.random_Tz_meters)
+
+        # avoid performing rotations of type:1 and type:2 intersections as the should appear as type:0
+        if sample['label'] == 1 or sample['label'] == 2:
+            random_Ty = 0.0
 
         T_00 = np.array([0.000000e+00 + random_Tx,
                          17.00000e+00 + random_Ty,

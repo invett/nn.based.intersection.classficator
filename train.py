@@ -511,7 +511,7 @@ def main(args, model=None):
 
             dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                           num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
-            dataloader_val = DataLoader(val_dataset, batch_size=1, shuffle=False,
+            dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False,
                                         num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
 
             # Build model

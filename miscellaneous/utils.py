@@ -479,10 +479,10 @@ def gt_validation(output, gtmodel, gt_list, criterion):
         #predictions = np.append(predictions, prediction.item())
     #predict = np.argmax(predictions)
     l = []
-    for gt in gt_list:
-        gt = gt.cuda()
-        gt_prediction = gtmodel(gt)
-        for batch_item in output:
+    for batch_item in output:
+        for gt in gt_list:
+            gt = gt.cuda()
+            gt_prediction = gtmodel(gt)
             l.append(criterion(batch_item, gt_prediction).item())
     nplist = np.array(l)
     nplist = nplist.reshape(-1, 7)
