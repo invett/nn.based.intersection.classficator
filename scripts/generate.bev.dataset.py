@@ -7,10 +7,10 @@ import time
 
 import torchvision.transforms as transforms
 from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror, GenerateNewDataset, \
-    WriteDebugInfoOnNewDataset
+    WriteDebugInfoOnNewDataset, GenerateWarping
 from dataloaders.sequencedataloader import fromAANETandDualBisenet
-
-from miscellaneous.utils import send_telegram_message
+import matplotlib.pyplot as plt
+from miscellaneous.utils import send_telegram_message, send_telegram_picture
 
 # SCRIPT THAT USES THE DATALOADER TO GENERATE THE AUGMENTED-DATASET OF BEVs
 # Use this line to delete **ALL FILES** in current folder and subfolders
@@ -24,19 +24,27 @@ def main(args):
     folders = np.array([os.path.join(args.rootfolder, folder) for folder in os.listdir(args.rootfolder) if
                         os.path.isdir(os.path.join(args.rootfolder, folder))])
 
+    folders = [folders[0]]
+
     dataset = fromAANETandDualBisenet(folders, transform=transforms.Compose([#Normalize(),
-                                                                             GenerateBev(returnPoints=False,
-                                                                                         max_front_distance=args.max_front_distance,
-                                                                                         max_height=args.max_height,
-                                                                                         excludeMask=args.excludeMask,
-                                                                                         decimate=1.0,
-                                                                                         random_Rx_degrees=args.random_Rx_degrees,
-                                                                                         random_Ry_degrees=args.random_Ry_degrees,
-                                                                                         random_Rz_degrees=args.random_Rz_degrees,
-                                                                                         random_Tx_meters=args.random_Tx_meters,
-                                                                                         random_Ty_meters=args.random_Ty_meters,
-                                                                                         random_Tz_meters=args.random_Tz_meters
-                                                                                         ),
+                                                                             GenerateWarping(random_Rx_degrees=1.0,
+                                                                                             random_Ry_degrees=1.0,
+                                                                                             random_Rz_degrees=1.0,
+                                                                                             random_Tx_meters=5.0,
+                                                                                             random_Ty_meters=1.0,
+                                                                                             random_Tz_meters=0.1),
+                                                                             #GenerateBev(returnPoints=False,
+                                                                             #            max_front_distance=args.max_front_distance,
+                                                                             #            max_height=args.max_height,
+                                                                             #            excludeMask=args.excludeMask,
+                                                                             #            decimate=1.0,
+                                                                             #            random_Rx_degrees=args.random_Rx_degrees,
+                                                                             #            random_Ry_degrees=args.random_Ry_degrees,
+                                                                             #            random_Rz_degrees=args.random_Rz_degrees,
+                                                                             #            random_Tx_meters=args.random_Tx_meters,
+                                                                             #            random_Ty_meters=args.random_Ty_meters,
+                                                                             #            random_Tz_meters=args.random_Tz_meters
+                                                                             #            ),
                                                                              #Mirror(),
                                                                              Rescale((224, 224)),
                                                                              WriteDebugInfoOnNewDataset(),
@@ -46,7 +54,7 @@ def main(args):
     # num_workers starts from 0
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=args.workers)
 
-    for index in range(args.augmentation):
+    for index in range(args.augmentation+1):
         print("Generating run {} ... ".format(index))
         if args.telegram:
             send_telegram_message("Generating run {} ... ".format(index))
@@ -57,7 +65,15 @@ def main(args):
         for sample in dataloader:
             data = sample['data']
             label = sample['label']
-            print(sample['bev_path_filename'])
+            if args.telegram:
+                a = plt.figure()
+                plt.imshow(sample['data'].numpy().squeeze() / 255.0)
+                send_telegram_picture(a, str(sample['bev_path_filename']))
+                plt.close('all')
+
+            if 'bev_path_filename' in sample:
+                print(sample['bev_path_filename'])
+
             #break
 
         print("Run {} generated".format(index))
@@ -80,12 +96,12 @@ if __name__ == '__main__':
     parser.add_argument('--distance_from_intersection', type=float, default=20.0, help='Distance from the cross')
     parser.add_argument('--excludeMask', action='store_true', help='If true, don\'t mask the images with 3D-DEEP')
 
-    parser.add_argument('--random_Rx_degrees', type=float, help='random_Rx_degrees')
-    parser.add_argument('--random_Ry_degrees', type=float, help='random_Ry_degrees')
-    parser.add_argument('--random_Rz_degrees', type=float, help='random_Rz_degrees')
-    parser.add_argument('--random_Tx_meters', type=float, help='random_Tx_meters')
-    parser.add_argument('--random_Ty_meters', type=float, help='random_Ty_meters')
-    parser.add_argument('--random_Tz_meters', type=float, help='random_Tz_meters')
+    parser.add_argument('--random_Rx_degrees', type=float, default=0.0, help='random_Rx_degrees')
+    parser.add_argument('--random_Ry_degrees', type=float, default=0.0, help='random_Ry_degrees')
+    parser.add_argument('--random_Rz_degrees', type=float, default=0.0, help='random_Rz_degrees')
+    parser.add_argument('--random_Tx_meters',  type=float, default=0.0, help='random_Tx_meters')
+    parser.add_argument('--random_Ty_meters',  type=float, default=0.0, help='random_Ty_meters')
+    parser.add_argument('--random_Tz_meters',  type=float, default=0.0, help='random_Tz_meters')
 
     args = parser.parse_args()
 

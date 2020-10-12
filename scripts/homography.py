@@ -63,16 +63,15 @@ dx = 6
 dy = 0
 dz = 2.0
 points_3d = np.array([[16, 16, 120, 120], [16, -16, -16, 16], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
-points_dst = torch.FloatTensor([[[0, 224], [224, 224], [224, 0], [0, 0], ]])
+points_dst = torch.FloatTensor([[[0, 400], [400, 400], [400, 0], [0, 0], ]])
 WorldToCam = np.linalg.inv(getCameraRototraslation(0.084, 0.1, 0, dx, dy, dz))
 points_2d = K @ WorldToCam @ points_3d
 points_2d = points_2d[:, :] / points_2d[2, :]
 points_2d = points_2d[:2, :]
 M = kornia.get_perspective_transform(
     torch.tensor(np.expand_dims(np.transpose(np.asarray(points_2d, dtype=np.float32)), axis=0)), points_dst)
-data_warp = kornia.warp_perspective(img.float(), M, dsize=(224, 224))
+data_warp = kornia.warp_perspective(img.float(), M, dsize=(400, 400))
 warped = kornia.tensor_to_image(data_warp.byte())
 plt.imshow(warped)
 plt.show()
 
-print("fine")  # plt.figure()

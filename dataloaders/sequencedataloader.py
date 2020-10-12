@@ -144,6 +144,11 @@ class fromAANETandDualBisenet(Dataset):
 
     def __init__(self, folders, distance, transform=None):
         """
+
+        RUNTIME Dataloader that uses grounth truth dataset, the subset of the original RGB KITTI images, and the results
+        from AANET and DualBiseNet to create augmented-images by using a 3D point cloud generated from AANET. Please
+        notice that the "real" 3D work is performed in the 'GenerateBev' transform!
+
         Args:
             root_dir (string): Directory with all the images.
             transform (callable, optional): Optional transform to be applied

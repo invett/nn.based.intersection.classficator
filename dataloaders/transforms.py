@@ -1,8 +1,11 @@
-import torch
-import numpy as np
 import cv2.cv2 as cv2
+import kornia
+import numpy as np
+import torch
 from scipy.spatial.transform import Rotation as R
 from skimage.transform import resize
+
+from miscellaneous.utils import getCameraRototraslation, radians
 
 # For debugging
 ShowImage = False
@@ -93,7 +96,7 @@ class GrayScale(object):
 
 
 class ToTensor(object):
-    """Convert ndarrays in sample to Tensors."""
+    """Convert nd arrays in sample to Tensors."""
 
     def __call__(self, sample):
         image, label = sample['data'], sample['label']
@@ -132,11 +135,11 @@ class Normalize(object):
     """
 
     def __call__(self, sample):
-        mean = np.array([0.062, 0.063, 0.064], dtype=np.float32)
-        std = np.array([0.157, 0.156, 0.157], dtype=np.float32)
+        #mean = np.array([0.062, 0.063, 0.064], dtype=np.float32)
+        #std = np.array([0.157, 0.156, 0.157], dtype=np.float32)
         image_norm = cv2.normalize(sample['data'], None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX,
                                    dtype=cv2.CV_32F)
-        image_norm = (image_norm - mean) / std
+        #image_norm = (image_norm - mean) / std
         sample['data'] = image_norm
 
         return sample
@@ -179,6 +182,120 @@ class Mirror(object):
         else:
             sample['mirrored'] = False
             return sample
+
+
+class GenerateWarping(object):
+
+    """
+        Creates the image-warping from RGB to Bird Eye View with no mask or other amenities
+
+        WARNING: all the hard-coded values, height and position of camera etc. are tested with
+        400,400 output size to be compatible with the OSM generator and all the previous code
+        
+    """
+
+    def __init__(self, cameramatrix=None,  bev_height=400, bev_width=400,
+                 random_Rx_degrees=0.0,
+                 random_Ry_degrees=0.0,
+                 random_Rz_degrees=0.0,
+                 random_Tx_meters=0.0,
+                 random_Ty_meters=0.0,
+                 random_Tz_meters=0.0):
+        #######################################################################################
+        # Code for the warping of RGB images - we use KORNIA to get the perspective transform #
+        #######################################################################################
+
+        # ordering of points:
+        #
+        #        BEV                                 3D
+        #
+        #     3----<----2                     3-------<-------2
+        #               |                    /                 \
+        #               ^                   /                   \
+        #               |                  /                     \
+        #     0---->----1                 0----------->-----------1
+        #
+
+        # KITTI camera matrix handle
+        if cameramatrix is None:
+            self.K = np.array([[9.786977e+02, 0.000000e+00, 6.900000e+02, 0.000000e+00],
+                               [0.000000e+00, 9.717435e+02, 2.497222e+02, 0.000000e+00],
+                               [0.000000e+00, 0.000000e+00, 1.000000e+00, 0.000000e+00]], dtype=np.float64)
+        else:
+            self.K = cameramatrix
+
+        self.random_Rx_radians = radians(random_Rx_degrees)
+        self.random_Ry_radians = radians(random_Ry_degrees)
+        self.random_Rz_radians = radians(random_Rz_degrees)
+        self.random_Tx_meters = random_Tx_meters
+        self.random_Ty_meters = random_Ty_meters
+        self.random_Tz_meters = random_Tz_meters
+        self.bev_height = bev_height
+        self.bev_width = bev_width
+
+        assert self.random_Rx_radians is not None, "transform value can't be None in GenerateWarping"
+        assert self.random_Ry_radians is not None, "transform value can't be None in GenerateWarping"
+        assert self.random_Rz_radians is not None, "transform value can't be None in GenerateWarping"
+        assert self.random_Tx_meters is not None, "transform value can't be None in GenerateWarping"
+        assert self.random_Ty_meters is not None, "transform value can't be None in GenerateWarping"
+        assert self.random_Tz_meters is not None, "transform value can't be None in GenerateWarping"
+
+    def __call__(self, sample):
+        """
+
+        Args:
+            sample: the sample from the dataloader
+
+        Returns: the bird eye view on ['data']
+
+        """
+
+        random_Rx = np.random.uniform(-self.random_Rx_radians, self.random_Rx_radians)
+        random_Ry = np.random.uniform(-self.random_Ry_radians, self.random_Ry_radians)
+        random_Rz = np.random.uniform(-self.random_Rz_radians, self.random_Rz_radians)
+        random_Tx = np.random.uniform(0.0, self.random_Tx_meters)
+        random_Ty = np.random.uniform(-self.random_Ty_meters, self.random_Ty_meters)
+        random_Tz = np.random.uniform(-self.random_Tz_meters, self.random_Tz_meters)
+
+        # position of the virtual camera
+        dx = 6 + random_Tx
+        dy = 0 + random_Ty
+        dz = 2.0 + random_Tz
+        pitchCorrection = 0.084 + random_Rx
+        yawCorrection = 0.1 + random_Ry
+        rollCorrection = 0.0 + random_Rz
+        points_3d = np.array([[16, 16, 120, 120], [16, -16, -16, 16], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
+        points_dst = torch.FloatTensor(
+            [[[0, self.bev_width], [self.bev_height, self.bev_width], [self.bev_height, 0], [0, 0], ]])
+        WorldToCam = np.linalg.inv(getCameraRototraslation(pitchCorrection, yawCorrection, rollCorrection, dx, dy, dz))
+        points_2d = self.K @ WorldToCam @ points_3d
+        points_2d = points_2d[:, :] / points_2d[2, :]
+        points_2d = points_2d[:2, :]
+        self.M = kornia.get_perspective_transform(
+            torch.tensor(np.expand_dims(np.transpose(np.asarray(points_2d, dtype=np.float32)), axis=0)), points_dst)
+
+        img = kornia.image_to_tensor(sample['image_02'], keepdim=False)
+
+        data_warp = kornia.warp_perspective(img.float(), self.M, dsize=(self.bev_height, self.bev_width))
+        warped = kornia.tensor_to_image(data_warp.byte())
+        warped = np.asarray(warped, dtype=np.float32)
+
+        sample = {'data': warped,  # [400, 400, 3] to be compatible
+                  'label': sample['label'],
+                  'random_Tx': random_Tx,
+                  'random_Ty': random_Ty,
+                  'random_Tz': random_Tz,
+                  'random_Rx': random_Rx,
+                  'random_Ry': random_Ry,
+                  'random_Rz': random_Rz,
+                  'starting_points': 0,
+                  'remaining_points': 0,
+                  'generated_osm': np.zeros((int(self.bev_height * 2), int(self.bev_width * 2), 3), np.float32),
+                  'negative_osm': np.zeros((int(self.bev_height * 2), int(self.bev_width * 2), 3), np.float32)
+                  }
+
+        return sample
+
 
 
 class GenerateBev(object):
@@ -248,6 +365,13 @@ class GenerateBev(object):
         self.returnPoints = returnPoints
         self.excludeMask = excludeMask
 
+        assert self.random_Rx_degrees is not None, "transform value can't be None in GenerateBEV"
+        assert self.random_Ry_degrees is not None, "transform value can't be None in GenerateBEV"
+        assert self.random_Rz_degrees is not None, "transform value can't be None in GenerateBEV"
+        assert self.random_Tx_meters is not None, "transform value can't be None in GenerateBEV"
+        assert self.random_Ty_meters is not None, "transform value can't be None in GenerateBEV"
+        assert self.random_Tz_meters is not None, "transform value can't be None in GenerateBEV"
+
     def __call__(self, sample):
 
         # this Q matrix was obtained using STEREORECTIFY; would be nice to import this part of the code too.
@@ -284,17 +408,17 @@ class GenerateBev(object):
         # ALVARO MASK # TODO this is the right place to disable ALVARO MASK s and so get the FULL - BEVs
         alvaro = sample['alvaromask']
 
-        #nice trick to avoid touching more code than needed...
+        # nice trick to avoid touching more code than needed...
         if self.excludeMask:
             alvaro = np.ones(alvaro.shape, dtype=alvaro.dtype)
         out_points = out_points[alvaro > 0]
         out_colors = out_colors[alvaro > 0]
 
         # filter by dimension
-        #idx = np.fabs(out_points[:, 2]) < self.max_front_distance
-        #out_points = out_points[idx]
-        #out_colors = out_colors.reshape(-1, 3)
-        #out_colors = out_colors[idx]
+        # idx = np.fabs(out_points[:, 2]) < self.max_front_distance
+        # out_points = out_points[idx]
+        # out_colors = out_colors.reshape(-1, 3)
+        # out_colors = out_colors[idx]
 
         # filter by dimension : "front" first, then "height"
         idx = np.fabs(out_points[:, 2]) < self.max_front_distance

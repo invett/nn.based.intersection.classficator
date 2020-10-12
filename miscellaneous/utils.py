@@ -83,6 +83,8 @@ def send_telegram_message(message):
 def send_telegram_picture(plt, description):
     """
 
+    Requires image within 0..1 range
+
     Args:
         plt: matplotlib.pyplot
         description: sends a figure with the confusion matrix through the telegram channel
@@ -495,3 +497,32 @@ def gt_validation(output, gtmodel, gt_list, criterion):
     classification = np.argmin(nplist, axis=1)
 
     return classification
+
+def getCameraRototraslation(pitchCorrection_, yawCorrection_, rollCorrection_, dx_, dy_, dz_):
+    """
+    Creates the extrinsic matrix using standard KITTI reference frame (z-forward ; x-right)
+
+    Args:
+        pitchCorrection_: correction on pitch/Y
+        yawCorrection_: correction on yaw/Z
+        rollCorrection_: correction on roll/X
+        dx_: where the camera is x/y/z wrt ground
+        dy_: where the camera is x/y/z wrt ground
+        dz_: where the camera is x/y/z wrt ground
+
+    Returns: the extrinsic camera matrix
+
+    """
+    rot = - pi / 2.0 + rollCorrection_
+    R1 = np.array([[1, 0, 0, 0], [0, cos(rot), -sin(rot), 0], [0, sin(rot), cos(rot), 0], [0, 0, 0, 1]],
+                  dtype=np.float32)
+    rot = pi / 2.0 + yawCorrection_
+    R2 = np.array([[cos(rot), 0, sin(rot), 0], [0, 1, 0, 0], [-sin(rot), 0, cos(rot), 0], [0, 0, 0, 1]],
+                  dtype=np.float32)
+    R3 = np.array([[1, 0, 0, 0], [0, cos(-pitchCorrection_), -sin(-pitchCorrection_), 0],
+                   [0, sin(-pitchCorrection_), cos(-pitchCorrection_), 0], [0, 0, 0, 1]], dtype=np.float32)
+    R = R1 @ R2 @ R3
+    T = np.array([[1, 0, 0, dx_], [0, 1, 0, dy_], [0, 0, 1, dz_], [0, 0, 0, 1]], dtype=np.float32)
+    RT = T @ R
+    return RT
+
