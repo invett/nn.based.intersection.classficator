@@ -352,8 +352,8 @@ def student_network_pass(args, sample, criterion, model, gtmodel=None, svm=None,
         if args.weighted:
             weights = torch.FloatTensor([0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67])
             weighted_tensor = weights[label.squeeze()]
-            loss = loss * weighted_tensor
-            loss.mean()
+            loss = loss * weighted_tensor.cuda()
+            loss = loss.mean()
 
 
         if gt_list is not None:
@@ -491,7 +491,7 @@ def gt_validation(output, gtmodel, gt_list, criterion):
         for gt in gt_list:
             gt = gt.cuda()
             gt_prediction = gtmodel(gt)
-            l.append(criterion(batch_item, gt_prediction).item())
+            l.append(criterion(batch_item, gt_prediction).mean().item())
     nplist = np.array(l)
     nplist = nplist.reshape(-1, 7)
     classification = np.argmin(nplist, axis=1)

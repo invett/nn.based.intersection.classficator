@@ -509,13 +509,13 @@ if __name__ == '__main__':
     # SCRIPT MODALITIES AND NETWORK BEHAVIORS #
     ###########################################
     parser.add_argument('--seed', type=int, default=0, help='Starting seed, for reproducibility. Default is ZERO!')
-    parser.add_argument('--train', type=bool, default=True, help='Train/Validate the model')
-    parser.add_argument('--test', type=bool, default=True, help='Test the model')
+    parser.add_argument('--train', action='store_true', help='Train/Validate the model')
+    parser.add_argument('--test', action='store_true', help='Test the model')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     parser.add_argument('--sweep', action='store_true', help='if set, this run is part of a wandb-sweep; use it with'
                                                              'as documented in '
                                                              'in https://docs.wandb.com/sweeps/configuration#command')
-    parser.add_argument('--telegram', type=bool, default=True, help='Send info through Telegram')
+    parser.add_argument('--telegram', action='store_true', help='Send info through Telegram')
 
     parser.add_argument('--triplet', type=bool, default=True, help='Triplet Loss')
     parser.add_argument('--swap', action='store_true', help='Triplet Loss swap')
@@ -601,6 +601,8 @@ if __name__ == '__main__':
     if args.swap and not args.triplet:
         print("Parameter --swap is not necessary for classification")
         exit(-1)
+
+    print (args)
     main(args)
 
 # Used paths:

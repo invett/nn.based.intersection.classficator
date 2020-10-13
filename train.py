@@ -522,8 +522,7 @@ def main(args, model=None):
             if args.resnetmodel[0:6] == 'resnet':
                 model = get_model_resnet(args.resnetmodel, args.num_classes, transfer=args.transfer,
                                          pretrained=args.pretrained,
-                                         embedding=(
-                                                           args.embedding or args.triplet or args.freeze) and not args.embedding_class)
+                                         embedding=(args.embedding or args.triplet or args.freeze) and not args.embedding_class)
             elif args.resnetmodel[0:7] == 'resnext':
                 model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
             elif args.resnetmodel == 'personalized':
