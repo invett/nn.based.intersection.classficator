@@ -483,7 +483,7 @@ def gt_validation(output, gt_list, criterion):
     l = []
     for batch_item in output:
         for gt in gt_list:
-            l.append(criterion(batch_item, gt.cuda()).mean().item())  # ¿por que el mean? Porque criterion reduction es None, OJO
+            l.append(criterion(batch_item.squeeze(), gt.cuda()).mean().item())  # ¿por que el mean? Porque criterion reduction es None, OJO
     nplist = np.array(l)
     nplist = nplist.reshape(-1, 7)
     classification = np.argmin(nplist, axis=1)

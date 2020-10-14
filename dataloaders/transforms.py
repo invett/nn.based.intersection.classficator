@@ -125,7 +125,8 @@ class ToTensor(object):
                         'image_path': sample['image_path']}
         else:
             return {'data': torch.from_numpy(image),
-                    'label': label}
+                    'label': label,
+                    'image_path': sample['image_path']}
 
 
 class Normalize(object):
