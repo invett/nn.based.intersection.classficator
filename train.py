@@ -42,15 +42,11 @@ def test(args, dataloader_test, gt_model=None, classifier=None):
 
     if args.embedding and not args.svm:
         gt_list = []
-        obsTransforms = transforms.Compose([transforms.ToPILImage(),
-                                            transforms.Resize((224, 224)),
-                                            transforms.ToTensor(),
-                                            ])
-        for crossing_type in range(7):
-            gt_OSM = test_crossing_pose(crossing_type=crossing_type, save=False, noise=True, sampling=False,
-                                        random_rate=1.0)
-            gt_OSM = obsTransforms(gt_OSM[0])
-            gt_list.append(gt_OSM.unsqueeze(0))
+        embeddings = np.loadtxt("./trainedmodels/teacher/embeddings/all_embedding_matrix.txt", delimiter='\t')
+        splits = np.array_split(embeddings, 7)
+        for i in range(7):
+            gt_list.append(torch.tensor(np.mean(splits[i], axis=0)))
+
     else:
         gt_list = None  # This is made to better structure of the code ahead
 
@@ -185,15 +181,10 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
     # Build gt images for validation
     if args.embedding:
         gt_list = []
-        obsTransforms = transforms.Compose([transforms.ToPILImage(),
-                                            transforms.Resize((224, 224)),
-                                            transforms.ToTensor(),
-                                            ])
-        for crossing_type in range(7):
-            gt_OSM = test_crossing_pose(crossing_type=crossing_type, save=False, noise=True, sampling=False,
-                                        random_rate=1.0)
-            gt_OSM = obsTransforms(gt_OSM[0])
-            gt_list.append(gt_OSM.unsqueeze(0))
+        embeddings = np.loadtxt("./trainedmodels/teacher/embeddings/all_embedding_matrix.txt", delimiter='\t')
+        splits = np.array_split(embeddings, 7)
+        for i in range(7):
+            gt_list.append(torch.tensor(np.mean(splits[i], axis=0)))
     else:
         gt_list = None  # This is made to better structure of the code ahead
 
@@ -254,7 +245,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         print('loss for train : %f' % loss_train_mean)
 
         if args.triplet or args.embedding:
-            acc_train = acc_record / (len(dataloader_train) * args.batch_size)
+            acc_train = acc_record / len(dataloader_train)
         else:
             acc_train = acc_record / len(dataloader_train)
         print('acc for train : %f' % acc_train)
