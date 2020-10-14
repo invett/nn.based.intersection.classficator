@@ -451,10 +451,10 @@ def main(args, model=None):
             elif args.dataloader == "generatedDataset":
                 val_dataset = fromGeneratedDataset(val_path, args.distance, transform=generateTransforms,
                                                    loadlist=False,
-                                                   decimateStep=args.decimate)  # todo fix loadlist for k-fold
+                                                   decimateStep=args.decimate, addGeneratedOSM=False)  # todo fix loadlist for k-fold
                 train_dataset = fromGeneratedDataset(train_path, args.distance, transform=generateTransforms,
                                                      loadlist=False,
-                                                     decimateStep=args.decimate)  # todo fix loadlist for k-fold
+                                                     decimateStep=args.decimate, addGeneratedOSM=False)  # todo fix loadlist for k-fold
 
             elif args.dataloader == "triplet_OBB":
 
