@@ -251,12 +251,13 @@ def degrees(rad):
     return rad * (180.0 / pi)
 
 
-def teacher_network_pass(args, sample, model, criterion):
+def teacher_network_pass(args, sample, model, criterion, gt_list=None):
     if args.triplet:
         # Obtain sample values
         anchor = sample['anchor']  # OSM Type X
         positive = sample['positive']  # OSM Type X
         negative = sample['negative']  # OSM Type Y
+        label = sample['label_anchor']
 
         # Sent to the graphic card if posible
         if torch.cuda.is_available() and args.use_gpu:
@@ -273,9 +274,13 @@ def teacher_network_pass(args, sample, model, criterion):
         loss = criterion(out_anchor, out_positive, out_negative)
 
         # Calculate the accuracy
-        cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
-        result = (cos_sim(out_anchor, out_positive) + 1.0) * 0.5
-        acc = torch.sum(result).item()
+        if gt_list is not None:
+            predict = gt_triplet_validation(out_anchor, model, gt_list)
+            acc = accuracy_score(label.squeeze().numpy(), predict)
+        else:
+            cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
+            result = (cos_sim(out_anchor, out_positive) + 1.0) * 0.5
+            acc = torch.sum(result).item()
 
     else:  # classification
         # Obtain sample values
@@ -300,7 +305,7 @@ def teacher_network_pass(args, sample, model, criterion):
 
         acc = accuracy_score(label, predict)
 
-    if args.triplet:
+    if args.triplet and gt_list is None:
         return acc, loss
     else:
         return acc, loss, label, predict
@@ -354,7 +359,6 @@ def student_network_pass(args, sample, criterion, model, gtmodel=None, svm=None,
             weighted_tensor = weights[label.squeeze()]
             loss = loss * weighted_tensor.cuda()
             loss = loss.mean()
-
 
         if gt_list is not None:
             predict = gt_validation(output, gtmodel, gt_list, criterion)
@@ -478,25 +482,33 @@ def svm_data(args, model, dataloader_train, dataloader_val, save=False):
 
 
 def gt_validation(output, gtmodel, gt_list, criterion):
-    #cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
-    #predictions = np.array([], dtype=np.float32)
-    #for gt in gt_list:
-        #gt = gt.cuda()
-        #gt_prediction = gtmodel(gt)
-        #prediction = ((cos_sim(output, gt_prediction) + 1.0) * 0.5)
-        #predictions = np.append(predictions, prediction.item())
-    #predict = np.argmax(predictions)
     l = []
     for batch_item in output:
         for gt in gt_list:
             gt = gt.cuda()
             gt_prediction = gtmodel(gt)
-            l.append(criterion(batch_item, gt_prediction).mean().item())
+            l.append(criterion(batch_item, gt_prediction).mean().item())  # ¿por que el mean?
     nplist = np.array(l)
     nplist = nplist.reshape(-1, 7)
     classification = np.argmin(nplist, axis=1)
 
     return classification
+
+
+def gt_triplet_validation(out_anchor, model, gt_list):
+    l = []
+    criterion = torch.nn.SmoothL1Loss(reduction='mean')
+    for batch_item in out_anchor:
+        for gt in gt_list:
+            gt = gt.cuda()
+            gt_prediction = model(gt)
+            l.append(criterion(batch_item, gt_prediction).item())
+    nplist = np.array(l)
+    nplist = nplist.reshape(-1, 7)
+    classification = np.argmin(nplist, axis=1)
+
+    return classification
+
 
 def getCameraRototraslation(pitchCorrection_, yawCorrection_, rollCorrection_, dx_, dy_, dz_):
     """
@@ -525,4 +537,3 @@ def getCameraRototraslation(pitchCorrection_, yawCorrection_, rollCorrection_, d
     T = np.array([[1, 0, 0, dx_], [0, 1, 0, dy_], [0, 0, 1, dz_], [0, 0, 0, 1]], dtype=np.float32)
     RT = T @ R
     return RT
-

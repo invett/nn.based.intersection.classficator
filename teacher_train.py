@@ -117,10 +117,21 @@ def main(args):
 
         dataloader_train = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=True,
                                       num_workers=args.num_workers, worker_init_fn=init_fn)
-        dataloader_val = DataLoader(dataset_val, batch_size=args.batch_size, shuffle=False,
+        dataloader_val = DataLoader(dataset_val, batch_size=args.batch_size, shuffle=True,
                                     num_workers=args.num_workers, worker_init_fn=init_fn)
 
-        savepath = train(args, model, optimizer, dataloader_train, dataloader_val, dataset_train, dataset_val, GLOBAL_EPOCH)
+        # Create ground truth list
+        gt_list = []
+        obsTransforms = transforms.Compose(
+            [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
+        for crossing_type in range(7):
+            gt_OSM = test_crossing_pose(crossing_type=crossing_type, save=False, noise=True, sampling=False,
+                                        random_rate=1.0)
+            gt_OSM = obsTransforms(gt_OSM[0])
+            gt_list.append(gt_OSM.unsqueeze(0))
+
+        savepath = train(args, model, optimizer, dataloader_train, dataloader_val, dataset_train, dataset_val,
+                         GLOBAL_EPOCH, gt_list)
 
     # List all test folders
     if args.test:
@@ -134,17 +145,26 @@ def main(args):
             gt_OSM = obsTransforms(gt_OSM[0])
             gt_list.append(gt_OSM.unsqueeze(0))
 
-        folders = np.array([os.path.join(args.dataset, folder) for folder in os.listdir(args.dataset) if
-                            os.path.isdir(os.path.join(args.dataset, folder))])
+        if args.testdataset == 'osm':
+            folders = np.array([os.path.join(args.dataset, folder) for folder in os.listdir(args.dataset) if
+                                os.path.isdir(os.path.join(args.dataset, folder))])
 
-        dataset_test = teacher_tripletloss(folders, args.distance,
-                                           transform=transforms.Compose([transforms.ToPILImage(),
-                                                                         transforms.Resize(
-                                                                             (224, 224)),
-                                                                         transforms.ToTensor()
-                                                                         ]),
-                                           noise=addnoise,
-                                           canonical=True)
+            dataset_test = teacher_tripletloss(folders, args.distance,
+                                               transform=transforms.Compose([transforms.ToPILImage(),
+                                                                             transforms.Resize(
+                                                                                 (224, 224)),
+                                                                             transforms.ToTensor()
+                                                                             ]),
+                                               noise=addnoise,
+                                               canonical=True)
+        else:
+            dataset_test = teacher_tripletloss_generated(elements=args.dataset_test_elements,
+                                                         transform=transforms.Compose([transforms.ToPILImage(),
+                                                                                       transforms.Resize((224, 224)),
+                                                                                       transforms.ToTensor()
+                                                                                       ]),
+                                                         canonical=False,
+                                                         noise=addnoise)
 
         dataloader_test = DataLoader(dataset_test, batch_size=1, shuffle=False, num_workers=args.num_workers)
 
@@ -174,6 +194,7 @@ def test(args, model, dataloader, gt_list):
         model.eval()
 
     all_embedding_matrix = []
+    testcriterion = torch.nn.SmoothL1Loss(reduction='mean')
 
     for sample in dataloader:
 
@@ -195,8 +216,6 @@ def test(args, model, dataloader, gt_list):
         # send_telegram_picture(a, "anchor")
         # plt.close('all')
 
-        predictions = np.array([], dtype=np.float32)
-
         if torch.cuda.is_available() and args.use_gpu:
             if args.triplet:
                 anchor = anchor.cuda()
@@ -205,21 +224,22 @@ def test(args, model, dataloader, gt_list):
                 label = label.cuda()
 
         if args.triplet:
-            cos = nn.CosineSimilarity(dim=1, eps=1e-6)
+            l = []
             out_anchor = model(anchor)
-            for gt in gt_list:  # Compare with the 7 canoncial ground truth
+            for gt in gt_list:  # Compare with the 7 canoncial ground truth ONLY WORKS WITH BATCH 1
                 gt = gt.cuda()
                 gt_prediction = model(gt)
-                prediction = ((cos(out_anchor, gt_prediction) + 1.0) * 0.5)
-                predictions = np.append(predictions, prediction.item())
-            predict = np.argmax(predictions)
+                l.append(testcriterion(out_anchor, gt_prediction).item())
+            nplist = np.array(l)
+            nplist = nplist.reshape(-1, 7)
+            predict = np.argmin(nplist, axis=1)
 
         else:
             output = model(data)
 
         if args.triplet:
 
-            all_embedding_matrix.append(np.asarray(model(anchor)[0].squeeze().cpu().detach().numpy()))
+            all_embedding_matrix.append(np.asarray(out_anchor.squeeze().cpu().detach().numpy()))
 
             # Code to save the PNGs for debugging purposes
             if args.saveTestCouplesForDebug:
@@ -269,7 +289,7 @@ def test(args, model, dataloader, gt_list):
         all_embedding_matrix = np.asarray(all_embedding_matrix)
         np.savetxt(os.path.join(args.saveEmbeddingsPath, "all_embedding_matrix.txt"), np.asarray(all_embedding_matrix),
                    delimiter='\t')
-        np.savetxt(os.path.join(args.saveEmbeddingsPath, "all_label_embedding_matrix.txt"), predRecord, delimiter='\t')
+        np.savetxt(os.path.join(args.saveEmbeddingsPath, "all_label_embedding_matrix.txt"), labelRecord, delimiter='\t')
 
     toc = time.time()
 
@@ -282,7 +302,7 @@ def test(args, model, dataloader, gt_list):
         plt.close('all')
 
 
-def validation(args, model, criterion, dataloader_val, random_rate):
+def validation(args, model, criterion, dataloader_val, random_rate, gtlist=None):
     tic = time.time()
     print('\nstart val!\n' + str(time.strftime("%H:%M:%S", time.gmtime(tic))))
 
@@ -304,7 +324,9 @@ def validation(args, model, criterion, dataloader_val, random_rate):
         for sample in dataloader_val:
             # network pass for the sample
             if args.triplet:
-                sample_acc, loss = teacher_network_pass(args, sample, model, criterion)
+                sample_acc, loss, label, predict = teacher_network_pass(args, sample, model, criterion, gt_list=gtlist)
+                labelRecord = np.append(labelRecord, label)
+                predRecord = np.append(predRecord, predict)
             else:
                 sample_acc, loss, label, predict = teacher_network_pass(args, sample, model, criterion)
                 labelRecord = np.append(labelRecord, label)
@@ -321,22 +343,19 @@ def validation(args, model, criterion, dataloader_val, random_rate):
     loss_val_mean = loss_record / len(dataloader_val)
     print('Loss for test/validation : %f' % loss_val_mean)
     if args.triplet:
-        acc = acc_record / (len(dataloader_val) * args.batch_size)
+        acc = acc_record / len(dataloader_val)
     else:
         acc = acc_record / len(dataloader_val)
     print('Accuracy for test/validation : %f\n' % acc)
 
-    if not args.triplet:
-        conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'], margins=True,
-                                  normalize='all')
-        conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6, 'All'], columns=[0, 1, 2, 3, 4, 5, 6, 'All'],
-                                          fill_value=0)
-        return conf_matrix, acc, loss_val_mean
-    else:
-        return acc, loss_val_mean
+    conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'])
+    conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6],
+                                      fill_value=0)
+
+    return conf_matrix, acc, loss_val_mean
 
 
-def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_train, dataset_val, GLOBAL_EPOCH):
+def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_train, dataset_val, GLOBAL_EPOCH, gtlist):
     if not os.path.isdir(args.save_model_path):
         os.mkdir(args.save_model_path)
 
@@ -347,7 +366,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
 
     # Build criterion
     if args.triplet:
-        criterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
+        criterion = torch.nn.TripletMarginLoss(margin=args.margin, p=1.0, reduction='mean')
     else:
         criterion = torch.nn.CrossEntropyLoss()
 
@@ -413,7 +432,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
 
         if epoch % args.validation_step == 0:
             if args.triplet:
-                acc_val, loss_val = validation(args, model, criterion, dataloader_val, random_rate=current_random_rate)
+                confusion_matrix, acc_val, loss_val = validation(args, model, criterion, dataloader_val,
+                                                                 random_rate=current_random_rate, gtlist=gtlist)
             else:
                 confusion_matrix, acc_val, loss_val = validation(args, model, criterion, dataloader_val,
                                                                  random_rate=current_random_rate)
@@ -429,17 +449,12 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
                 print('Best global accuracy: {}'.format(acc_pre))
 
                 if not args.nowandb:  # if nowandb flag was set, skip
-                    if args.triplet:
-                        wandb.log({"Val/loss": loss_val,
-                                   "Val/Acc": acc_val,
-                                   "random_rate": random_rate}, step=epoch)
-                    else:
-                        plt.figure(figsize=(10, 7))
-                        sn.heatmap(confusion_matrix, annot=True, fmt='d')
-                        wandb.log({"Val/loss": loss_val,
-                                   "Val/Acc": acc_val,
-                                   "random_rate": random_rate,
-                                   "conf-matrix_{}_{}".format(wandb.run.name, epoch): wandb.Image(plt)}, step=epoch)
+                    plt.figure(figsize=(10, 7))
+                    sn.heatmap(confusion_matrix, annot=True, fmt='d')
+                    wandb.log({"Val/loss": loss_val,
+                               "Val/Acc": acc_val,
+                               "random_rate": random_rate,
+                               "conf-matrix_{}_{}".format(wandb.run.name, epoch): wandb.Image(plt)}, step=epoch)
                 if args.nowandb:
                     if args.triplet:
                         print('Saving model: ',
@@ -466,7 +481,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
                               os.path.join(args.save_model_path, 'teacher_model_class_{}.pth'.format(wandb.run.name)))
                         torch.save(bestModel, os.path.join(args.save_model_path,
                                                            'teacher_model_class_{}.pth'.format(wandb.run.name)))
-                        savepath = os.path.join(args.save_model_path, 'teacher_model_class_{}.pth'.format(wandb.run.name))
+                        savepath = os.path.join(args.save_model_path,
+                                                'teacher_model_class_{}.pth'.format(wandb.run.name))
 
             elif epoch < args.patience_start:
                 patience = 0
@@ -528,9 +544,10 @@ if __name__ == '__main__':
                                                                  'accuracy through different iterations, ie, '
                                                                  'having the same comparison images every run')
 
+    parser.add_argument('--testdataset', type=str, default='osm', choices=['osm', 'generated'], help='dataloader for test')
     parser.add_argument('--dataset_train_elements', type=int, default=2000, help='see teacher_tripletloss_generated')
     parser.add_argument('--dataset_val_elements', type=int, default=100, help='see teacher_tripletloss_generated')
-
+    parser.add_argument('--dataset_test_elements', type=int, default=1000, help='see teacher_tripletloss_generated')
     parser.add_argument('--training_rnd_width', type=float, default=2.0, help='see teacher_tripletloss_generated')
     parser.add_argument('--training_rnd_angle', type=float, default=0.4, help='see teacher_tripletloss_generated')
     parser.add_argument('--training_rnd_spatial', type=float, default=9.0, help='see teacher_tripletloss_generated')
@@ -602,7 +619,7 @@ if __name__ == '__main__':
         print("Parameter --swap is not necessary for classification")
         exit(-1)
 
-    print (args)
+    print(args)
     main(args)
 
 # Used paths:

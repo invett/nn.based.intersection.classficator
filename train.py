@@ -119,9 +119,8 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None, classifier=
     print('Accuracy for test/validation : %f\n' % acc)
 
     if not args.triplet:
-        conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'], margins=True,
-                                  normalize='all')
-        conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6, 'All'], columns=[0, 1, 2, 3, 4, 5, 6, 'All'],
+        conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'])
+        conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6],
                                           fill_value=0)
         return conf_matrix, acc, loss_val_mean
     else:
@@ -270,7 +269,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
             confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gtmodel=gtmodel,
                                                              gt_list=gt_list)
             plt.figure(figsize=(10, 7))
-            sn.heatmap(confusion_matrix, annot=True, fmt='.2f')
+            sn.heatmap(confusion_matrix, annot=True, fmt='d')
 
             if args.telegram:
                 send_telegram_picture(plt, "Epoch:" + str(epoch))
