@@ -24,32 +24,43 @@ def main(args):
     folders = np.array([os.path.join(args.rootfolder, folder) for folder in os.listdir(args.rootfolder) if
                         os.path.isdir(os.path.join(args.rootfolder, folder))])
 
-    folders = [folders[0]]
+    #folders = [folders[0]]
 
-    dataset = fromAANETandDualBisenet(folders, transform=transforms.Compose([#Normalize(),
-                                                                             GenerateWarping(random_Rx_degrees=1.0,
-                                                                                             random_Ry_degrees=1.0,
-                                                                                             random_Rz_degrees=1.0,
-                                                                                             random_Tx_meters=5.0,
-                                                                                             random_Ty_meters=1.0,
-                                                                                             random_Tz_meters=0.1),
-                                                                             #GenerateBev(returnPoints=False,
-                                                                             #            max_front_distance=args.max_front_distance,
-                                                                             #            max_height=args.max_height,
-                                                                             #            excludeMask=args.excludeMask,
-                                                                             #            decimate=1.0,
-                                                                             #            random_Rx_degrees=args.random_Rx_degrees,
-                                                                             #            random_Ry_degrees=args.random_Ry_degrees,
-                                                                             #            random_Rz_degrees=args.random_Rz_degrees,
-                                                                             #            random_Tx_meters=args.random_Tx_meters,
-                                                                             #            random_Ty_meters=args.random_Ty_meters,
-                                                                             #            random_Tz_meters=args.random_Tz_meters
-                                                                             #            ),
-                                                                             #Mirror(),
-                                                                             Rescale((224, 224)),
-                                                                             WriteDebugInfoOnNewDataset(),
-                                                                             GenerateNewDataset(args.savefolder)]),
-                                      distance=args.distance_from_intersection)
+    execute = 'warping'
+
+    if execute == 'warping':
+        # WARNING! MIRROR IS/WAS DISABLED! not sure whether this respects our intentions...
+        dataset = fromAANETandDualBisenet(folders, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=1.0,
+                                                                                                 random_Ry_degrees=1.0,
+                                                                                                 random_Rz_degrees=1.0,
+                                                                                                 random_Tx_meters=5.0,
+                                                                                                 random_Ty_meters=1.0,
+                                                                                                 random_Tz_meters=0.1),
+                                                                                 #Mirror(),
+                                                                                 Rescale((224, 224)),
+                                                                                 WriteDebugInfoOnNewDataset(),
+                                                                                 GenerateNewDataset(args.savefolder)]),
+                                          distance=args.distance_from_intersection)
+
+    if execute == 'standard':
+        dataset = fromAANETandDualBisenet(folders, transform=transforms.Compose([#Normalize(),
+                                                                                 GenerateBev(returnPoints=False,
+                                                                                             max_front_distance=args.max_front_distance,
+                                                                                             max_height=args.max_height,
+                                                                                             excludeMask=args.excludeMask,
+                                                                                             decimate=1.0,
+                                                                                             random_Rx_degrees=args.random_Rx_degrees,
+                                                                                             random_Ry_degrees=args.random_Ry_degrees,
+                                                                                             random_Rz_degrees=args.random_Rz_degrees,
+                                                                                             random_Tx_meters=args.random_Tx_meters,
+                                                                                             random_Ty_meters=args.random_Ty_meters,
+                                                                                             random_Tz_meters=args.random_Tz_meters
+                                                                                             ),
+                                                                                 Mirror(),
+                                                                                 Rescale((224, 224)),
+                                                                                 WriteDebugInfoOnNewDataset(),
+                                                                                 GenerateNewDataset(args.savefolder)]),
+                                          distance=args.distance_from_intersection)
 
     # num_workers starts from 0
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=args.workers)

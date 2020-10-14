@@ -53,9 +53,9 @@ class Rescale(object):
 
     def __call__(self, sample):
         image = sample['data']
-        if sample['generated_osm'] is not None:
+        if 'generated_osm' in sample:
             osm = sample['generated_osm']
-        if sample['negative_osm'] is not None:
+        if 'negative_osm' in sample:
             osm_neg = sample['negative_osm']
 
         h, w = image.shape[:2]
@@ -70,15 +70,15 @@ class Rescale(object):
         new_h, new_w = int(new_h), int(new_w)
 
         image = resize(image, (new_h, new_w), anti_aliasing=True)
-        if sample['generated_osm'] is not None:
+        if 'generated_osm' in sample:
             osm = resize(osm, (new_h, new_w), anti_aliasing=True)
-        if sample['negative_osm'] is not None:
+        if 'negative_osm' in sample:
             osm_neg = resize(osm_neg, (new_h, new_w), anti_aliasing=True)
 
         sample['data'] = image
-        if sample['generated_osm'] is not None:
+        if 'generated_osm' in sample:
             sample['generated_osm'] = osm
-        if sample['negative_osm'] is not None:
+        if 'negative_osm' in sample:
             sample['negative_osm'] = osm_neg
 
         return sample
@@ -107,10 +107,10 @@ class ToTensor(object):
         image = image.transpose((2, 0, 1))
 
         # generated_osm might be optional, let's handle this
-        if sample['generated_osm'] is not None:
+        if 'generated_osm' in sample:
             generated_osm = sample['generated_osm']
             generated_osm = generated_osm.transpose((2, 0, 1))
-            if sample['negative_osm'] is not None:
+            if 'negative_osm' in sample:
                 negative_osm = sample['negative_osm']
                 negative_osm = negative_osm.transpose((2, 0, 1))
                 return {'data': torch.from_numpy(image),
