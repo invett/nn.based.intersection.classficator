@@ -45,8 +45,8 @@ def test(args, dataloader_test, gt_model=None, classifier=None):
         embeddings = np.loadtxt("./trainedmodels/teacher/embeddings/all_embedding_matrix.txt", delimiter='\t')
         splits = np.array_split(embeddings, 7)
         for i in range(7):
-            gt_list.append(torch.tensor(np.mean(splits[i], axis=0)))
-
+            gt_list.append(np.mean(splits[i], axis=0))
+        gt_list = torch.FloatTensor(gt_list)
     else:
         gt_list = None  # This is made to better structure of the code ahead
 
@@ -184,7 +184,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         embeddings = np.loadtxt("./trainedmodels/teacher/embeddings/all_embedding_matrix.txt", delimiter='\t')
         splits = np.array_split(embeddings, 7)
         for i in range(7):
-            gt_list.append(torch.tensor(np.mean(splits[i], axis=0)))
+            gt_list.append((np.mean(splits[i], axis=0)))
+        gt_list = torch.FloatTensor(gt_list)
     else:
         gt_list = None  # This is made to better structure of the code ahead
 

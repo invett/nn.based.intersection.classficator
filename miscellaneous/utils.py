@@ -338,23 +338,23 @@ def student_network_pass(args, sample, criterion, model, gtmodel=None, svm=None,
 
     elif args.embedding:
         data = sample['data']
-        osm = sample['generated_osm']
+        # osm = sample['generated_osm']
         label = sample['label']
 
         if torch.cuda.is_available() and args.use_gpu:
             data = data.cuda()
-            osm = osm.cuda()
+            # osm = osm.cuda()
 
         output = model(data)
         # output_gt = gtmodel(osm)  # (Batch x 512) Tensor
         output_gt = gt_list[label.squeeze()]  # --> Embeddings centroid of the label
 
-        loss = criterion(output, output_gt)  # --> distance from student embedding and centroid
+        loss = criterion(output.squeeze(), output_gt.cuda())  # --> 128 x 512
 
         if args.weighted:
             weights = torch.FloatTensor([0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67])
             weighted_tensor = weights[label.squeeze()]
-            loss = loss * weighted_tensor.cuda()
+            loss = loss * weighted_tensor.cuda().unsqueeze(1)
             loss = loss.mean()
 
         if gt_list is not None:
@@ -483,7 +483,7 @@ def gt_validation(output, gt_list, criterion):
     l = []
     for batch_item in output:
         for gt in gt_list:
-            l.append(criterion(batch_item, gt).mean().item())  # ¿por que el mean? Porque criterion reduction es None, OJO
+            l.append(criterion(batch_item, gt.cuda()).mean().item())  # ¿por que el mean? Porque criterion reduction es None, OJO
     nplist = np.array(l)
     nplist = nplist.reshape(-1, 7)
     classification = np.argmin(nplist, axis=1)
