@@ -549,6 +549,7 @@ def main(args, model=None):
             if args.student_path:
                 # load Saved Model for resume training
                 savepath = args.student_path
+                assert os.path.exists(savepath), "load file does not exist /student_path"
                 print('load model from {} ...'.format(savepath))
                 model.load_state_dict(torch.load(savepath))
                 print('Done!')
@@ -566,8 +567,8 @@ def main(args, model=None):
 
             if torch.cuda.is_available() and args.use_gpu:
                 model = model.cuda()
-                if args.embedding:
-                    gt_model = gt_model.cuda()
+                #if args.embedding:
+                #    gt_model = gt_model.cuda() TODO fix this, if useless, delete
 
             # build optimizer
             if args.optimizer == 'rmsprop':
