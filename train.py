@@ -62,9 +62,9 @@ def test(args, dataloader_test, gt_model=None, classifier=None):
         model = Personalized_small(args.num_classes)
 
     # load Saved Model
-    savepath = args.student_path
-    print('load model from {} ...'.format(savepath))
-    model.load_state_dict(torch.load(savepath))
+    loadpath = args.student_path
+    print('load model from {} ...'.format(loadpath))
+    model.load_state_dict(torch.load(loadpath))
     print('Done!')
 
     if args.embedding and not args.svm:
@@ -206,7 +206,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         wandb.watch(model, log="all")
 
     current_batch = 0
-    for epoch in range(args.start_epoch,args.num_epochs):
+    for epoch in range(args.start_epoch, args.num_epochs):
+        print("\n\n===========================================================")
         print("date and time:", datetime.now().strftime("%m/%d/%Y, %H:%M:%S"))
         with GLOBAL_EPOCH.get_lock():
             GLOBAL_EPOCH.value = epoch
@@ -553,10 +554,10 @@ def main(args, model=None):
             if args.freeze:
                 # load best trained model
                 if args.nowandb:
-                    savepath = './trainedmodels/model_' + args.resnetmodel + '.pth'
+                    loadpath = './trainedmodels/model_' + args.resnetmodel + '.pth'
                 else:
-                    savepath = './trainedmodels/model_' + wandb.run.name + '.pth'
-                model.load_state_dict(torch.load(savepath))
+                    loadpath = './trainedmodels/model_' + wandb.run.name + '.pth'
+                model.load_state_dict(torch.load(loadpath))
                 for param in model.parameters():
                     param.requires_grad = False
                 model = torch.nn.Sequential(model, torch.nn.Linear(512, 7))
@@ -625,10 +626,10 @@ def main(args, model=None):
         if args.svm:
             # load best trained model
             if args.nowandb:
-                savepath = './trainedmodels/model_' + args.resnetmodel + '.pth'
+                loadpath = './trainedmodels/model_' + args.resnetmodel + '.pth'
             else:
-                savepath = './trainedmodels/model_' + wandb.run.name + '.pth'
-            model.load_state_dict(torch.load(savepath))
+                loadpath = './trainedmodels/model_' + wandb.run.name + '.pth'
+            model.load_state_dict(torch.load(loadpath))
             # save the model to disk
             embeddings, labels = svm_data(args, model, dataloader_train, dataloader_val)
             model_svm = svm_train(embeddings, labels, mode='rbf')  # embeddings: (Samples x Features); labels(Samples)
