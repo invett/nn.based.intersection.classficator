@@ -78,13 +78,13 @@ def test(args, dataloader_test, gt_model=None, classifier=None):
             gt_model = gt_model.cuda()
 
     # Start testing
-    confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test, gtmodel=gt_model,
+    confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test,
                                           classifier=classifier, gt_list=gt_list)
     if not args.nowandb:  # if nowandb flag was set, skip
         wandb.log({"Test/Acc": acc, "conf-matrix_test": wandb.Image(plt)})
 
 
-def validation(args, model, criterion, dataloader_val, gtmodel=None, classifier=None, gt_list=None):
+def validation(args, model, criterion, dataloader_val, classifier=None, gt_list=None):
     print('\nstart val!')
 
     loss_record = 0.0
@@ -96,7 +96,7 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None, classifier=
         model.eval()
 
         for sample in dataloader_val:
-            acc, loss, label, predict = student_network_pass(args, sample, criterion, model, gtmodel=gtmodel,
+            acc, loss, label, predict = student_network_pass(args, sample, criterion, model,
                                                              svm=classifier, gt_list=gt_list)
             labelRecord = np.append(labelRecord, label)
             predRecord = np.append(predRecord, predict)
@@ -123,8 +123,7 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None, classifier=
         return None, acc, loss_val_mean
 
 
-def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, valfolder, GLOBAL_EPOCH, gtmodel=None,
-          kfold_index=None):
+def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, valfolder, GLOBAL_EPOCH, kfold_index=None):
     """
 
     Do the training. The LOSS depends on the value of
@@ -218,7 +217,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
         for sample in dataloader_train:
             if args.embedding or args.triplet:
-                acc, loss, _, _ = student_network_pass(args, sample, traincriterion, model, gtmodel=gtmodel, gt_list=gt_list)
+                acc, loss, _, _ = student_network_pass(args, sample, traincriterion, model, gt_list=gt_list)
             else:
                 acc, loss, _, _ = student_network_pass(args, sample, traincriterion, model)
 
@@ -268,7 +267,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
                        "Completed epoch": epoch})
 
         if epoch % args.validation_step == 0:
-            confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gtmodel=gtmodel,
+            confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val,
                                                              gt_list=gt_list)
             plt.figure(figsize=(10, 7))
             sn.heatmap(confusion_matrix, annot=True, fmt='d')
@@ -578,7 +577,7 @@ def main(args, model=None):
             # train model
             if args.embedding:
                 acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc,
-                            os.path.basename(val_path[0]), gtmodel=gt_model, GLOBAL_EPOCH=GLOBAL_EPOCH,
+                            os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH,
                             kfold_index=val_index[0])
             else:
                 acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc,
