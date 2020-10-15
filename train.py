@@ -751,13 +751,14 @@ if __name__ == '__main__':
     #####    parser.add_argument('--scheduler', type=bool, default=True, help='scheduling lr')
     parser.add_argument('--scheduler', action='store_true', help='scheduling lr')
     parser.add_argument('--grayscale', action='store_true', help='Use Grayscale Images')
+    parser.add_argument('--resume', type=str, default=None, help='path to checkpoint model')
 
     # to enable the STUDENT training, set --embedding and provide the teacher path
     parser.add_argument('--embedding', action='store_true', help='Use embedding matching')
     parser.add_argument('--embedding_class', action='store_true', help='Use embedding matching with classification')
     parser.add_argument('--triplet', action='store_true', help='Use triplet learing')
     parser.add_argument('--teacher_path', type=str, help='Insert teacher path (for student training)')
-    parser.add_argument('--student_path', type=str, help='Insert teacher path (for student training)')
+    parser.add_argument('--student_path', type=str, help='Insert student path (for student testing)')
     parser.add_argument('--margin', type=float, default=1., help='margin in triplet and embedding')
 
     # different data loaders, use one from choices; a description is provided in the documentation of each dataloader
