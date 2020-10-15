@@ -271,7 +271,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
             confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val,
                                                              gt_list=gt_list)
             plt.figure(figsize=(10, 7))
-            plt.title(valfolder)
+            title = str(socket.gethostname()) + '\n' + str(valfolder)
+            plt.title(title)
             sn.heatmap(confusion_matrix, annot=True, fmt='d')
 
             if args.telegram:
