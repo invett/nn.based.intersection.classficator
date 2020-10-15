@@ -271,7 +271,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
             confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val,
                                                              gt_list=gt_list)
             plt.figure(figsize=(10, 7))
-            plt.title(valfolder)
+            title = str(socket.gethostname()) + '\n' + str(valfolder)
+            plt.title(title)
             sn.heatmap(confusion_matrix, annot=True, fmt='d')
 
             if args.telegram:
@@ -787,6 +788,11 @@ if __name__ == '__main__':
     if args.triplet != (args.dataloader == 'triplet_OBB' or args.dataloader == 'triplet_BOO'):
         print("Args triplet and triplet dataloaders must be called together")
         exit(-1)
+
+    if args.student_path:
+        if not os.path.exists(args.student_path):
+            print("Load file does not exist: ", args.student_path, "\n\n")
+            exit(-1)
 
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
