@@ -108,7 +108,7 @@ def validation(args, model, criterion, dataloader_val, gtmodel=None, classifier=
     loss_val_mean = loss_record / len(dataloader_val)
     print('loss for test/validation : %f' % loss_val_mean)
 
-    if args.triplet or args.embedding:
+    if args.triplet:
         acc = acc_record / (len(dataloader_val) * args.batch_size)
     else:
         acc = acc_record / len(dataloader_val)
@@ -161,16 +161,26 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         traincriterion = torch.nn.CrossEntropyLoss(weight=class_weights)
         valcriterion = torch.nn.CrossEntropyLoss()
     elif args.embedding:
-        # traincriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='sum')
-        # valcriterion = torch.nn.CosineEmbeddingLoss(margin=args.margin, reduction='sum')
-        # traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
-        # valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
         if args.weighted:
-            traincriterion = torch.nn.SmoothL1Loss(reduction='none')
-            valcriterion = torch.nn.SmoothL1Loss(reduction='none')
+            if args.lossfunction == 'SmoothL1':
+                traincriterion = torch.nn.SmoothL1Loss(reduction='none')
+                valcriterion = torch.nn.SmoothL1Loss(reduction='none')
+            elif args.lossfunction == 'L1':
+                traincriterion = torch.nn.L1Loss(reduction='none')
+                valcriterion = torch.nn.L1Loss(reduction='none')
+            elif args.lossfunction == 'MSE':
+                traincriterion = torch.nn.MSELoss(reduction='none')
+                valcriterion = torch.nn.MSELoss(reduction='none')
         else:
-            traincriterion = torch.nn.SmoothL1Loss(reduction='mean')
-            valcriterion = torch.nn.SmoothL1Loss(reduction='mean')
+            if args.lossfunction == 'SmoothL1':
+                traincriterion = torch.nn.SmoothL1Loss(reduction='mean')
+                valcriterion = torch.nn.SmoothL1Loss(reduction='mean')
+            elif args.lossfunction == 'L1':
+                traincriterion = torch.nn.L1Loss(reduction='mean')
+                valcriterion = torch.nn.L1Loss(reduction='mean')
+            elif args.lossfunction == 'MSE':
+                traincriterion = torch.nn.MSELoss(reduction='mean')
+                valcriterion = torch.nn.MSELoss(reduction='mean')
     elif args.triplet:
         traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
         valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
@@ -706,6 +716,8 @@ if __name__ == '__main__':
     parser.add_argument('--use_gpu', type=bool, default=True, help='whether to user gpu for training')
     parser.add_argument('--save_model_path', type=str, default='./trainedmodels/', help='path to save model')
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
+    parser.add_argument('--lossfunction', type=str, default='MSE', choices=['MSE', 'SmoothL1', 'L1'],
+                        help='lossfunction selection')
     parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
     parser.add_argument('--patience_start', type=int, default=2,
                         help='Starting epoch for patience of validation. Default, 50. ')
@@ -718,7 +730,7 @@ if __name__ == '__main__':
     ######    parser.add_argument('--pretrained', type=bool, default=True, help='pretrained net')
     parser.add_argument('--pretrained', type=bool, default=True, help='whether to use a pretrained net, or not')
     #####    parser.add_argument('--scheduler', type=bool, default=True, help='scheduling lr')
-    parser.add_argument('--scheduler', type=bool, default=False, help='scheduling lr')
+    parser.add_argument('--scheduler', action='store_true', help='scheduling lr')
     parser.add_argument('--grayscale', action='store_true', help='Use Grayscale Images')
 
     # to enable the STUDENT training, set --embedding and provide the teacher path

@@ -311,7 +311,7 @@ def teacher_network_pass(args, sample, model, criterion, gt_list=None):
         return acc, loss, label, predict
 
 
-def student_network_pass(args, sample, criterion, model, gtmodel=None, svm=None, gt_list=None):
+def student_network_pass(args, sample, criterion, model, svm=None, gt_list=None):
     cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
     if args.triplet:
         if args.dataloader == 'triplet_OBB':
@@ -338,15 +338,12 @@ def student_network_pass(args, sample, criterion, model, gtmodel=None, svm=None,
 
     elif args.embedding:
         data = sample['data']
-        # osm = sample['generated_osm']
         label = sample['label']
 
         if torch.cuda.is_available() and args.use_gpu:
             data = data.cuda()
-            # osm = osm.cuda()
 
         output = model(data)
-        # output_gt = gtmodel(osm)  # (Batch x 512) Tensor
         output_gt = gt_list[label.squeeze()]  # --> Embeddings centroid of the label
 
         loss = criterion(output.squeeze(), output_gt.cuda())  # --> 128 x 512
@@ -358,7 +355,6 @@ def student_network_pass(args, sample, criterion, model, gtmodel=None, svm=None,
             loss = loss.mean()
 
         if gt_list is not None:
-            # predict = gt_validation(output, gtmodel, gt_list, criterion)
             predict = gt_validation(output, gt_list, criterion)
             acc = accuracy_score(label.squeeze().numpy(), predict)
         else:
@@ -483,7 +479,7 @@ def gt_validation(output, gt_list, criterion):
     l = []
     for batch_item in output:
         for gt in gt_list:
-            l.append(criterion(batch_item.squeeze(), gt.cuda()).mean().item())  # ¿por que el mean? Porque criterion reduction es None, OJO
+            l.append(criterion(batch_item.squeeze(), gt.cuda()).mean().item())
     nplist = np.array(l)
     nplist = nplist.reshape(-1, 7)
     classification = np.argmin(nplist, axis=1)
@@ -498,7 +494,7 @@ def gt_triplet_validation(out_anchor, model, gt_list):
         for gt in gt_list:
             gt = gt.cuda()
             gt_prediction = model(gt)
-            l.append(criterion(batch_item, gt_prediction).item())
+            l.append(criterion(batch_item, gt_prediction).item()) #Revisar esto
     nplist = np.array(l)
     nplist = nplist.reshape(-1, 7)
     classification = np.argmin(nplist, axis=1)
