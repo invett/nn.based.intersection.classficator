@@ -549,7 +549,6 @@ def main(args, model=None):
             if args.student_path:
                 # load Saved Model for resume training
                 savepath = args.student_path
-                assert os.path.exists(savepath), "load file does not exist /student_path"
                 print('load model from {} ...'.format(savepath))
                 model.load_state_dict(torch.load(savepath))
                 print('Done!')
@@ -779,6 +778,11 @@ if __name__ == '__main__':
     if args.triplet != (args.dataloader == 'triplet_OBB' or args.dataloader == 'triplet_BOO'):
         print("Args triplet and triplet dataloaders must be called together")
         exit(-1)
+
+    if args.student_path:
+        if not os.path.exists(args.student_path):
+            print("Load file does not exist: ", args.student_path, "\n\n")
+            exit(-1)
 
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
