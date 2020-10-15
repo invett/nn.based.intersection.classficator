@@ -6,6 +6,7 @@ import pickle
 import socket  # to get the machine name
 import time
 import warnings
+from datetime import datetime
 from functools import partial
 
 import matplotlib.pyplot as plt
@@ -27,7 +28,6 @@ from dropout_models import get_resnet, get_resnext
 from miscellaneous.utils import init_function, reset_wandb_env, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_train, svm_data
 from model.resnet_models import Personalized, Personalized_small, get_model_resnet, get_model_resnext
-from scripts.OSM_generator import test_crossing_pose
 
 
 def test(args, dataloader_test, gt_model=None, classifier=None):
@@ -207,6 +207,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
     current_batch = 0
     for epoch in range(args.num_epochs):
+        print("date and time:", datetime.now().strftime("%m/%d/%Y, %H:%M:%S"))
         with GLOBAL_EPOCH.get_lock():
             GLOBAL_EPOCH.value = epoch
         lr = optimizer.param_groups[0]['lr']
@@ -270,6 +271,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
             confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val,
                                                              gt_list=gt_list)
             plt.figure(figsize=(10, 7))
+            plt.title(valfolder)
             sn.heatmap(confusion_matrix, annot=True, fmt='d')
 
             if args.telegram:
@@ -535,13 +537,20 @@ def main(args, model=None):
                 else:
                     model = get_resnet(args, args.cardinality)
 
-            if args.embedding:
-                gt_model = copy.deepcopy(model)
-                gt_model.load_state_dict(torch.load(args.teacher_path))
-                if args.embedding_class:  # if I'm using the teacher trained with FC I need to get rid of it before.
-                    model = torch.nn.Sequential(*(list(model.children())[:-1]))
-                    gt_model = torch.nn.Sequential(*(list(gt_model.children())[:-1]))
-                gt_model.eval()
+            #if args.embedding:
+                #gt_model = copy.deepcopy(model)
+                #gt_model.load_state_dict(torch.load(args.teacher_path))
+                #if args.embedding_class:  # if I'm using the teacher trained with FC I need to get rid of it before.
+                    #model = torch.nn.Sequential(*(list(model.children())[:-1]))
+                    #gt_model = torch.nn.Sequential(*(list(gt_model.children())[:-1]))
+                #gt_model.eval()
+
+            if args.student_path:
+                # load Saved Model for resume training
+                savepath = args.student_path
+                print('load model from {} ...'.format(savepath))
+                model.load_state_dict(torch.load(savepath))
+                print('Done!')
 
             if args.freeze:
                 # load best trained model
