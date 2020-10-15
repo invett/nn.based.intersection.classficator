@@ -206,7 +206,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
         wandb.watch(model, log="all")
 
     current_batch = 0
-    for epoch in range(args.num_epochs):
+    for epoch in range(args.start_epoch,args.num_epochs):
         print("date and time:", datetime.now().strftime("%m/%d/%Y, %H:%M:%S"))
         with GLOBAL_EPOCH.get_lock():
             GLOBAL_EPOCH.value = epoch
@@ -294,22 +294,26 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
                     kfold_loss = loss_val
 
                 if acc_pre < kfold_acc:
-                    bestModel = model.state_dict()
                     acc_pre = kfold_acc
                     print('Best global accuracy: {}'.format(kfold_acc))
                     if args.nowandb:
                         print('Saving model: ',
                               os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
-                        torch.save(bestModel,
-                                   os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
+                        torch.save({
+                            'epoch': epoch,
+                            'model_state_dict': model.state_dict(),
+                            'optimizer_state_dict': optimizer.state_dict(),
+                            'loss': loss,
+                        }, os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
                     else:
                         print('Saving model: ',
                               os.path.join(args.save_model_path, 'model_{}.pth'.format(wandb.run.name)))
-                        torch.save(bestModel,
-                                   os.path.join(args.save_model_path, 'model_{}.pth'.format(wandb.run.name)))
-
-                    if not args.nowandb:  # if nowandb flag was set, skip
-                        wandb.save(os.path.join(args.save_model_path, 'model_{}.pth'.format(wandb.run.name)))
+                        torch.save({
+                            'epoch': epoch,
+                            'model_state_dict': model.state_dict(),
+                            'optimizer_state_dict': optimizer.state_dict(),
+                            'loss': loss,
+                        }, os.path.join(args.save_model_path, 'model_{}.pth'.format(wandb.run.name)))
 
             elif epoch < args.patience_start:
                 patience = 0
@@ -545,13 +549,6 @@ def main(args, model=None):
                     #gt_model = torch.nn.Sequential(*(list(gt_model.children())[:-1]))
                 #gt_model.eval()
 
-            if args.student_path:
-                # load Saved Model for resume training
-                savepath = args.student_path
-                print('load model from {} ...'.format(savepath))
-                model.load_state_dict(torch.load(savepath))
-                print('Done!')
-
             if args.freeze:
                 # load best trained model
                 if args.nowandb:
@@ -565,8 +562,8 @@ def main(args, model=None):
 
             if torch.cuda.is_available() and args.use_gpu:
                 model = model.cuda()
-                if args.embedding:
-                    gt_model = gt_model.cuda()
+                #if args.embedding:
+                    #gt_model = gt_model.cuda()
 
             # build optimizer
             if args.optimizer == 'rmsprop':
@@ -582,6 +579,18 @@ def main(args, model=None):
             else:
                 print('not supported optimizer \n')
                 exit()
+
+            if args.resume:
+                if os.path.isfile(args.resume):
+                    print("=> loading checkpoint '{}'".format(args.resume))
+                    checkpoint = torch.load(args.resume)
+                    args.start_epoch = checkpoint['epoch']
+                    model.load_state_dict(checkpoint['model_state_dict'])
+                    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                    print("=> loaded checkpoint '{}' (epoch {}) (loss {})"
+                          .format(args.resume, checkpoint['epoch'], checkpoint['loss']))
+                else:
+                    print("=> no checkpoint found at '{}'".format(args.resume))
 
             # train model
             if args.embedding:
@@ -707,6 +716,7 @@ if __name__ == '__main__':
     parser.add_argument('--svm', action='store_true', help='support vector machine for student classification')
 
     parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
+    parser.add_argument('--start_epoch', type=int, default=0, help='Number of epochs to train for')
     parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
                                                                        'checkpoint (epochs)')
     parser.add_argument('--dataset', type=str, help='path to the dataset you are using.')
