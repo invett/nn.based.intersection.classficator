@@ -26,7 +26,7 @@ from dataloaders.sequencedataloader import BaseLine, TestDataset, fromAANETandDu
 from dataloaders.transforms import GenerateBev, GrayScale, Mirror, Normalize, Rescale, ToTensor
 from dropout_models import get_resnet, get_resnext
 from miscellaneous.utils import init_function, reset_wandb_env, send_telegram_message, send_telegram_picture, \
-    student_network_pass, svm_train, svm_data
+    student_network_pass, svm_train, svm_data, seed_everything
 from model.resnet_models import Personalized, Personalized_small, get_model_resnet, get_model_resnext
 
 
@@ -95,6 +95,9 @@ def validation(args, model, criterion, dataloader_val, classifier=None, gt_list=
     with torch.no_grad():
         model.eval()
 
+        tq = tqdm.tqdm(total=len(dataloader_val) * args.batch_size)
+        tq.set_description('Validation... ')
+
         for sample in dataloader_val:
             acc, loss, label, predict = student_network_pass(args, sample, criterion, model,
                                                              svm=classifier, gt_list=gt_list)
@@ -103,6 +106,11 @@ def validation(args, model, criterion, dataloader_val, classifier=None, gt_list=
 
             loss_record += loss.item()
             acc_record += acc
+
+            tq.update(args.batch_size)
+            tq.set_postfix(loss='%.6f' % loss)
+
+        tq.close()
 
     # Calculate validation metrics
     loss_val_mean = loss_record / len(dataloader_val)
@@ -199,7 +207,16 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
     else:
         gt_list = None  # This is made to better structure of the code ahead
 
-    model.zero_grad()
+    if args.resume and False:
+        confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gt_list=gt_list)
+        if args.telegram:
+            plt.figure(figsize=(10, 7))
+            title = str(socket.gethostname()) + '\nResume: ' + str(args.start_epoch) + '\n' + str(valfolder)
+            plt.title(title)
+            sn.heatmap(confusion_matrix, annot=True, fmt='d')
+            send_telegram_picture(plt, "Resume Plot")
+
+    ###### model.zero_grad()
     model.train()
 
     if not args.nowandb:  # if nowandb flag was set, skip
@@ -271,10 +288,10 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
                        "Completed epoch": epoch})
 
         if epoch % args.validation_step == 0:
-            confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val,
-                                                             gt_list=gt_list)
+            confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gt_list=gt_list)
+
             plt.figure(figsize=(10, 7))
-            title = str(socket.gethostname()) + 'Epoch: ' + str(epoch) + '\n' + str(valfolder)
+            title = str(socket.gethostname()) + '\nEpoch: ' + str(epoch) + '\n' + str(valfolder)
             plt.title(title)
             sn.heatmap(confusion_matrix, annot=True, fmt='d')
 
@@ -387,7 +404,12 @@ def main(args, model=None):
         # Getting the hostname to add to wandb (seem useful for sweeps)
         hostname = str(socket.gethostname())
 
-    GLOBAL_EPOCH = multiprocessing.Value('i', 0)
+    if args.resume:
+        if os.path.isfile(args.resume):
+            checkpoint = torch.load(args.resume, map_location='cpu')
+            args.seed = checkpoint['epoch']
+
+    GLOBAL_EPOCH = multiprocessing.Value('i', args.seed)
     seed = multiprocessing.Value('i', args.seed)
 
     init_fn = partial(init_function, seed=seed, epoch=GLOBAL_EPOCH)
@@ -567,8 +589,7 @@ def main(args, model=None):
             if os.path.isfile(args.resume):
                 # device = torch.device('cpu')
                 print("=> loading checkpoint '{}'".format(args.resume))
-                # checkpoint = torch.load(args.resume, map_location=device)
-                checkpoint = torch.load(args.resume)
+                checkpoint = torch.load(args.resume, map_location='cpu')
                 args.start_epoch = checkpoint['epoch'] + 1
                 model.load_state_dict(checkpoint['model_state_dict'])
                 if torch.cuda.is_available() and args.use_gpu:

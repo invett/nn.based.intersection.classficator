@@ -408,6 +408,12 @@ def init_function(worker_id, seed, epoch):
     np.random.seed(seed)
     random.seed(seed)
 
+    # random.seed(seed)
+    # os.environ['PYTHONHASHSEED'] = str(seed)
+    # np.random.seed(seed)
+    # torch.manual_seed(seed)
+    # torch.cuda.manual_seed(seed)
+    #torch.backends.cudnn.deterministic = True
 
 def reset_wandb_env():
     exclude = {
@@ -529,3 +535,13 @@ def getCameraRototraslation(pitchCorrection_, yawCorrection_, rollCorrection_, d
     T = np.array([[1, 0, 0, dx_], [0, 1, 0, dy_], [0, 0, 1, dz_], [0, 0, 0, 1]], dtype=np.float32)
     RT = T @ R
     return RT
+
+
+def seed_everything(seed):
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    #  example seed_everything(123)
