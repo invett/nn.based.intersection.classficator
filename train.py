@@ -213,7 +213,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
             GLOBAL_EPOCH.value = epoch
         lr = optimizer.param_groups[0]['lr']
         tq = tqdm.tqdm(total=len(dataloader_train) * args.batch_size)
-        tq.set_description('epoch %d, lr %f' % (epoch, lr))
+        tq.set_description('epoch %d, lr %.e' % (epoch, lr))
         loss_record = 0.0
         acc_record = 0.0
 
@@ -272,7 +272,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
             confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val,
                                                              gt_list=gt_list)
             plt.figure(figsize=(10, 7))
-            title = str(socket.gethostname()) + '\n' + str(valfolder)
+            title = str(socket.gethostname()) + 'Epoch: ' + str(epoch) + '\n' + str(valfolder)
             plt.title(title)
             sn.heatmap(confusion_matrix, annot=True, fmt='d')
 
@@ -584,15 +584,27 @@ def main(args, model=None):
 
             if args.resume:
                 if os.path.isfile(args.resume):
+                    # device = torch.device('cpu')
                     print("=> loading checkpoint '{}'".format(args.resume))
+                    # checkpoint = torch.load(args.resume, map_location=device)
                     checkpoint = torch.load(args.resume)
                     args.start_epoch = checkpoint['epoch']
                     model.load_state_dict(checkpoint['model_state_dict'])
                     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
                     print("=> loaded checkpoint '{}' (epoch {}) (loss {})"
                           .format(args.resume, checkpoint['epoch'], checkpoint['loss']))
+
+                    # Set new learning rate from command line
+                    optimizer.param_groups[0]['lr'] = args.lr
                 else:
                     print("=> no checkpoint found at '{}'".format(args.resume))
+
+            # if torch.cuda.is_available() and args.use_gpu:
+            #     # model = model.cuda()
+            #     device = torch.device("cuda")
+            #     model = model.to(device)
+            #     # if args.embedding:
+            #     #     gt_model = gt_model.cuda()
 
             # train model
             if args.embedding:
@@ -796,6 +808,11 @@ if __name__ == '__main__':
             print("Load file does not exist: ", args.student_path, "\n\n")
             exit(-1)
 
+    if args.resume:
+        if not os.path.exists(args.resume):
+            print("checkpoint file does not exist: ", args.resume, "\n\n")
+            exit(-1)
+
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
     # group_id = wandb.util.generate_id()
@@ -804,7 +821,7 @@ if __name__ == '__main__':
     warnings.filterwarnings("ignore")
 
     if args.telegram:
-        send_telegram_message("Starting experiment nn-based-intersection-classficator")
+        send_telegram_message("Starting experiment nn-based-intersection-classficator on " + str(socket.gethostname()))
 
     try:
         tic = time.time()
@@ -812,15 +829,17 @@ if __name__ == '__main__':
         toc = time.time()
         if args.telegram:
             send_telegram_message("Experiment of nn-based-intersection-classficator ended after " +
-                                  str(time.strftime("%H:%M:%S", time.gmtime(toc - tic))))
+                                  str(time.strftime("%H:%M:%S", time.gmtime(toc - tic))) + "\n" + "Run was on: " +
+                                  str(socket.gethostname()))
 
     except KeyboardInterrupt:
         print("Shutdown requested")
         if args.telegram:
-            send_telegram_message("Shutdown requested")
+            send_telegram_message("Shutdown requested on "+ str(socket.gethostname()))
     except Exception as e:
         if isinstance(e, SystemExit):
             exit()
         print(e)
         if args.telegram:
-            send_telegram_message("Error catched in nn-based-intersection-classficator :" + str(e))
+            send_telegram_message("Error catched in nn-based-intersection-classficator :" + str(e) + "\nRun was on: " +
+                                  str(socket.gethostname()))
