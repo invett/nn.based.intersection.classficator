@@ -592,7 +592,7 @@ def main(args, model=None):
                 print("=> loading checkpoint '{}'".format(args.resume))
                 # checkpoint = torch.load(args.resume, map_location=device)
                 checkpoint = torch.load(args.resume)
-                args.start_epoch = checkpoint['epoch']
+                args.start_epoch = checkpoint['epoch'] + 1
                 model.load_state_dict(checkpoint['model_state_dict'])
                 optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
                 print("=> loaded checkpoint '{}' (epoch {}) (loss {})"
