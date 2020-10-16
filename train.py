@@ -30,7 +30,7 @@ from miscellaneous.utils import init_function, reset_wandb_env, send_telegram_me
 from model.resnet_models import Personalized, Personalized_small, get_model_resnet, get_model_resnext
 
 
-def test(args, dataloader_test, gt_model=None, classifier=None):
+def test(args, dataloader_test, classifier=None):
     print('start Test!')
 
     if args.triplet:
@@ -67,15 +67,15 @@ def test(args, dataloader_test, gt_model=None, classifier=None):
     model.load_state_dict(torch.load(loadpath))
     print('Done!')
 
-    if args.embedding and not args.svm:
-        gt_model = copy.deepcopy(model)
-        gt_model.load_state_dict(torch.load(args.teacher_path))
-        gt_model.eval()
+    # if args.embedding and not args.svm:
+    # gt_model = copy.deepcopy(model)
+    # gt_model.load_state_dict(torch.load(args.teacher_path))
+    # gt_model.eval()
 
     if torch.cuda.is_available() and args.use_gpu:
         model = model.cuda()
-        if args.embedding and not args.svm:
-            gt_model = gt_model.cuda()
+        # if args.embedding and not args.svm:
+        # gt_model = gt_model.cuda()
 
     # Start testing
     confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test,
@@ -123,7 +123,8 @@ def validation(args, model, criterion, dataloader_val, classifier=None, gt_list=
         return None, acc, loss_val_mean
 
 
-def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, valfolder, GLOBAL_EPOCH, kfold_index=None):
+def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc_pre, valfolder, GLOBAL_EPOCH,
+          kfold_index=None):
     """
 
     Do the training. The LOSS depends on the value of
@@ -200,7 +201,6 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
 
     model.zero_grad()
     model.train()
-    scheduler = MultiStepLR(optimizer, milestones=[10, 40, 80], gamma=0.5)
 
     if not args.nowandb:  # if nowandb flag was set, skip
         wandb.watch(model, log="all")
@@ -288,7 +288,6 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
             if (kfold_acc < acc_val) or (kfold_loss > loss_val):
 
                 patience = 0
-                print('Patience restart')
 
                 if kfold_acc < acc_val:
                     kfold_acc = acc_val
@@ -300,30 +299,30 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, acc_pre, val
                     print('Best global accuracy: {}'.format(kfold_acc))
                     if args.nowandb:
                         print('Saving model: ',
-                              os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
+                              os.path.join(args.save_model_path, 'model_{}_{}.pth'.format(args.resnetmodel, epoch)))
                         torch.save({
                             'epoch': epoch,
                             'model_state_dict': model.state_dict(),
                             'optimizer_state_dict': optimizer.state_dict(),
+                            'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
                             'loss': loss,
-                        }, os.path.join(args.save_model_path, 'model_{}.pth'.format(args.resnetmodel)))
+                        }, os.path.join(args.save_model_path, 'model_{}_{}.pth'.format(args.resnetmodel, epoch)))
                     else:
                         print('Saving model: ',
-                              os.path.join(args.save_model_path, 'model_{}.pth'.format(wandb.run.name)))
+                              os.path.join(args.save_model_path, 'model_{}_{}.pth'.format(wandb.run.name, epoch)))
                         torch.save({
                             'epoch': epoch,
                             'model_state_dict': model.state_dict(),
                             'optimizer_state_dict': optimizer.state_dict(),
+                            'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
                             'loss': loss,
-                        }, os.path.join(args.save_model_path, 'model_{}.pth'.format(wandb.run.name)))
+                        }, os.path.join(args.save_model_path, 'model_{}_{}.pth'.format(wandb.run.name, epoch)))
 
             elif epoch < args.patience_start:
                 patience = 0
-                print('Patience start not reached')
 
             else:
                 patience += 1
-                print('Patience: {}\n'.format(patience))
 
         if patience >= args.patience > 0:
             break
@@ -405,6 +404,10 @@ def main(args, model=None):
     folders = folders[folders != os.path.join(data_path, '2011_09_30_drive_0028_sync')]
     test_path = os.path.join(data_path, '2011_09_30_drive_0028_sync')
 
+    # Exclude validation samples
+    folders = folders[folders != os.path.join(data_path, '2011_10_03_drive_0034_sync')]
+    val_path = os.path.join(data_path, '2011_09_30_drive_0028_sync')
+
     if args.grayscale:
         aanetTransforms = transforms.Compose(
             [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), GrayScale(), ToTensor()])
@@ -421,219 +424,239 @@ def main(args, model=None):
     k_fold_acc_list = []
 
     if args.train:
-        loo = LeaveOneOut()
+        # loo = LeaveOneOut()
         # sweep_config = sweep.config
 
-        for train_index, val_index in loo.split(folders):
+        # for train_index, val_index in loo.split(folders):
 
-            # todo delete when ok -----| print("\n\n NOW K-FOLDING .... ", train_index, val_index)
+        # todo delete when ok -----| print("\n\n NOW K-FOLDING .... ", train_index, val_index)
 
-            if args.sweep:
-                print("******* BEGIN *******")
-                reset_wandb_env()
-                wandb_local_name = str(sweep_run_name) + "-split-" + str(val_index[0])
-                print("Initializing wandb_current_run with name: ", wandb_local_name)
-                wandb_id = wandb.util.generate_id()
+        if args.sweep:
+            print("******* BEGIN *******")
+            reset_wandb_env()
+            wandb_local_name = str(sweep_run_name) + "-split-" + str(val_index[0])
+            print("Initializing wandb_current_run with name: ", wandb_local_name)
+            wandb_id = wandb.util.generate_id()
 
-                wandb_current_run = wandb.init(id=wandb_id, group=sweep_id, name=wandb_local_name, job_type=sweep.name,
-                                               tags=["Teacher", "sweep", "class", hostname])
+            wandb_current_run = wandb.init(id=wandb_id, group=sweep_id, name=wandb_local_name, job_type=sweep.name,
+                                           tags=["Teacher", "sweep", "class", hostname])
 
-                # todo delete when ok -----| if "sweep" in args and args.sweep:
-                # todo delete when ok -----|     print("YES IT IS A SWEEP! and should be called ---> " + wandb_local_name)
-                # todo delete when ok -----|     print("YES IT IS A SWEEP! and its name is this ---> " + wandb_current_run.name)
-                # todo delete when ok -----|     print("ITS RUN ID IS                           ---> " + wandb_current_run.id)
-                # todo delete when ok -----|     print("ITS SWEEP ID IS                         ---> " + sweep_id)
-                # todo delete when ok -----|     val_accuracy = random.random()
-                # todo delete when ok -----|     wandb_current_run.log(dict(val_accuracy=val_accuracy))
-                # todo delete when ok -----|     wandb_current_run.join()
-                # todo delete when ok -----|     wandb_current_run.finish()
-                # todo delete when ok -----|     print("END_RUN!!! MOVING TO THE NEXT ONE IN k-fold!" + wandb_local_name)
-                # todo delete when ok -----| else:
-                # todo delete when ok -----|     print("VERY SAD TIMES....")
-                # todo delete when ok -----|
-                # todo delete when ok -----| print("*******  END  *******")
-                # todo delete when ok -----| continue
-            else:
-                if not args.nowandb:  # if nowandb flag was set, skip
-                    wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito',
-                               job_type="training", reinit=True)
-                    wandb.config.update(args)
+            # todo delete when ok -----| if "sweep" in args and args.sweep:
+            # todo delete when ok -----|     print("YES IT IS A SWEEP! and should be called ---> " + wandb_local_name)
+            # todo delete when ok -----|     print("YES IT IS A SWEEP! and its name is this ---> " + wandb_current_run.name)
+            # todo delete when ok -----|     print("ITS RUN ID IS                           ---> " + wandb_current_run.id)
+            # todo delete when ok -----|     print("ITS SWEEP ID IS                         ---> " + sweep_id)
+            # todo delete when ok -----|     val_accuracy = random.random()
+            # todo delete when ok -----|     wandb_current_run.log(dict(val_accuracy=val_accuracy))
+            # todo delete when ok -----|     wandb_current_run.join()
+            # todo delete when ok -----|     wandb_current_run.finish()
+            # todo delete when ok -----|     print("END_RUN!!! MOVING TO THE NEXT ONE IN k-fold!" + wandb_local_name)
+            # todo delete when ok -----| else:
+            # todo delete when ok -----|     print("VERY SAD TIMES....")
+            # todo delete when ok -----|
+            # todo delete when ok -----| print("*******  END  *******")
+            # todo delete when ok -----| continue
+        else:
+            if not args.nowandb:  # if nowandb flag was set, skip
+                wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito',
+                           job_type="training", reinit=True)
+                wandb.config.update(args)
 
-            train_path, val_path = folders[train_index], folders[val_index]
+        # train_path, val_path = folders[train_index], folders[val_index]
+        train_path, val_path = np.array(folders), np.array([val_path])  # No kfold
 
-            if args.dataloader == "fromAANETandDualBisenet":
-                val_dataset = fromAANETandDualBisenet(val_path, args.distance, transform=aanetTransforms)
-                train_dataset = fromAANETandDualBisenet(train_path, args.distance, transform=aanetTransforms)
+        if args.dataloader == "fromAANETandDualBisenet":
+            val_dataset = fromAANETandDualBisenet(val_path, args.distance, transform=aanetTransforms)
+            train_dataset = fromAANETandDualBisenet(train_path, args.distance, transform=aanetTransforms)
 
-            elif args.dataloader == "generatedDataset":
-                val_dataset = fromGeneratedDataset(val_path, args.distance, transform=generateTransforms,
-                                                   loadlist=False,
-                                                   decimateStep=args.decimate, addGeneratedOSM=False)  # todo fix loadlist for k-fold
-                train_dataset = fromGeneratedDataset(train_path, args.distance, transform=generateTransforms,
-                                                     loadlist=False,
-                                                     decimateStep=args.decimate, addGeneratedOSM=False)  # todo fix loadlist for k-fold
+        elif args.dataloader == "generatedDataset":
+            val_dataset = fromGeneratedDataset(val_path, args.distance, transform=generateTransforms,
+                                               loadlist=False,
+                                               decimateStep=args.decimate,
+                                               addGeneratedOSM=False)  # todo fix loadlist for k-fold
+            train_dataset = fromGeneratedDataset(train_path, args.distance, transform=generateTransforms,
+                                                 loadlist=False,
+                                                 decimateStep=args.decimate,
+                                                 addGeneratedOSM=False)  # todo fix loadlist for k-fold
 
-            elif args.dataloader == "triplet_OBB":
+        elif args.dataloader == "triplet_OBB":
 
-                print("\nCreating train dataset from triplet_OBB")
-                train_dataset = triplet_OBB(train_path, args.distance, elements=args.num_elements_OBB, canonical=False,
-                                            transform_obs=obsTransforms, transform_bev=generateTransforms,
-                                            loadlist=False, decimateStep=args.decimate)
+            print("\nCreating train dataset from triplet_OBB")
+            train_dataset = triplet_OBB(train_path, args.distance, elements=args.num_elements_OBB, canonical=False,
+                                        transform_obs=obsTransforms, transform_bev=generateTransforms,
+                                        loadlist=False, decimateStep=args.decimate)
 
-                print("\nCreating validation dataset from triplet_OBB")
-                val_dataset = triplet_OBB(val_path, args.distance, elements=args.num_elements_OBB, canonical=False,
-                                          transform_obs=obsTransforms, transform_bev=generateTransforms, loadlist=False,
-                                          decimateStep=args.decimate)
+            print("\nCreating validation dataset from triplet_OBB")
+            val_dataset = triplet_OBB(val_path, args.distance, elements=args.num_elements_OBB, canonical=False,
+                                      transform_obs=obsTransforms, transform_bev=generateTransforms, loadlist=False,
+                                      decimateStep=args.decimate)
 
-            elif args.dataloader == "triplet_BOO":
+        elif args.dataloader == "triplet_BOO":
 
-                val_dataset = triplet_BOO(val_path, args.distance, canonical=False,
-                                          transform_obs=obsTransforms, transform_bev=generateTransforms,
-                                          decimateStep=args.decimate)
+            val_dataset = triplet_BOO(val_path, args.distance, canonical=False,
+                                      transform_obs=obsTransforms, transform_bev=generateTransforms,
+                                      decimateStep=args.decimate)
 
-                train_dataset = triplet_BOO(train_path, args.distance, canonical=False,
-                                            transform_obs=obsTransforms, transform_bev=generateTransforms,
-                                            decimateStep=args.decimate)
+            train_dataset = triplet_BOO(train_path, args.distance, canonical=False,
+                                        transform_obs=obsTransforms, transform_bev=generateTransforms,
+                                        decimateStep=args.decimate)
 
-            elif args.dataloader == "BaseLine":
-                val_dataset = BaseLine(val_path, transform=transforms.Compose([transforms.Resize((224, 224)),
+        elif args.dataloader == "BaseLine":
+            val_dataset = BaseLine(val_path, transform=transforms.Compose([transforms.Resize((224, 224)),
+                                                                           transforms.ToTensor(),
+                                                                           transforms.Normalize(
+                                                                               (0.485, 0.456, 0.406),
+                                                                               (0.229, 0.224, 0.225))
+                                                                           ]))
+            train_dataset = BaseLine(train_path, transform=transforms.Compose([transforms.Resize((224, 224)),
+                                                                               transforms.RandomAffine(15,
+                                                                                                       translate=(
+                                                                                                           0.0,
+                                                                                                           0.1),
+                                                                                                       shear=(
+                                                                                                           -15,
+                                                                                                           15)),
+                                                                               transforms.ColorJitter(
+                                                                                   brightness=0.5, contrast=0.5,
+                                                                                   saturation=0.5),
                                                                                transforms.ToTensor(),
                                                                                transforms.Normalize(
                                                                                    (0.485, 0.456, 0.406),
                                                                                    (0.229, 0.224, 0.225))
                                                                                ]))
-                train_dataset = BaseLine(train_path, transform=transforms.Compose([transforms.Resize((224, 224)),
-                                                                                   transforms.RandomAffine(15,
-                                                                                                           translate=(
-                                                                                                               0.0,
-                                                                                                               0.1),
-                                                                                                           shear=(
-                                                                                                               -15,
-                                                                                                               15)),
-                                                                                   transforms.ColorJitter(
-                                                                                       brightness=0.5, contrast=0.5,
-                                                                                       saturation=0.5),
-                                                                                   transforms.ToTensor(),
-                                                                                   transforms.Normalize(
-                                                                                       (0.485, 0.456, 0.406),
-                                                                                       (0.229, 0.224, 0.225))
-                                                                                   ]))
+        else:
+            raise Exception("Dataloader not found")
+
+        dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
+                                      num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
+        dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False,
+                                    num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
+
+        # Build model
+        if args.resnetmodel[0:6] == 'resnet':
+            model = get_model_resnet(args.resnetmodel, args.num_classes, transfer=args.transfer,
+                                     pretrained=args.pretrained,
+                                     embedding=(
+                                                       args.embedding or args.triplet or args.freeze) and not args.embedding_class)
+        elif args.resnetmodel[0:7] == 'resnext':
+            model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
+        elif args.resnetmodel == 'personalized':
+            model = Personalized(args.num_classes)
+        elif args.resnetmodel == 'personalized_small':
+            model = Personalized_small(args.num_classes)
+        elif args.dropout:
+            if args.resnetmodel == 'resnet':
+                model = get_resnext(args, args.cardinality, args.d_width, args.num_classes)
             else:
-                raise Exception("Dataloader not found")
+                model = get_resnet(args, args.cardinality)
 
-            dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                                          num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
-            dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False,
-                                        num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
+        if args.freeze:
+            # load best trained model
+            if args.nowandb:
+                loadpath = './trainedmodels/model_' + args.resnetmodel + '.pth'
+            else:
+                loadpath = './trainedmodels/model_' + wandb.run.name + '.pth'
+            model.load_state_dict(torch.load(loadpath))
+            for param in model.parameters():
+                param.requires_grad = False
+            model = torch.nn.Sequential(model, torch.nn.Linear(512, 7))
 
-            # Build model
-            if args.resnetmodel[0:6] == 'resnet':
-                model = get_model_resnet(args.resnetmodel, args.num_classes, transfer=args.transfer,
-                                         pretrained=args.pretrained,
-                                         embedding=(args.embedding or args.triplet or args.freeze) and not args.embedding_class)
-            elif args.resnetmodel[0:7] == 'resnext':
-                model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
-            elif args.resnetmodel == 'personalized':
-                model = Personalized(args.num_classes)
-            elif args.resnetmodel == 'personalized_small':
-                model = Personalized_small(args.num_classes)
-            elif args.dropout:
-                if args.resnetmodel == 'resnet':
-                    model = get_resnext(args, args.cardinality, args.d_width, args.num_classes)
+        # build optimizer
+        if args.optimizer == 'rmsprop':
+            optimizer = torch.optim.RMSprop(model.parameters(), args.lr, momentum=args.momentum)
+        elif args.optimizer == 'sgd':
+            optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum)
+        elif args.optimizer == 'adam':
+            optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=5e-4)
+        elif args.optimizer == 'ASGD':
+            optimizer = torch.optim.ASGD(model.parameters(), args.lr)
+        elif args.optimizer == 'Adamax':
+            optimizer = torch.optim.Adamax(model.parameters(), args.lr)
+        else:
+            print('not supported optimizer \n')
+            exit()
+
+        # Build scheduler
+        if args.scheduler:
+            scheduler = MultiStepLR(optimizer, milestones=[15, 30, 60], gamma=0.1)
+        else:
+            scheduler = None
+
+        if args.resume:
+            if os.path.isfile(args.resume):
+                # device = torch.device('cpu')
+                print("=> loading checkpoint '{}'".format(args.resume))
+                # checkpoint = torch.load(args.resume, map_location=device)
+                checkpoint = torch.load(args.resume)
+                args.start_epoch = checkpoint['epoch']
+                model.load_state_dict(checkpoint['model_state_dict'])
+                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                print("=> loaded checkpoint '{}' (epoch {}) (loss {})"
+                      .format(args.resume, checkpoint['epoch'], checkpoint['loss']))
+
+                # Set new learning rate from command line
+                optimizer.param_groups[0]['lr'] = args.lr
+
+                # Load Scheduler if exist
+                if checkpoint['scheduler_state_dict'] is not None and args.scheduler:
+                    scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+
+                if args.weighted:
+                    if args.lossfunction == 'SmoothL1':
+                        valcriterion = torch.nn.SmoothL1Loss(reduction='none')
+                    elif args.lossfunction == 'L1':
+                        valcriterion = torch.nn.L1Loss(reduction='none')
+                    elif args.lossfunction == 'MSE':
+                        valcriterion = torch.nn.MSELoss(reduction='none')
                 else:
-                    model = get_resnet(args, args.cardinality)
+                    if args.lossfunction == 'SmoothL1':
+                        valcriterion = torch.nn.SmoothL1Loss(reduction='mean')
+                    elif args.lossfunction == 'L1':
+                        valcriterion = torch.nn.L1Loss(reduction='mean')
+                    elif args.lossfunction == 'MSE':
+                        valcriterion = torch.nn.MSELoss(reduction='mean')
 
-            #if args.embedding:
-                #gt_model = copy.deepcopy(model)
-                #gt_model.load_state_dict(torch.load(args.teacher_path))
-                #if args.embedding_class:  # if I'm using the teacher trained with FC I need to get rid of it before.
-                    #model = torch.nn.Sequential(*(list(model.children())[:-1]))
-                    #gt_model = torch.nn.Sequential(*(list(gt_model.children())[:-1]))
-                #gt_model.eval()
+                gt_list = []
+                embeddings = np.loadtxt("./trainedmodels/teacher/embeddings/all_embedding_matrix.txt", delimiter='\t')
+                splits = np.array_split(embeddings, 7)
+                for i in range(7):
+                    gt_list.append((np.mean(splits[i], axis=0)))
+                gt_list = torch.FloatTensor(gt_list)
 
-            if args.freeze:
-                # load best trained model
-                if args.nowandb:
-                    loadpath = './trainedmodels/model_' + args.resnetmodel + '.pth'
-                else:
-                    loadpath = './trainedmodels/model_' + wandb.run.name + '.pth'
-                model.load_state_dict(torch.load(loadpath))
-                for param in model.parameters():
-                    param.requires_grad = False
-                model = torch.nn.Sequential(model, torch.nn.Linear(512, 7))
-
-            if torch.cuda.is_available() and args.use_gpu:
-                model = model.cuda()
-                #if args.embedding:
-                    #gt_model = gt_model.cuda()
-
-            # build optimizer
-            if args.optimizer == 'rmsprop':
-                optimizer = torch.optim.RMSprop(model.parameters(), args.lr, momentum=args.momentum)
-            elif args.optimizer == 'sgd':
-                optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum)
-            elif args.optimizer == 'adam':
-                optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=5e-4)
-            elif args.optimizer == 'ASGD':
-                optimizer = torch.optim.ASGD(model.parameters(), args.lr)
-            elif args.optimizer == 'Adamax':
-                optimizer = torch.optim.Adamax(model.parameters(), args.lr)
+                validation(args, model, valcriterion, dataloader_val, gt_list=gt_list)
             else:
-                print('not supported optimizer \n')
-                exit()
+                print("=> no checkpoint found at '{}'".format(args.resume))
 
-            if args.resume:
-                if os.path.isfile(args.resume):
-                    # device = torch.device('cpu')
-                    print("=> loading checkpoint '{}'".format(args.resume))
-                    # checkpoint = torch.load(args.resume, map_location=device)
-                    checkpoint = torch.load(args.resume)
-                    args.start_epoch = checkpoint['epoch']
-                    model.load_state_dict(checkpoint['model_state_dict'])
-                    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-                    print("=> loaded checkpoint '{}' (epoch {}) (loss {})"
-                          .format(args.resume, checkpoint['epoch'], checkpoint['loss']))
+        if torch.cuda.is_available() and args.use_gpu:
+            device = torch.device("cuda")
+            model = model.to(device)
 
-                    # Set new learning rate from command line
-                    optimizer.param_groups[0]['lr'] = args.lr
-                else:
-                    print("=> no checkpoint found at '{}'".format(args.resume))
+        # train model
+        # acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc,
+        # os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH, kfold_index=val_index[0])
 
-            # if torch.cuda.is_available() and args.use_gpu:
-            #     # model = model.cuda()
-            #     device = torch.device("cuda")
-            #     model = model.to(device)
-            #     # if args.embedding:
-            #     #     gt_model = gt_model.cuda()
+        acc = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
+                    os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
 
-            # train model
-            if args.embedding:
-                acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc,
-                            os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH,
-                            kfold_index=val_index[0])
-            else:
-                acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc,
-                            os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH, kfold_index=val_index[0])
+        k_fold_acc_list.append(acc)
 
-            k_fold_acc_list.append(acc)
+        if args.telegram:
+            send_telegram_message("K-Fold finished")
 
-            if args.telegram:
-                send_telegram_message("K-Fold finished")
+        if args.sweep:
+            wandb_current_run.join()
+        else:
+            if not args.nowandb:  # if nowandb flag was set, skip
+                wandb.join()
 
-            if args.sweep:
-                wandb_current_run.join()
-            else:
-                if not args.nowandb:  # if nowandb flag was set, skip
-                    wandb.join()
+        if not args.nowandb:  # if nowandb flag was set, skip
+            wandb.log({"Val/mean acc": np.average(np.array(k_fold_acc_list))})
 
-    if not args.nowandb:  # if nowandb flag was set, skip
-        wandb.log({"Val/acc": np.average(np.array(k_fold_acc_list))})
-
-    # todo delete when ok -----| print("==============================================================================")
-    # todo delete when ok -----| print("=============the end of the test ===eh===eh===eh=====:-)======================")
-    # todo delete when ok -----| print("==============================================================================")
-    # todo delete when ok -----| sweep.join()
-    # todo delete when ok -----| exit(-2)
+        # todo delete when ok -----| print("==============================================================================")
+        # todo delete when ok -----| print("=============the end of the test ===eh===eh===eh=====:-)======================")
+        # todo delete when ok -----| print("==============================================================================")
+        # todo delete when ok -----| sweep.join()
+        # todo delete when ok -----| exit(-2)
 
         if args.svm:
             # load best trained model
@@ -787,9 +810,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # check whether --embedding was set but with no teacher path
-    if args.embedding and not args.teacher_path:
-        print("Parameter --teacher_path is REQUIRED when --embedding is set")
-        exit(-1)
+    # if args.embedding and not args.teacher_path:
+    # print("Parameter --teacher_path is REQUIRED when --embedding is set")
+    # exit(-1)
 
     if args.svm and not args.embedding:
         print("Parameter --embedding is REQUIRED when --svm is set")
@@ -816,7 +839,7 @@ if __name__ == '__main__':
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
     # group_id = wandb.util.generate_id()
-    group_id = 'Teacher_Student_Ultimate'
+    group_id = 'Teacher_Student_nomask'
     print(args)
     warnings.filterwarnings("ignore")
 
@@ -835,7 +858,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print("Shutdown requested")
         if args.telegram:
-            send_telegram_message("Shutdown requested on "+ str(socket.gethostname()))
+            send_telegram_message("Shutdown requested on " + str(socket.gethostname()))
     except Exception as e:
         if isinstance(e, SystemExit):
             exit()
