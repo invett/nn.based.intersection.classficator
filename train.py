@@ -206,6 +206,8 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
         wandb.watch(model, log="all")
 
     current_batch = 0
+    patience = 0
+
     for epoch in range(args.start_epoch, args.num_epochs):
         print("\n\n===========================================================")
         print("date and time:", datetime.now().strftime("%m/%d/%Y, %H:%M:%S"))
@@ -550,10 +552,6 @@ def main(args, model=None):
             else:
                 model = get_resnet(args, args.cardinality)
 
-        if torch.cuda.is_available() and args.use_gpu:
-            device = torch.device("cuda")
-            model = model.to(device)
-
         if args.freeze:
             # load best trained model
             if args.nowandb:
@@ -565,27 +563,6 @@ def main(args, model=None):
                 param.requires_grad = False
             model = torch.nn.Sequential(model, torch.nn.Linear(512, 7))
 
-        # build optimizer
-        if args.optimizer == 'rmsprop':
-            optimizer = torch.optim.RMSprop(model.parameters(), args.lr, momentum=args.momentum)
-        elif args.optimizer == 'sgd':
-            optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum)
-        elif args.optimizer == 'adam':
-            optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=5e-4)
-        elif args.optimizer == 'ASGD':
-            optimizer = torch.optim.ASGD(model.parameters(), args.lr)
-        elif args.optimizer == 'Adamax':
-            optimizer = torch.optim.Adamax(model.parameters(), args.lr)
-        else:
-            print('not supported optimizer \n')
-            exit()
-
-        # Build scheduler
-        if args.scheduler:
-            scheduler = MultiStepLR(optimizer, milestones=[15, 30, 60], gamma=0.1)
-        else:
-            scheduler = None
-
         if args.resume:
             if os.path.isfile(args.resume):
                 # device = torch.device('cpu')
@@ -594,42 +571,60 @@ def main(args, model=None):
                 checkpoint = torch.load(args.resume)
                 args.start_epoch = checkpoint['epoch'] + 1
                 model.load_state_dict(checkpoint['model_state_dict'])
-                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                if torch.cuda.is_available() and args.use_gpu:
+                    model = model.cuda()
                 print("=> loaded checkpoint '{}' (epoch {}) (loss {})"
                       .format(args.resume, checkpoint['epoch'], checkpoint['loss']))
-
-                # Set new learning rate from command line
-                optimizer.param_groups[0]['lr'] = args.lr
-
-                # Load Scheduler if exist
-                if checkpoint['scheduler_state_dict'] is not None and args.scheduler:
-                    scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
-
-                if args.weighted:
-                    if args.lossfunction == 'SmoothL1':
-                        valcriterion = torch.nn.SmoothL1Loss(reduction='none')
-                    elif args.lossfunction == 'L1':
-                        valcriterion = torch.nn.L1Loss(reduction='none')
-                    elif args.lossfunction == 'MSE':
-                        valcriterion = torch.nn.MSELoss(reduction='none')
-                else:
-                    if args.lossfunction == 'SmoothL1':
-                        valcriterion = torch.nn.SmoothL1Loss(reduction='mean')
-                    elif args.lossfunction == 'L1':
-                        valcriterion = torch.nn.L1Loss(reduction='mean')
-                    elif args.lossfunction == 'MSE':
-                        valcriterion = torch.nn.MSELoss(reduction='mean')
-
-                gt_list = []
-                embeddings = np.loadtxt("./trainedmodels/teacher/embeddings/all_embedding_matrix.txt", delimiter='\t')
-                splits = np.array_split(embeddings, 7)
-                for i in range(7):
-                    gt_list.append((np.mean(splits[i], axis=0)))
-                gt_list = torch.FloatTensor(gt_list)
-
-                validation(args, model, valcriterion, dataloader_val, gt_list=gt_list)
             else:
                 print("=> no checkpoint found at '{}'".format(args.resume))
+        else:
+            if torch.cuda.is_available() and args.use_gpu:
+                model = model.cuda()
+
+        # Build optimizer
+        if args.optimizer == 'rmsprop':
+            optimizer = torch.optim.RMSprop(model.parameters(), args.lr, momentum=args.momentum)
+            if args.resume:
+                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                # Set new learning rate from command line
+                optimizer.param_groups[0]['lr'] = args.lr
+        elif args.optimizer == 'sgd':
+            optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum)
+            if args.resume:
+                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                # Set new learning rate from command line
+                optimizer.param_groups[0]['lr'] = args.lr
+        elif args.optimizer == 'adam':
+            optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=5e-4)
+            if args.resume:
+                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                # Set new learning rate from command line
+                optimizer.param_groups[0]['lr'] = args.lr
+        elif args.optimizer == 'ASGD':
+            optimizer = torch.optim.ASGD(model.parameters(), args.lr)
+            if args.resume:
+                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                # Set new learning rate from command line
+                optimizer.param_groups[0]['lr'] = args.lr
+        elif args.optimizer == 'Adamax':
+            optimizer = torch.optim.Adamax(model.parameters(), args.lr)
+            if args.resume:
+                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                # Set new learning rate from command line
+                optimizer.param_groups[0]['lr'] = args.lr
+        else:
+            print('not supported optimizer \n')
+            exit()
+
+        # Build scheduler
+        if args.scheduler:
+            scheduler = MultiStepLR(optimizer, milestones=[15, 30, 60], gamma=0.1)
+            # Load Scheduler if exist
+            if args.resume and checkpoint['scheduler_state_dict'] is not None:
+                scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+
+        else:
+            scheduler = None
 
         # train model
         # acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc,
