@@ -550,6 +550,10 @@ def main(args, model=None):
             else:
                 model = get_resnet(args, args.cardinality)
 
+        if torch.cuda.is_available() and args.use_gpu:
+            device = torch.device("cuda")
+            model = model.to(device)
+
         if args.freeze:
             # load best trained model
             if args.nowandb:
@@ -626,10 +630,6 @@ def main(args, model=None):
                 validation(args, model, valcriterion, dataloader_val, gt_list=gt_list)
             else:
                 print("=> no checkpoint found at '{}'".format(args.resume))
-
-        if torch.cuda.is_available() and args.use_gpu:
-            device = torch.device("cuda")
-            model = model.to(device)
 
         # train model
         # acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc,
