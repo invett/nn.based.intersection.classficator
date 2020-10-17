@@ -1,5 +1,4 @@
 import argparse
-import copy
 import multiprocessing
 import os
 import pickle
@@ -17,8 +16,7 @@ import torch
 import torchvision.transforms as transforms
 import tqdm
 import wandb
-from sklearn.model_selection import LeaveOneOut
-from torch.optim.lr_scheduler import MultiStepLR
+from torch.optim.lr_scheduler import MultiStepLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
 from dataloaders.sequencedataloader import BaseLine, TestDataset, fromAANETandDualBisenet, fromGeneratedDataset, \
@@ -26,7 +24,7 @@ from dataloaders.sequencedataloader import BaseLine, TestDataset, fromAANETandDu
 from dataloaders.transforms import GenerateBev, GrayScale, Mirror, Normalize, Rescale, ToTensor
 from dropout_models import get_resnet, get_resnext
 from miscellaneous.utils import init_function, reset_wandb_env, send_telegram_message, send_telegram_picture, \
-    student_network_pass, svm_train, svm_data, seed_everything
+    student_network_pass, svm_data, svm_train
 from model.resnet_models import Personalized, Personalized_small, get_model_resnet, get_model_resnext
 
 
@@ -268,8 +266,9 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
 
         tq.close()
 
-        if args.scheduler:
-            scheduler.step()
+        # ReduceLROnPlateau is set after the validation block
+        if args.scheduler and args.scheduler_type == 'MultiStepLR':
+                scheduler.step()
 
         # Calculate metrics
         loss_train_mean = loss_record / len(dataloader_train)
@@ -289,6 +288,9 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
 
         if epoch % args.validation_step == 0:
             confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gt_list=gt_list)
+
+            if args.scheduler_type == 'ReduceLROnPlateau':
+                scheduler.step(loss_val)
 
             plt.figure(figsize=(10, 7))
             title = str(socket.gethostname()) + '\nEpoch: ' + str(epoch) + '\n' + str(valfolder)
@@ -637,9 +639,18 @@ def main(args, model=None):
             print('not supported optimizer \n')
             exit()
 
+        parser.add_argument('--scheduler_type', type=str, default='MultiStepLR',
+                            choices=['MultiStepLR', 'ReduceLROnPlateau'])
+
+
         # Build scheduler
         if args.scheduler:
-            scheduler = MultiStepLR(optimizer, milestones=[15, 30, 60], gamma=0.1)
+            if args.scheduler_type == 'MultiStepLR':
+                scheduler = MultiStepLR(optimizer, milestones=[5, 10, 15, 18, 20], gamma=0.5, last_epoch=100,
+                                        verbose=True)
+            if args.scheduler_type == 'ReduceLROnPlateau':
+                scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.0001,
+                                              threshold_mode='rel', cooldown=1, min_lr=0, eps=1e-08, verbose=True
             # Load Scheduler if exist
             if args.resume and checkpoint['scheduler_state_dict'] is not None:
                 scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
@@ -802,6 +813,8 @@ if __name__ == '__main__':
     parser.add_argument('--pretrained', type=bool, default=True, help='whether to use a pretrained net, or not')
     #####    parser.add_argument('--scheduler', type=bool, default=True, help='scheduling lr')
     parser.add_argument('--scheduler', action='store_true', help='scheduling lr')
+    parser.add_argument('--scheduler_type', type=str, default='MultiStepLR', choices=['MultiStepLR',
+                                                                                      'ReduceLROnPlateau'])
     parser.add_argument('--grayscale', action='store_true', help='Use Grayscale Images')
     parser.add_argument('--resume', type=str, default=None, help='path to checkpoint model')
 
