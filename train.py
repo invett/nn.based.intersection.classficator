@@ -257,8 +257,8 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
                     kfold_index = 0
                     print("Warning, k-fold index is not passed. Ignore if not k-folding")
 
-                wandb.log({"batch_training_accuracy": acc / args.batch_size,
-                           "batch_training_loss": loss / args.batch_size,
+                wandb.log({"batch_training_accuracy": acc,
+                           "batch_training_loss": loss,
                            "batch_current_batch": current_batch,
                            "batch_current_epoch": epoch,
                            "batch_kfold_index": kfold_index})
