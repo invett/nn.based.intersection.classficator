@@ -320,24 +320,28 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
                     print('Best global accuracy: {}'.format(kfold_acc))
                     if args.nowandb:
                         print('Saving model: ',
-                              os.path.join(args.save_model_path, 'model_{}_{}.pth'.format(args.resnetmodel, epoch)))
+                              os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
+                                                                                            args.resnetmodel, epoch)))
                         torch.save({
                             'epoch': epoch,
                             'model_state_dict': model.state_dict(),
                             'optimizer_state_dict': optimizer.state_dict(),
                             'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
                             'loss': loss,
-                        }, os.path.join(args.save_model_path, 'model_{}_{}.pth'.format(args.resnetmodel, epoch)))
+                        }, os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
+                                                                                         args.resnetmodel, epoch)))
                     else:
                         print('Saving model: ',
-                              os.path.join(args.save_model_path, 'model_{}_{}.pth'.format(wandb.run.name, epoch)))
+                              os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
+                                                                                            wandb.run.id, epoch)))
                         torch.save({
                             'epoch': epoch,
                             'model_state_dict': model.state_dict(),
                             'optimizer_state_dict': optimizer.state_dict(),
                             'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
                             'loss': loss,
-                        }, os.path.join(args.save_model_path, 'model_{}_{}.pth'.format(wandb.run.name, epoch)))
+                        }, os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
+                                                                                         wandb.run.id, epoch)))
 
             elif epoch < args.patience_start:
                 patience = 0
@@ -581,7 +585,7 @@ def main(args, model=None):
             if args.nowandb:
                 loadpath = './trainedmodels/model_' + args.resnetmodel + '.pth'
             else:
-                loadpath = './trainedmodels/model_' + wandb.run.name + '.pth'
+                loadpath = './trainedmodels/model_' + wandb.run.id + '.pth'
             model.load_state_dict(torch.load(loadpath))
             for param in model.parameters():
                 param.requires_grad = False
@@ -690,7 +694,7 @@ def main(args, model=None):
             if args.nowandb:
                 loadpath = './trainedmodels/model_' + args.resnetmodel + '.pth'
             else:
-                loadpath = './trainedmodels/model_' + wandb.run.name + '.pth'
+                loadpath = './trainedmodels/model_' + wandb.run.id + '.pth'
             model.load_state_dict(torch.load(loadpath))
             # save the model to disk
             embeddings, labels = svm_data(args, model, dataloader_train, dataloader_val)
@@ -797,6 +801,7 @@ if __name__ == '__main__':
     parser.add_argument('--cuda', type=str, default='0', help='GPU is used for training')
     parser.add_argument('--use_gpu', type=bool, default=True, help='whether to user gpu for training')
     parser.add_argument('--save_model_path', type=str, default='./trainedmodels/', help='path to save model')
+    parser.add_argument('--save_prefix', type=str, default='', help='Prefix to all saved models')
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
     parser.add_argument('--lossfunction', type=str, default='MSE', choices=['MSE', 'SmoothL1', 'L1'],
                         help='lossfunction selection')
@@ -864,6 +869,12 @@ if __name__ == '__main__':
         if not os.path.exists(args.resume):
             print("checkpoint file does not exist: ", args.resume, "\n\n")
             exit(-1)
+
+    # Ensure there's a _ at the end of the prefix
+    if args.save_prefix != '':
+        if args.save_prefix[-1] != '_':
+            args.save_prefix = args.save_prefix + '_'
+
 
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
