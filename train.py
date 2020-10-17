@@ -303,8 +303,8 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
             if args.telegram:
                 send_telegram_picture(plt,
                                       "Epoch: " + str(epoch) +
-                                      "\nLR: " + optimizer.param_groups[0]['lr']
-                                      "\nacc_val: " + str(acc_val),
+                                      "\nLR: " + optimizer.param_groups[0]['lr'] +
+                                      "\nacc_val: " + str(acc_val) +
                                       "\nloss_val: " + str(loss_val))
 
             if not args.nowandb:  # if nowandb flag was set, skip
