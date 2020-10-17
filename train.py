@@ -649,8 +649,7 @@ def main(args, model=None):
                     param_epoch = checkpoint['epoch']
                 else:
                     param_epoch = -1
-                scheduler = MultiStepLR(optimizer, milestones=[5, 10, 15, 18, 20], gamma=0.5, verbose=True,
-                                        last_epoch=param_epoch)
+                scheduler = MultiStepLR(optimizer, milestones=[5, 10, 15, 18, 20], gamma=0.5, last_epoch=param_epoch)
             if args.scheduler_type == 'ReduceLROnPlateau':
                 scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.0001,
                                               threshold_mode='rel', cooldown=1, min_lr=0, eps=1e-08, verbose=True)
