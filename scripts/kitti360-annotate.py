@@ -56,13 +56,13 @@ scale_percent = 200  # percent of original size
 width = int(img_type_0.shape[1] * scale_percent / 100)
 height = int(img_type_0.shape[0] * scale_percent / 100)
 dim = (width, height)
-img_type_0 = cv2.resize(img_type_0, dim, interpolation = cv2.INTER_AREA)
-img_type_1 = cv2.resize(img_type_1, dim, interpolation = cv2.INTER_AREA)
-img_type_2 = cv2.resize(img_type_2, dim, interpolation = cv2.INTER_AREA)
-img_type_3 = cv2.resize(img_type_3, dim, interpolation = cv2.INTER_AREA)
-img_type_4 = cv2.resize(img_type_4, dim, interpolation = cv2.INTER_AREA)
-img_type_5 = cv2.resize(img_type_5, dim, interpolation = cv2.INTER_AREA)
-img_type_6 = cv2.resize(img_type_6, dim, interpolation = cv2.INTER_AREA)
+img_type_0 = cv2.resize(img_type_0, dim, interpolation=cv2.INTER_AREA)
+img_type_1 = cv2.resize(img_type_1, dim, interpolation=cv2.INTER_AREA)
+img_type_2 = cv2.resize(img_type_2, dim, interpolation=cv2.INTER_AREA)
+img_type_3 = cv2.resize(img_type_3, dim, interpolation=cv2.INTER_AREA)
+img_type_4 = cv2.resize(img_type_4, dim, interpolation=cv2.INTER_AREA)
+img_type_5 = cv2.resize(img_type_5, dim, interpolation=cv2.INTER_AREA)
+img_type_6 = cv2.resize(img_type_6, dim, interpolation=cv2.INTER_AREA)
 
 
 def save_csv(annotations, filename="kitti360-crossings.cvs"):
