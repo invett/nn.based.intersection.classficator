@@ -774,6 +774,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=0, help='Starting seed, for reproducibility. Default is ZERO!')
     parser.add_argument('--train', action='store_true', help='Train/Validate the model')
     parser.add_argument('--test', action='store_true', help='Test the model')
+    parser.add_argument('--wandb_group_id', type=str, help='Set group id for the wandb experiment')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     parser.add_argument('--sweep', action='store_true', help='if set, this run is part of a wandb-sweep; use it with'
                                                              'as documented in '
@@ -879,7 +880,10 @@ if __name__ == '__main__':
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
     # group_id = wandb.util.generate_id()
-    group_id = 'Teacher_Student_nomask'
+    if args.wandb_group_id:
+        group_id = args.wandb_group_id
+    else:
+        group_id = 'Teacher_Student_nomask'
     print(args)
     warnings.filterwarnings("ignore")
 
