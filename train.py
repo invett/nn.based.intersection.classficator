@@ -566,8 +566,7 @@ def main(args, model=None):
         if args.resnetmodel[0:6] == 'resnet':
             model = get_model_resnet(args.resnetmodel, args.num_classes, transfer=args.transfer,
                                      pretrained=args.pretrained,
-                                     embedding=(
-                                                       args.embedding or args.triplet or args.freeze) and not args.embedding_class)
+                                     embedding=(args.embedding or args.triplet or args.freeze) and not args.embedding_class)
         elif args.resnetmodel[0:7] == 'resnext':
             model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
         elif args.resnetmodel == 'personalized':
@@ -654,7 +653,7 @@ def main(args, model=None):
                                         verbose=True)
             if args.scheduler_type == 'ReduceLROnPlateau':
                 scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.0001,
-                                              threshold_mode='rel', cooldown=1, min_lr=0, eps=1e-08, verbose=True
+                                              threshold_mode='rel', cooldown=1, min_lr=0, eps=1e-08, verbose=True)
             # Load Scheduler if exist
             if args.resume and checkpoint['scheduler_state_dict'] is not None:
                 scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
