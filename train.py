@@ -83,7 +83,7 @@ def test(args, dataloader_test, classifier=None):
 
 
 def validation(args, model, criterion, dataloader_val, classifier=None, gt_list=None):
-    print('\nstart val!')
+    print('\n>>>> start val!')
 
     loss_record = 0.0
     acc_record = 0.0
@@ -205,6 +205,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
     else:
         gt_list = None  # This is made to better structure of the code ahead
 
+    # this can be used to verify the resume point
     if args.resume and False:
         confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gt_list=gt_list)
         if args.telegram:
@@ -268,7 +269,8 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
 
         # ReduceLROnPlateau is set after the validation block
         if args.scheduler and args.scheduler_type == 'MultiStepLR':
-                scheduler.step()
+            print("MultiStepLR step call")
+            scheduler.step()
 
         # Calculate metrics
         loss_train_mean = loss_record / len(dataloader_train)
@@ -283,13 +285,14 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
         if not args.nowandb:  # if nowandb flag was set, skip
             wandb.log({"Train/loss": loss_train_mean,
                        "Train/acc": acc_train,
-                       "Train/lr": lr,
+                       "Train/lr": optimizer.param_groups[0]['lr'] ,
                        "Completed epoch": epoch})
 
         if epoch % args.validation_step == 0:
             confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gt_list=gt_list)
 
             if args.scheduler_type == 'ReduceLROnPlateau':
+                print("ReduceLROnPlateau step call")
                 scheduler.step(loss_val)
 
             plt.figure(figsize=(10, 7))
@@ -298,11 +301,16 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
             sn.heatmap(confusion_matrix, annot=True, fmt='d')
 
             if args.telegram:
-                send_telegram_picture(plt, "Epoch:" + str(epoch))
+                send_telegram_picture(plt,
+                                      "Epoch: " + str(epoch) +
+                                      "\nLR: " + optimizer.param_groups[0]['lr']
+                                      "\nacc_val: " + str(acc_val),
+                                      "\nloss_val: " + str(loss_val))
 
             if not args.nowandb:  # if nowandb flag was set, skip
                 wandb.log({"Val/loss": loss_val,
                            "Val/Acc": acc_val,
+                           "Train/lr": optimizer.param_groups[0]['lr'] ,
                            "Completed epoch": epoch,
                            "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)})
 
@@ -663,6 +671,14 @@ def main(args, model=None):
         # train model
         # acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc,
         # os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH, kfold_index=val_index[0])
+
+        ##########################################
+        #   _____  ____      _     ___  _   _    #
+        #  |_   _||  _ \    / \   |_ _|| \ | |   #
+        #    | |  | |_) |  / _ \   | | |  \| |   #
+        #    | |  |  _ <  / ___ \  | | | |\  |   #
+        #    |_|  |_| \_\/_/   \_\|___||_| \_|   #
+        ##########################################
 
         acc = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
                     os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
