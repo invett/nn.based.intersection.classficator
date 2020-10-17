@@ -645,8 +645,7 @@ def main(args, model=None):
         # Build scheduler
         if args.scheduler:
             if args.scheduler_type == 'MultiStepLR':
-                scheduler = MultiStepLR(optimizer, milestones=[5, 10, 15, 18, 20], gamma=0.5, last_epoch=100,
-                                        verbose=True)
+                scheduler = MultiStepLR(optimizer, milestones=[5, 10, 15, 18, 20], gamma=0.5, last_epoch=100)
             if args.scheduler_type == 'ReduceLROnPlateau':
                 scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.0001,
                                               threshold_mode='rel', cooldown=1, min_lr=0, eps=1e-08, verbose=True)
