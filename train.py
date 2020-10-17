@@ -274,7 +274,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
 
         # Calculate metrics
         loss_train_mean = loss_record / len(dataloader_train)
-        print('loss for train : %f' % loss_train_mean)
+        print('\nloss for train : %f' % loss_train_mean)
 
         if args.triplet or args.embedding:
             acc_train = acc_record / len(dataloader_train)
