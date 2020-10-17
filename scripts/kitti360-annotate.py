@@ -106,7 +106,9 @@ def print_help():
     print("space       -  reset frame to unknown")
     print("s           -  statistics")
     print("h           -  print this help")
-    print("q           -  skip sequence")
+    print("q           -  skip/next sequence")
+    print("F1          -  enable frame skipping")
+    print("F2          -  disable frame skipping")
     print("F12         -  exit")
     print("0..6 numbers for 0..6 intersection type")
 
@@ -153,6 +155,8 @@ else:
 print_help()
 print("\nStart\n")
 
+skip = False
+
 for sequence_number, sequence in enumerate(files):
 
     k = 1
@@ -184,8 +188,16 @@ for sequence_number, sequence in enumerate(files):
         cv2.putText(img, str(file)+'/'+str(len(sequence)), position2, font, fontScale, fontColor, lineType)
 
         cv2.imshow('image', img)
+
+        if skip:
+            if annotations[sequence_number][file] == -1:
+                file = file + 1
+                cv2.waitKey(1)
+                continue
+        skip = False  # disable skipping once a valid frame is found
+
         k = cv2.waitKey(0)
-        print(k)
+        #print(k)
 
         if k == 48:  # 1 as 0
             annotations[sequence_number][file] = 0
@@ -211,6 +223,11 @@ for sequence_number, sequence in enumerate(files):
         if k == 104:  # print help
             print_help()
 
+        if k == 190:  # enable skip
+            skip = True
+        if k == 191:  # disable skip
+            skip = False
+
         if k == 115:  # show statistics
             summary(annotations)
 
@@ -224,6 +241,7 @@ for sequence_number, sequence in enumerate(files):
 
         if k == left and file > 0:
             file = file - 1
+            skip = False
         if k == down and file-10 > 0:
             file = file - 10
 
