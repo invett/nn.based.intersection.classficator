@@ -642,10 +642,6 @@ def main(args, model=None):
             print('not supported optimizer \n')
             exit()
 
-        parser.add_argument('--scheduler_type', type=str, default='MultiStepLR',
-                            choices=['MultiStepLR', 'ReduceLROnPlateau'])
-
-
         # Build scheduler
         if args.scheduler:
             if args.scheduler_type == 'MultiStepLR':
