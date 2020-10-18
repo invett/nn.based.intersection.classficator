@@ -63,9 +63,16 @@ def test(args, dataloader_test, classifier=None):
 
     # load Saved Model
     loadpath = args.student_path
-    print('load model from {} ...'.format(loadpath))
-    model.load_state_dict(torch.load(loadpath))
-    print('Done!')
+    if os.path.isfile(loadpath):
+        print("=> loading checkpoint '{}'".format(loadpath))
+        checkpoint = torch.load(loadpath, map_location='cpu')
+        model.load_state_dict(checkpoint['model_state_dict'])
+        if torch.cuda.is_available() and args.use_gpu:
+            model = model.cuda()
+        print("=> loaded checkpoint '{}'".format(loadpath))
+    else:
+        print("=> no checkpoint found at '{}'".format(loadpath))
+
 
     # if args.embedding and not args.svm:
     # gt_model = copy.deepcopy(model)
@@ -430,7 +437,7 @@ def main(args, model=None):
 
     # Exclude validation samples
     folders = folders[folders != os.path.join(data_path, '2011_10_03_drive_0034_sync')]
-    val_path = os.path.join(data_path, '2011_09_30_drive_0028_sync')
+    val_path = os.path.join(data_path, '2011_10_03_drive_0034_sync')
 
     if args.grayscale:
         aanetTransforms = transforms.Compose(
@@ -553,7 +560,7 @@ def main(args, model=None):
 
         dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                       num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
-        dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False,
+        dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True,
                                     num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
 
         # Build model
@@ -639,7 +646,9 @@ def main(args, model=None):
 
         # Build scheduler
         if args.scheduler:
-            scheduler = MultiStepLR(optimizer, milestones=[15, 30, 60], gamma=0.1)
+            scheduler = MultiStepLR(optimizer,
+                                    milestones=[15 * args.start_epoch, 30 * args.start_epoch, 60 * args.start_epoch,
+                                                120 * args.start_epoch, 240 * args.start_epoch], gamma=0.5)
             # Load Scheduler if exist
             if args.resume and checkpoint['scheduler_state_dict'] is not None:
                 scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
@@ -651,8 +660,8 @@ def main(args, model=None):
         # acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc,
         # os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH, kfold_index=val_index[0])
 
-        acc = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
-                    os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
+        #acc = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
+                    #os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
 
         k_fold_acc_list.append(acc)
 
@@ -674,18 +683,16 @@ def main(args, model=None):
         # todo delete when ok -----| sweep.join()
         # todo delete when ok -----| exit(-2)
 
-        if args.svm:
-            # load best trained model
-            if args.nowandb:
-                loadpath = './trainedmodels/model_' + args.resnetmodel + '.pth'
-            else:
-                loadpath = './trainedmodels/model_' + wandb.run.name + '.pth'
-            model.load_state_dict(torch.load(loadpath))
-            # save the model to disk
-            embeddings, labels = svm_data(args, model, dataloader_train, dataloader_val)
-            model_svm = svm_train(embeddings, labels, mode='rbf')  # embeddings: (Samples x Features); labels(Samples)
-            filename = os.path.join(args.save_model_path, 'svm_classsifier.sav')
-            pickle.dump(model_svm, open(filename, 'wb'))
+    if args.svm:
+        # load best trained model
+        loadpath = args.student_path
+        checkpoint = torch.load(loadpath, map_location='cpu')
+        model.load_state_dict(checkpoint['model_state_dict'])
+        # save the model to disk
+        embeddings, labels = svm_data(args, model, dataloader_train, dataloader_val, save=True)
+        model_svm = svm_train(embeddings, labels, mode='rbf')  # embeddings: (Samples x Features); labels(Samples)
+        filename = os.path.join(args.save_model_path, 'svm_classsifier.sav')
+        pickle.dump(model_svm, open(filename, 'wb'))
 
     if args.test:
         # Final Test on 2011_10_03_drive_0027_sync
@@ -855,7 +862,7 @@ if __name__ == '__main__':
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
     # group_id = wandb.util.generate_id()
-    group_id = 'Teacher_Student_nomask'
+    group_id = 'Teacher_Student_Nomask_Ultimate'
     print(args)
     warnings.filterwarnings("ignore")
 
