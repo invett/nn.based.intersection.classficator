@@ -17,8 +17,7 @@ import torch
 import torchvision.transforms as transforms
 import tqdm
 import wandb
-from sklearn.model_selection import LeaveOneOut
-from torch.optim.lr_scheduler import MultiStepLR
+from torch.optim.lr_scheduler import MultiStepLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
 from dataloaders.sequencedataloader import BaseLine, TestDataset, fromAANETandDualBisenet, fromGeneratedDataset, \
@@ -26,7 +25,7 @@ from dataloaders.sequencedataloader import BaseLine, TestDataset, fromAANETandDu
 from dataloaders.transforms import GenerateBev, GrayScale, Mirror, Normalize, Rescale, ToTensor
 from dropout_models import get_resnet, get_resnext
 from miscellaneous.utils import init_function, reset_wandb_env, send_telegram_message, send_telegram_picture, \
-    student_network_pass, svm_train, svm_data, seed_everything
+    student_network_pass, svm_data, svm_train
 from model.resnet_models import Personalized, Personalized_small, get_model_resnet, get_model_resnext
 
 
@@ -92,7 +91,7 @@ def test(args, dataloader_test, classifier=None):
 
 
 def validation(args, model, criterion, dataloader_val, classifier=None, gt_list=None):
-    print('\nstart val!')
+    print('\n>>>> start val!')
 
     loss_record = 0.0
     acc_record = 0.0
@@ -214,6 +213,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
     else:
         gt_list = None  # This is made to better structure of the code ahead
 
+    # this can be used to verify the resume point
     if args.resume and False:
         confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gt_list=gt_list)
         if args.telegram:
@@ -265,8 +265,8 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
                     kfold_index = 0
                     print("Warning, k-fold index is not passed. Ignore if not k-folding")
 
-                wandb.log({"batch_training_accuracy": acc / args.batch_size,
-                           "batch_training_loss": loss / args.batch_size,
+                wandb.log({"batch_training_accuracy": acc,
+                           "batch_training_loss": loss,
                            "batch_current_batch": current_batch,
                            "batch_current_epoch": epoch,
                            "batch_kfold_index": kfold_index})
@@ -275,12 +275,14 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
 
         tq.close()
 
-        if args.scheduler:
+        # ReduceLROnPlateau is set after the validation block
+        if args.scheduler and args.scheduler_type == 'MultiStepLR':
+            print("MultiStepLR step call")
             scheduler.step()
 
         # Calculate metrics
         loss_train_mean = loss_record / len(dataloader_train)
-        print('loss for train : %f' % loss_train_mean)
+        print('\nloss for train : %f' % loss_train_mean)
 
         if args.triplet or args.embedding:
             acc_train = acc_record / len(dataloader_train)
@@ -291,11 +293,15 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
         if not args.nowandb:  # if nowandb flag was set, skip
             wandb.log({"Train/loss": loss_train_mean,
                        "Train/acc": acc_train,
-                       "Train/lr": lr,
+                       "Train/lr": optimizer.param_groups[0]['lr'] ,
                        "Completed epoch": epoch})
 
         if epoch % args.validation_step == 0:
             confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gt_list=gt_list)
+
+            if args.scheduler_type == 'ReduceLROnPlateau':
+                print("ReduceLROnPlateau step call")
+                scheduler.step(loss_val)
 
             plt.figure(figsize=(10, 7))
             title = str(socket.gethostname()) + '\nEpoch: ' + str(epoch) + '\n' + str(valfolder)
@@ -303,11 +309,16 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
             sn.heatmap(confusion_matrix, annot=True, fmt='d')
 
             if args.telegram:
-                send_telegram_picture(plt, "Epoch:" + str(epoch))
+                send_telegram_picture(plt,
+                                      "Epoch: " + str(epoch) +
+                                      "\nLR: " + str(optimizer.param_groups[0]['lr']) +
+                                      "\nacc_val: " + str(acc_val) +
+                                      "\nloss_val: " + str(loss_val))
 
             if not args.nowandb:  # if nowandb flag was set, skip
                 wandb.log({"Val/loss": loss_val,
                            "Val/Acc": acc_val,
+                           "Train/lr": optimizer.param_groups[0]['lr'] ,
                            "Completed epoch": epoch,
                            "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)})
 
@@ -325,24 +336,28 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
                     print('Best global accuracy: {}'.format(kfold_acc))
                     if args.nowandb:
                         print('Saving model: ',
-                              os.path.join(args.save_model_path, 'model_{}_{}.pth'.format(args.resnetmodel, epoch)))
+                              os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
+                                                                                            args.resnetmodel, epoch)))
                         torch.save({
                             'epoch': epoch,
                             'model_state_dict': model.state_dict(),
                             'optimizer_state_dict': optimizer.state_dict(),
                             'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
                             'loss': loss,
-                        }, os.path.join(args.save_model_path, 'model_{}_{}.pth'.format(args.resnetmodel, epoch)))
+                        }, os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
+                                                                                         args.resnetmodel, epoch)))
                     else:
                         print('Saving model: ',
-                              os.path.join(args.save_model_path, 'model_{}_{}.pth'.format(wandb.run.name, epoch)))
+                              os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
+                                                                                            wandb.run.id, epoch)))
                         torch.save({
                             'epoch': epoch,
                             'model_state_dict': model.state_dict(),
                             'optimizer_state_dict': optimizer.state_dict(),
                             'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
                             'loss': loss,
-                        }, os.path.join(args.save_model_path, 'model_{}_{}.pth'.format(wandb.run.name, epoch)))
+                        }, os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
+                                                                                         wandb.run.id, epoch)))
 
             elif epoch < args.patience_start:
                 patience = 0
@@ -567,8 +582,7 @@ def main(args, model=None):
         if args.resnetmodel[0:6] == 'resnet':
             model = get_model_resnet(args.resnetmodel, args.num_classes, transfer=args.transfer,
                                      pretrained=args.pretrained,
-                                     embedding=(
-                                                       args.embedding or args.triplet or args.freeze) and not args.embedding_class)
+                                     embedding=(args.embedding or args.triplet or args.freeze) and not args.embedding_class)
         elif args.resnetmodel[0:7] == 'resnext':
             model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
         elif args.resnetmodel == 'personalized':
@@ -586,7 +600,7 @@ def main(args, model=None):
             if args.nowandb:
                 loadpath = './trainedmodels/model_' + args.resnetmodel + '.pth'
             else:
-                loadpath = './trainedmodels/model_' + wandb.run.name + '.pth'
+                loadpath = './trainedmodels/model_' + wandb.run.id + '.pth'
             model.load_state_dict(torch.load(loadpath))
             for param in model.parameters():
                 param.requires_grad = False
@@ -646,9 +660,15 @@ def main(args, model=None):
 
         # Build scheduler
         if args.scheduler:
-            scheduler = MultiStepLR(optimizer,
-                                    milestones=[15 * args.start_epoch, 30 * args.start_epoch, 60 * args.start_epoch,
-                                                120 * args.start_epoch, 240 * args.start_epoch], gamma=0.5)
+            if args.scheduler_type == 'MultiStepLR':
+                if args.resume:
+                    param_epoch = checkpoint['epoch']
+                else:
+                    param_epoch = -1
+                scheduler = MultiStepLR(optimizer, milestones=[5, 10, 15, 18, 20], gamma=0.5, last_epoch=param_epoch)
+            if args.scheduler_type == 'ReduceLROnPlateau':
+                scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.0001,
+                                              threshold_mode='rel', cooldown=1, min_lr=0, eps=1e-08, verbose=True)
             # Load Scheduler if exist
             if args.resume and checkpoint['scheduler_state_dict'] is not None:
                 scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
@@ -660,8 +680,16 @@ def main(args, model=None):
         # acc = train(args, model, optimizer, dataloader_train, dataloader_val, acc,
         # os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH, kfold_index=val_index[0])
 
-        #acc = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
-                    #os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
+        ##########################################
+        #   _____  ____      _     ___  _   _    #
+        #  |_   _||  _ \    / \   |_ _|| \ | |   #
+        #    | |  | |_) |  / _ \   | | |  \| |   #
+        #    | |  |  _ <  / ___ \  | | | |\  |   #
+        #    |_|  |_| \_\/_/   \_\|___||_| \_|   #
+        ##########################################
+
+        acc = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
+                    os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
 
         k_fold_acc_list.append(acc)
 
@@ -766,6 +794,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=0, help='Starting seed, for reproducibility. Default is ZERO!')
     parser.add_argument('--train', action='store_true', help='Train/Validate the model')
     parser.add_argument('--test', action='store_true', help='Test the model')
+    parser.add_argument('--wandb_group_id', type=str, help='Set group id for the wandb experiment')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     parser.add_argument('--sweep', action='store_true', help='if set, this run is part of a wandb-sweep; use it with'
                                                              'as documented in '
@@ -793,6 +822,7 @@ if __name__ == '__main__':
     parser.add_argument('--cuda', type=str, default='0', help='GPU is used for training')
     parser.add_argument('--use_gpu', type=bool, default=True, help='whether to user gpu for training')
     parser.add_argument('--save_model_path', type=str, default='./trainedmodels/', help='path to save model')
+    parser.add_argument('--save_prefix', type=str, default='', help='Prefix to all saved models')
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
     parser.add_argument('--lossfunction', type=str, default='MSE', choices=['MSE', 'SmoothL1', 'L1'],
                         help='lossfunction selection')
@@ -809,6 +839,8 @@ if __name__ == '__main__':
     parser.add_argument('--pretrained', type=bool, default=True, help='whether to use a pretrained net, or not')
     #####    parser.add_argument('--scheduler', type=bool, default=True, help='scheduling lr')
     parser.add_argument('--scheduler', action='store_true', help='scheduling lr')
+    parser.add_argument('--scheduler_type', type=str, default='MultiStepLR', choices=['MultiStepLR',
+                                                                                      'ReduceLROnPlateau'])
     parser.add_argument('--grayscale', action='store_true', help='Use Grayscale Images')
     parser.add_argument('--resume', type=str, default=None, help='path to checkpoint model')
 
@@ -859,10 +891,19 @@ if __name__ == '__main__':
             print("checkpoint file does not exist: ", args.resume, "\n\n")
             exit(-1)
 
+    # Ensure there's a _ at the end of the prefix
+    if args.save_prefix != '':
+        if args.save_prefix[-1] != '_':
+            args.save_prefix = args.save_prefix + '_'
+
+
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
     # group_id = wandb.util.generate_id()
-    group_id = 'Teacher_Student_Nomask_Ultimate'
+    if args.wandb_group_id:
+        group_id = args.wandb_group_id
+    else:
+        group_id = 'Teacher_Student_nomask'
     print(args)
     warnings.filterwarnings("ignore")
 
