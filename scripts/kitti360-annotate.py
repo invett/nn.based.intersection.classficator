@@ -1,3 +1,9 @@
+'''
+    TO ENABLE THE CREATION OF THE DATASET, ENABLE THE FOLLOWING LINE WITH SIMULATE=FALSE
+    save_frames('/media/ballardini/4tb/KITTI-360/moved', simulate=True)
+'''
+
+
 import os
 from os import listdir
 import pickle
@@ -78,27 +84,58 @@ def save_csv(annotations, filename="kitti360-crossings.cvs"):
     print("Annotations saved to ", filename)
 
 
-def save_frames(where):
-    if where:
-        for seq_ann, i in enumerate(annotations):
-            for seq_file, j in enumerate(i):
-                if j > -1:
-                    src = files[seq_ann][seq_file]
-                    dst_folder = os.path.join(where,str(j))
-                    file_prefix = [s for s in src.split('/') if "2013" in s][0]
-                    file_suffix = os.path.split(src)[1]
-                    dst = os.path.join(dst_folder, file_prefix + '_' + file_suffix)
-                    if src != dst:
-                        if not os.path.exists(dst_folder):
-                            os.makedirs(dst_folder)
-                        print("Copying ", src, " ", dst)
-                        shutil.copy2(src, dst, follow_symlinks=False)
-                    else:
-                        print("src and dst files are the same, skipping... provide a good path please!")
-        print("All files copied")
+def save_frames(where, simulate=True, mono=True):
+    '''
+
+    creates a copy of the selected frames. pass a destination folder, folder structure will be created.
+
+    Args:
+        where: destination folder
+
+    Returns: nothing, just do the work ...
+
+    '''
+    _simulate = simulate
+    _mono = False
+    cameras = []
+    if _mono:
+        cameras = ["image_00"]
+        LR = ["left"]
+    else:
+        cameras = ["image_00", "image_01"]
+        LR = ["left", "right"]
+
+    images = 0
+    for camera, leftright in zip(cameras, LR):
+        if where:
+            for seq_ann, i in enumerate(annotations):
+                for seq_file, j in enumerate(i):
+                    if j > -1:
+                        src = files[seq_ann][seq_file]
+                        src = src.replace("image_00", camera)
+                        dst_folder = os.path.join(where, str(j), leftright)
+                        file_prefix = [s for s in src.split('/') if "2013" in s][0]
+                        file_suffix = os.path.split(src)[1]
+                        dst = os.path.join(dst_folder, file_prefix + '_' + file_suffix)
+                        if src != dst:
+                            if not os.path.exists(dst_folder):
+                                os.makedirs(dst_folder)
+                            print("Copying ", src, " ", dst)
+                            images = images + 1
+                            if not _simulate:
+                                shutil.copy2(src, dst, follow_symlinks=False)
+                        else:
+                            print("src and dst files are the same, skipping... provide a good path please!")
+
+    print('All {} files copied'.format(images))
 
 
 def print_help():
+    '''
+
+    Returns: gives some help
+
+    '''
     print("Right Arrow -  next frame")
     print("Left Arrow  -  previous frame")
     print("Up Arrow    -  +10 frames")
@@ -132,6 +169,7 @@ def summary(annotations):
     print("Type 6: ", type_6)
     print("Overall: ", type_0 + type_1 + type_2 + type_3 + type_4 + type_5 + type_6, "\n")
 
+
 for folder in folders:
     path = os.path.join(base_folder, 'data_2d_raw', folder, 'image_00/data_rect')
     # files.append(sorted([f for f in listdir(path) if isfile(join(path, f))]))
@@ -149,9 +187,11 @@ else:
     with open(annotations_file, 'wb') as f:
         pickle.dump(annotations, f)
 
-# save_frames('/media/ballardini/4tb/KITTI-360/moved')
 
-#save_csv(annotations)
+# ENABLE THIS LINE TO MAKE THE DATASET
+# save_frames('/media/ballardini/4tb/KITTI-360/moved', simulate=True)
+
+# save_csv(annotations)
 print_help()
 print("\nStart\n")
 
@@ -197,7 +237,7 @@ for sequence_number, sequence in enumerate(files):
         skip = False  # disable skipping once a valid frame is found
 
         k = cv2.waitKey(0)
-        #print(k)
+        # print(k)
 
         if k == 48:  # 1 as 0
             annotations[sequence_number][file] = 0
@@ -256,3 +296,4 @@ for sequence_number, sequence in enumerate(files):
 
 summary(annotations)
 save_csv(annotations)
+
