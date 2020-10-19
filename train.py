@@ -1,5 +1,4 @@
 import argparse
-import copy
 import multiprocessing
 import os
 import pickle
@@ -504,7 +503,11 @@ def main(args, model=None):
             # todo delete when ok -----| continue
         else:
             if not args.nowandb:  # if nowandb flag was set, skip
-                wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito',
+                if args.resume:
+                    wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito',
+                               job_type="training", reinit=True, resume=True)
+                else:
+                    wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito',
                            job_type="training", reinit=True)
                 wandb.config.update(args)
 
