@@ -85,7 +85,7 @@ def save_csv(annotations, filename="kitti360-crossings.cvs"):
 
 
 def save_frames(where, simulate=True, mono=True):
-    '''
+    """
 
     creates a copy of the selected frames. pass a destination folder, folder structure will be created.
 
@@ -94,7 +94,7 @@ def save_frames(where, simulate=True, mono=True):
 
     Returns: nothing, just do the work ...
 
-    '''
+    """
     _simulate = simulate
     _mono = False
     cameras = []
@@ -131,11 +131,12 @@ def save_frames(where, simulate=True, mono=True):
 
 
 def print_help():
-    '''
+    """
+    gives some help
 
     Returns: gives some help
 
-    '''
+    """
     print("Right Arrow | F4  -  next frame")
     print("Left Arrow  | F3  -  previous frame")
     print("Up Arrow          -  +10 frames")
@@ -188,10 +189,11 @@ else:
         pickle.dump(annotations, f)
 
 # ENABLE THIS LINE TO MAKE THE DATASET
-# save_frames('/media/ballardini/4tb/KITTI-360/moved', simulate=False, mono=False)
-# exit(1)
+if False:
+    save_frames('/media/ballardini/4tb/KITTI-360/moved', simulate=False, mono=False)
+    save_csv(annotations)
+    exit(1)
 
-# save_csv(annotations)
 print_help()
 print("\nStart\n")
 
