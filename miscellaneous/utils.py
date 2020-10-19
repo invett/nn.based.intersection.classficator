@@ -413,7 +413,8 @@ def init_function(worker_id, seed, epoch):
     # np.random.seed(seed)
     # torch.manual_seed(seed)
     # torch.cuda.manual_seed(seed)
-    #torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.deterministic = True
+
 
 def reset_wandb_env():
     exclude = {
@@ -427,8 +428,6 @@ def reset_wandb_env():
 
 
 def svm_train(features, labels, mode='Linear'):
-    print(features.shape)
-    print(labels.shape)
     assert features.shape[0] == labels.shape[
         0], 'The number of feature vectors {} should be same as number of labels  {}'.format(
         features.shape[0], labels.shape[0])
@@ -500,7 +499,7 @@ def gt_triplet_validation(out_anchor, model, gt_list):
         for gt in gt_list:
             gt = gt.cuda()
             gt_prediction = model(gt)
-            l.append(criterion(batch_item, gt_prediction).item()) #Revisar esto
+            l.append(criterion(batch_item, gt_prediction).item())  # Revisar esto
     nplist = np.array(l)
     nplist = nplist.reshape(-1, 7)
     classification = np.argmin(nplist, axis=1)
@@ -544,4 +543,3 @@ def seed_everything(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
-    #  example seed_everything(123)
