@@ -136,17 +136,17 @@ def print_help():
     Returns: gives some help
 
     '''
-    print("Right Arrow -  next frame")
-    print("Left Arrow  -  previous frame")
-    print("Up Arrow    -  +10 frames")
-    print("Down Arrow  -  -10 frames")
-    print("space       -  reset frame to unknown")
-    print("s           -  statistics")
-    print("h           -  print this help")
-    print("q           -  skip/next sequence")
-    print("F1          -  enable frame skipping")
-    print("F2          -  disable frame skipping")
-    print("F12         -  exit")
+    print("Right Arrow | F4  -  next frame")
+    print("Left Arrow  | F3  -  previous frame")
+    print("Up Arrow          -  +10 frames")
+    print("Down Arrow        -  -10 frames")
+    print("space             -  reset frame to unknown")
+    print("s                 -  statistics")
+    print("h                 -  print this help")
+    print("q                 -  skip/next sequence")
+    print("F1                -  enable frame skipping")
+    print("F2                -  disable frame skipping")
+    print("F12               -  exit")
     print("0..6 numbers for 0..6 intersection type")
 
 
@@ -189,7 +189,7 @@ else:
 
 
 # ENABLE THIS LINE TO MAKE THE DATASET
-# save_frames('/media/ballardini/4tb/KITTI-360/moved', simulate=True)
+# save_frames('/media/ballardini/4tb/KITTI-360/moved', simulate=True, mono=True)
 
 # save_csv(annotations)
 print_help()
@@ -274,12 +274,12 @@ for sequence_number, sequence in enumerate(files):
         with open(annotations_file, 'wb') as f:
             pickle.dump(annotations, f)
 
-        if k == right and file+1 < len(sequence)-1:
+        if (k == right or k == 193) and file+1 < len(sequence)-1:
             file = file + 1
         if k == up and file+10 < len(sequence)-1:
             file = file + 10
 
-        if k == left and file > 0:
+        if (k == left or k == 192) and file > 0:
             file = file - 1
             skip = False
         if k == down and file-10 > 0:
