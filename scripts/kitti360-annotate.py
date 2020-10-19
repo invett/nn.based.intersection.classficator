@@ -3,26 +3,21 @@
     save_frames('/media/ballardini/4tb/KITTI-360/moved', simulate=True)
 '''
 
-
+import tkinter as tk
+from tkinter import simpledialog
 import os
-from os import listdir
 import pickle
 import shutil
+from os import listdir
+
 import cv2
 import numpy as np
 
-
 base_folder = '/media/ballardini/4tb/KITTI-360/'
 
-folders = ['2013_05_28_drive_0000_sync',
-           '2013_05_28_drive_0002_sync',
-           '2013_05_28_drive_0003_sync',
-           '2013_05_28_drive_0004_sync',
-           '2013_05_28_drive_0005_sync',
-           '2013_05_28_drive_0006_sync',
-           '2013_05_28_drive_0007_sync',
-           '2013_05_28_drive_0009_sync',
-           '2013_05_28_drive_0010_sync']
+folders = ['2013_05_28_drive_0000_sync', '2013_05_28_drive_0002_sync', '2013_05_28_drive_0003_sync',
+           '2013_05_28_drive_0004_sync', '2013_05_28_drive_0005_sync', '2013_05_28_drive_0006_sync',
+           '2013_05_28_drive_0007_sync', '2013_05_28_drive_0009_sync', '2013_05_28_drive_0010_sync']
 
 folder_2013_05_28_drive_0000_sync = []
 folder_2013_05_28_drive_0002_sync = []
@@ -44,6 +39,7 @@ f12 = 201
 font = cv2.FONT_HERSHEY_SIMPLEX
 position1 = (10, 30)
 position2 = (1000, 30)
+position3 = (1000, 60)
 fontScale = 1
 fontColor = (0, 0, 255)
 lineType = 2
@@ -69,6 +65,10 @@ img_type_3 = cv2.resize(img_type_3, dim, interpolation=cv2.INTER_AREA)
 img_type_4 = cv2.resize(img_type_4, dim, interpolation=cv2.INTER_AREA)
 img_type_5 = cv2.resize(img_type_5, dim, interpolation=cv2.INTER_AREA)
 img_type_6 = cv2.resize(img_type_6, dim, interpolation=cv2.INTER_AREA)
+
+
+def hasNumbers(inputString):
+    return all(char.isdigit() for char in inputString)
 
 
 def save_csv(annotations, filename="kitti360-crossings.cvs"):
@@ -173,7 +173,7 @@ def summary(annotations):
 for folder in folders:
     path = os.path.join(base_folder, 'data_2d_raw', folder, 'image_00/data_rect')
     # files.append(sorted([f for f in listdir(path) if isfile(join(path, f))]))
-    files.append(sorted([path+'/'+f for f in listdir(path)]))
+    files.append(sorted([path + '/' + f for f in listdir(path)]))
 
 annotations = []
 annotations_file = os.path.join(base_folder, 'annotations.pickle')
@@ -183,13 +183,13 @@ if os.path.exists(annotations_file):
         annotations = pickle.load(f)
 else:
     for sequence in files:
-        annotations.append(np.ones(len(sequence), dtype=np.int8)*-1)
+        annotations.append(np.ones(len(sequence), dtype=np.int8) * -1)
     with open(annotations_file, 'wb') as f:
         pickle.dump(annotations, f)
 
-
 # ENABLE THIS LINE TO MAKE THE DATASET
-# save_frames('/media/ballardini/4tb/KITTI-360/moved', simulate=True, mono=True)
+# save_frames('/media/ballardini/4tb/KITTI-360/moved', simulate=False, mono=False)
+# exit(1)
 
 # save_csv(annotations)
 print_help()
@@ -202,9 +202,13 @@ for sequence_number, sequence in enumerate(files):
     k = 1
     file = 0
 
+    # the file sequence might start not from zero...
+    start_number = int(os.path.splitext(os.path.basename(sequence[file]))[0])
+
     cv2.namedWindow('image', cv2.WINDOW_AUTOSIZE)
     while k is not 0:
-        print(str(folders[sequence_number]) + " -- " + str(file) + "/" + str(len(sequence)))
+        print(str(folders[sequence_number]) + " -- " + str(file) + "/" + str(len(sequence)) + " -- " + str(
+            sequence[file]))
         img = cv2.imread(sequence[file])
 
         v_pos = int(img.shape[0] - img_type_0.shape[0] - 10)
@@ -225,7 +229,8 @@ for sequence_number, sequence in enumerate(files):
             img[v_pos:v_pos + img_type_0.shape[0], h_pos:h_pos + img_type_0.shape[1]] = img_type_6
 
         cv2.putText(img, str(annotations[sequence_number][file]), position1, font, fontScale, fontColor, lineType)
-        cv2.putText(img, str(file)+'/'+str(len(sequence)), position2, font, fontScale, fontColor, lineType)
+        cv2.putText(img, str(file) + '/' + str(len(sequence)), position2, font, fontScale, fontColor, lineType)
+        cv2.putText(img, os.path.basename(sequence[file]), position3, font, fontScale, fontColor, lineType)
 
         cv2.imshow('image', img)
 
@@ -253,7 +258,7 @@ for sequence_number, sequence in enumerate(files):
             annotations[sequence_number][file] = 5
         if k == 54:  # 1 as 5
             annotations[sequence_number][file] = 6
-        if 48 <= k <= 55 and file < len(sequence)-1:
+        if 48 <= k <= 55 and file < len(sequence) - 1:
             file = file + 1
 
         if k == 32:  # deselect the frame
@@ -274,21 +279,39 @@ for sequence_number, sequence in enumerate(files):
         with open(annotations_file, 'wb') as f:
             pickle.dump(annotations, f)
 
-        if (k == right or k == 193) and file+1 < len(sequence)-1:
+        if (k == right or k == 193) and file + 1 < len(sequence) - 1:
             file = file + 1
-        if k == up and file+10 < len(sequence)-1:
+        if k == up and file + 10 < len(sequence) - 1:
             file = file + 10
 
         if (k == left or k == 192) and file > 0:
             file = file - 1
             skip = False
-        if k == down and file-10 > 0:
+        if k == down and file - 10 > 0:
             file = file - 10
 
-        if k == 113:
+        if k == ord('g'):
+            ROOT = tk.Tk()
+            ROOT.withdraw()
+            while True:
+                frame = simpledialog.askstring(title="KITTI360", prompt="Insert GOTO frame")
+                if hasNumbers(frame):
+                    frame = int(frame)
+                else:
+                    continue
+                if 0 <= frame < len(sequence):
+                    file = frame
+                    break
+            # while True:
+            #     frame = int(input("Insert GOTO frame: "))
+            #     if 0 <= frame < len(sequence):
+            #         file = frame
+            #         break
+
+        if k == 113:  # pressing q
             break
 
-        if k == 201:
+        if k == 201:  # pressing F12
             cv2.destroyAllWindows()
             exit(-1)
 
@@ -296,4 +319,3 @@ for sequence_number, sequence in enumerate(files):
 
 summary(annotations)
 save_csv(annotations)
-
