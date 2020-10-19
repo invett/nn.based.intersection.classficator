@@ -72,7 +72,6 @@ def test(args, dataloader_test, classifier=None):
     else:
         print("=> no checkpoint found at '{}'".format(loadpath))
 
-
     # if args.embedding and not args.svm:
     # gt_model = copy.deepcopy(model)
     # gt_model.load_state_dict(torch.load(args.teacher_path))
@@ -293,7 +292,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
         if not args.nowandb:  # if nowandb flag was set, skip
             wandb.log({"Train/loss": loss_train_mean,
                        "Train/acc": acc_train,
-                       "Train/lr": optimizer.param_groups[0]['lr'] ,
+                       "Train/lr": optimizer.param_groups[0]['lr'],
                        "Completed epoch": epoch})
 
         if epoch % args.validation_step == 0:
@@ -318,7 +317,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
             if not args.nowandb:  # if nowandb flag was set, skip
                 wandb.log({"Val/loss": loss_val,
                            "Val/Acc": acc_val,
-                           "Train/lr": optimizer.param_groups[0]['lr'] ,
+                           "Train/lr": optimizer.param_groups[0]['lr'],
                            "Completed epoch": epoch,
                            "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)})
 
@@ -335,9 +334,10 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
                     acc_pre = kfold_acc
                     print('Best global accuracy: {}'.format(kfold_acc))
                     if args.nowandb:
-                        print('Saving model: ',
-                              os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
-                                                                                            args.resnetmodel, epoch)))
+                        loadpath = os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
+                                                                                                 args.resnetmodel,
+                                                                                                 epoch))
+                        print('Saving model: ', loadpath)
                         torch.save({
                             'epoch': epoch,
                             'model_state_dict': model.state_dict(),
@@ -347,9 +347,9 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
                         }, os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
                                                                                          args.resnetmodel, epoch)))
                     else:
-                        print('Saving model: ',
-                              os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
-                                                                                            wandb.run.id, epoch)))
+                        loadpath = os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
+                                                                                                 wandb.run.id, epoch))
+                        print('Saving model: ', os.path.join(loadpath))
                         torch.save({
                             'epoch': epoch,
                             'model_state_dict': model.state_dict(),
@@ -368,7 +368,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
         if patience >= args.patience > 0:
             break
 
-    return acc_pre
+    return acc_pre, loadpath
 
 
 def main(args, model=None):
@@ -447,8 +447,8 @@ def main(args, model=None):
                         os.path.isdir(os.path.join(data_path, folder))])
 
     # Exclude test samples
-    folders = folders[folders != os.path.join(data_path, '2011_09_30_drive_0028_sync')]
-    test_path = os.path.join(data_path, '2011_09_30_drive_0028_sync')
+    # folders = folders[folders != os.path.join(data_path, '2011_09_30_drive_0028_sync')] #Testing in 360 by now
+    # test_path = os.path.join(data_path, '2011_09_30_drive_0028_sync')
 
     # Exclude validation samples
     folders = folders[folders != os.path.join(data_path, '2011_10_03_drive_0034_sync')]
@@ -582,7 +582,8 @@ def main(args, model=None):
         if args.resnetmodel[0:6] == 'resnet':
             model = get_model_resnet(args.resnetmodel, args.num_classes, transfer=args.transfer,
                                      pretrained=args.pretrained,
-                                     embedding=(args.embedding or args.triplet or args.freeze) and not args.embedding_class)
+                                     embedding=(
+                                                           args.embedding or args.triplet or args.freeze) and not args.embedding_class)
         elif args.resnetmodel[0:7] == 'resnext':
             model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
         elif args.resnetmodel == 'personalized':
@@ -688,7 +689,7 @@ def main(args, model=None):
         #    |_|  |_| \_\/_/   \_\|___||_| \_|   #
         ##########################################
 
-        acc = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
+        acc, trained_loadpath = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
                     os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
 
         k_fold_acc_list.append(acc)
@@ -713,7 +714,7 @@ def main(args, model=None):
 
     if args.svm:
         # load best trained model
-        loadpath = args.student_path
+        loadpath = trained_loadpath
         checkpoint = torch.load(loadpath, map_location='cpu')
         model.load_state_dict(checkpoint['model_state_dict'])
         # save the model to disk
@@ -895,7 +896,6 @@ if __name__ == '__main__':
     if args.save_prefix != '':
         if args.save_prefix[-1] != '_':
             args.save_prefix = args.save_prefix + '_'
-
 
     # create a group, this is for the K-Fold https://docs.wandb.com/library/advanced/grouping#use-cases
     # K-fold cross-validation: Group together runs with different random seeds to see a larger experiment
