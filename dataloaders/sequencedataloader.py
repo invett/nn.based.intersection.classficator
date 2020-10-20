@@ -42,9 +42,9 @@ class kitti360_RGB(Dataset):
                     label = int(root.split('/')[-1])
                     if sequence in images:
                         images[sequence]['labels'].append(label)
-                        images[sequence]['frames'].append(os.path.join(root, frame))
+                        images[sequence]['frames'].append(os.path.join(root,'_'.join([sequence,frame])))
                     else:
-                        images[sequence] = {'labels': [label], 'frames': [os.path.join(root, frame)]}
+                        images[sequence] = {'labels': [label], 'frames': [os.path.join(root, '_'.join([sequence,frame]))]}
         print('folders searched')
         trainimages = []
         trainlabels = []
@@ -52,9 +52,9 @@ class kitti360_RGB(Dataset):
             if sequence in sequence_list:
                 for k, list in samples.items():
                     if k == 'labels':
-                        trainlabels.append(list)
+                        trainlabels.extend(list)
                     if k == 'frames':
-                        trainimages.append(list)
+                        trainimages.extend(list)
 
         self.images = trainimages
         self.labels = trainlabels

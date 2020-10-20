@@ -668,7 +668,7 @@ def main(args, model=None):
                 optimizer.param_groups[0]['lr'] = args.lr
         elif args.optimizer == 'adam':
             # optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=5e-4)
-            optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=adam_weight_decay)
+            optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=args.adam_weight_decay)
             if args.resume:
                 optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
                 # Set new learning rate from command line
@@ -722,8 +722,11 @@ def main(args, model=None):
         #    |_|  |_| \_\/_/   \_\|___||_| \_|   #
         ##########################################
 
+        #acc, trained_loadpath = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
+                                      #os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
+
         acc, trained_loadpath = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
-                                      os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
+                                        valfolder=val_sequence_list[0], GLOBAL_EPOCH=GLOBAL_EPOCH)
 
         k_fold_acc_list.append(acc)
 
