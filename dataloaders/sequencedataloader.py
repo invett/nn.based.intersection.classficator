@@ -20,7 +20,7 @@ from scripts.OSM_generator import Crossing, test_crossing_pose
 
 
 class kitti360_RGB(Dataset):
-    def __init__(self, path, mode, transform=None):
+    def __init__(self, path, sequence_list, transform=None):
         """
 
                 THIS IS THE DATALOADER USED TO DIRECTLY USE RGB IMAGES on Kitti 360 dataset
@@ -33,47 +33,33 @@ class kitti360_RGB(Dataset):
         self.transform = transform
 
         images = {}
-
         for root, dirs, files in os.walk(path, topdown=False):
             for name in files:
                 head, ext = os.path.splitext(name)
                 if ext == '.png':
-                    sequence = name.split('_')[0:6]
+                    sequence = '_'.join(name.split('_')[0:6])
                     frame = name.split('_')[-1]
-                    label = root.split('/')[-1].astype(int)
+                    label = int(root.split('/')[-1])
                     if sequence in images:
                         images[sequence]['labels'].append(label)
                         images[sequence]['frames'].append(os.path.join(root, frame))
                     else:
-                        images[sequence]['labels'] = [label]
-                        images[sequence]['frames'] = [os.path.join(root, frame)]
+                        images[sequence] = {'labels': [label], 'frames': [os.path.join(root, frame)]}
+        print('folders searched')
+        trainimages = []
+        trainlabels = []
+        for sequence, samples in images.items():
+            if sequence in sequence_list:
+                for k, list in samples.items():
+                    if k == 'labels':
+                        trainlabels.append(list)
+                    if k == 'frames':
+                        trainimages.append(list)
 
-        if mode == 'train':
-            trainimages = []
-            trainlabels = []
-            for sequence, samples  in images.iteritems():
-                if sequence != '2013_05_28_drive_0000_sync' and sequence != '2013_05_28_drive_0002_sync':
-                    for k, list in samples.iteritems():
-                        if k == 'labels':
-                            trainlabels.append(list)
-                        if k == 'frames':
-                            trainimages.append(list)
+        self.images = trainimages
+        self.labels = trainlabels
 
-            self.images = trainimages
-            self.labels = trainlabels
-        if mode == 'val' :
-            trainimages = []
-            trainlabels = []
-            for sequence, samples in images.iteritems():
-                if sequence == '2013_05_28_drive_0002_sync':
-                    for k, list in samples.iteritems():
-                        if k == 'labels':
-                            trainlabels.append(list)
-                        if k == 'frames':
-                            trainimages.append(list)
-
-            self.images = trainimages
-            self.labels = trainlabels
+        print('Kitti360 dataset loaded')
 
     def __len__(self):
 

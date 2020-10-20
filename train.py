@@ -21,7 +21,7 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 
 from dataloaders.sequencedataloader import BaseLine, TestDataset, fromAANETandDualBisenet, fromGeneratedDataset, \
-    triplet_BOO, triplet_OBB
+    triplet_BOO, triplet_OBB, kitti360_RGB
 from dataloaders.transforms import GenerateBev, GrayScale, Mirror, Normalize, Rescale, ToTensor
 from dropout_models import get_resnet, get_resnext
 from miscellaneous.utils import init_function, reset_wandb_env, send_telegram_message, send_telegram_picture, \
@@ -443,17 +443,28 @@ def main(args, model=None):
     # create dataset and dataloader
     data_path = args.dataset
 
-    # All sequence folders
-    folders = np.array([os.path.join(data_path, folder) for folder in os.listdir(data_path) if
-                        os.path.isdir(os.path.join(data_path, folder))])
+    if args.dataloader != 'Kitti360_RGB':
+        # All sequence folders
+        folders = np.array([os.path.join(data_path, folder) for folder in os.listdir(data_path) if
+                            os.path.isdir(os.path.join(data_path, folder))])
 
-    # Exclude test samples
-    # folders = folders[folders != os.path.join(data_path, '2011_09_30_drive_0028_sync')] #Testing in 360 by now
-    # test_path = os.path.join(data_path, '2011_09_30_drive_0028_sync')
+        # Exclude test samples
+        # folders = folders[folders != os.path.join(data_path, '2011_09_30_drive_0028_sync')] #Testing in 360 by now
+        # test_path = os.path.join(data_path, '2011_09_30_drive_0028_sync')
 
-    # Exclude validation samples
-    folders = folders[folders != os.path.join(data_path, '2011_10_03_drive_0034_sync')]
-    val_path = os.path.join(data_path, '2011_10_03_drive_0034_sync')
+        # Exclude validation samples
+        folders = folders[folders != os.path.join(data_path, '2011_10_03_drive_0034_sync')]
+        val_path = os.path.join(data_path, '2011_10_03_drive_0034_sync')
+    else:
+        train_sequence_list = ['2013_05_28_drive_0003_sync',
+                               '2013_05_28_drive_0004_sync',
+                               '2013_05_28_drive_0005_sync',
+                               '2013_05_28_drive_0006_sync',
+                               '2013_05_28_drive_0007_sync',
+                               '2013_05_28_drive_0009_sync',
+                               '2013_05_28_drive_0010_sync']
+        val_sequence_list = ['2013_05_28_drive_0002_sync']
+        test_sequence_list = ['2013_05_28_drive_0000_sync']
 
     if args.grayscale:
         aanetTransforms = transforms.Compose(
@@ -467,6 +478,12 @@ def main(args, model=None):
                                             transforms.Resize((224, 224)),
                                             transforms.ToTensor(),
                                             ])
+        baselineTransforms = transforms.Compose([transforms.Resize((224, 224)),
+                                                 transforms.ToTensor(),
+                                                 transforms.Normalize(
+                                                     (0.485, 0.456, 0.406),
+                                                     (0.229, 0.224, 0.225))
+                                                 ])
 
     k_fold_acc_list = []
 
@@ -516,10 +533,12 @@ def main(args, model=None):
                     wandb.config.update(args)
 
         # train_path, val_path = folders[train_index], folders[val_index]
-        train_path, val_path = np.array(folders), np.array([val_path])  # No kfold
+        if args.dataloader != 'Kitti360_RGB':
+            train_path, val_path = np.array(folders), np.array([val_path])  # No kfold
 
         if args.dataloader == 'Kitti360_RGB':
-            pass
+            train_dataset = kitti360_RGB(args.dataset, train_sequence_list, transform=baselineTransforms)
+            val_dataset = kitti360_RGB(args.dataset, val_sequence_list, transform=baselineTransforms)
 
         elif args.dataloader == "fromAANETandDualBisenet":
             val_dataset = fromAANETandDualBisenet(val_path, args.distance, transform=aanetTransforms)
@@ -840,7 +859,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_model_path', type=str, default='./trainedmodels/', help='path to save model')
     parser.add_argument('--save_prefix', type=str, default='', help='Prefix to all saved models')
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
-    parser.add_argument('--adam_weight_decay', type=float, default=5e-4, help='adam_weight_decay)
+    parser.add_argument('--adam_weight_decay', type=float, default=5e-4, help='adam_weight_decay')
     parser.add_argument('--lossfunction', type=str, default='MSE', choices=['MSE', 'SmoothL1', 'L1'],
                         help='lossfunction selection')
     parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
@@ -876,7 +895,8 @@ if __name__ == '__main__':
                                                                                        'BaseLine',
                                                                                        'triplet_OBB',
                                                                                        'triplet_BOO',
-                                                                                       'TestDataset'],
+                                                                                       'TestDataset',
+                                                                                       'Kitti360_RGB'],
                         help='One of the supported datasets')
     parser.add_argument('--num_elements_OBB', type=int, default=2000, help='Number of OSM in OBB training')
 
