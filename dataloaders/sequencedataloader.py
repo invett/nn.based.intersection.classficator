@@ -1030,3 +1030,127 @@ class triplet_BOO(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
                               #)
 
         return sample
+
+
+class fromAANETandDualBisenet360(Dataset):
+
+    def __init__(self, folders, distance=0, transform=None):
+        """
+        Inspired by fromAANETandDualBisenet, but with KITTI360 dataset.
+
+        no 'filterdistance' is here since we still don't have the GPS positions, so is "up to my eyes"
+
+        Args:
+            folders: location of the imagery
+            distance: UNUSED
+
+
+        """
+
+        self.transform = transform
+
+        aanet = []
+        image_02 = []
+        classification = []
+
+        for folder in folders:
+            folder_aanet = os.path.join(folder, 'pred')
+            folder_image_02 = os.path.join(folder, 'left')
+            for file in os.listdir(folder_aanet):
+                image_02_file = file.replace("_pred.npz", ".png")
+
+                if os.path.isfile(os.path.join(folder_aanet, file)) and os.path.isfile(os.path.join(folder_image_02, image_02_file)):
+                    aanet.append(os.path.join(folder_aanet, file))
+                    image_02.append(os.path.join(folder_image_02, image_02_file))
+                    if os.path.split(folder)[1].isnumeric():
+                        classification.append(int(os.path.split(folder)[1]))
+                else:
+                    print("Loader error")
+                    print(os.path.join(folder_aanet, file))
+                    print(os.path.join(folder_image_02, image_02_file))
+
+        self.aanet = aanet
+        self.image_02 = image_02
+        self.classification = classification
+
+        assert len(self.aanet) > 0, 'Training files missing [aanet]'
+        assert len(self.image_02) > 0, 'Training files missing [imagery]'
+        assert len(self.classification) > 0, 'error on classification'
+
+    def __len__(self):
+
+        return len(self.aanet)
+
+    def __getitem__(self, idx):
+
+        # Select file subset
+        aanet_file = self.aanet[idx]
+        image_02_file = self.image_02[idx]
+
+        dict_data = load(aanet_file)
+        aanet_image = dict_data['arr_0']
+        image_02_image = cv2.imread(image_02_file, cv2.IMREAD_UNCHANGED)
+
+        # Obtaining ground truth
+        gTruth = self.classification[idx]
+
+        sample = {'aanet': aanet_image,
+                  'alvaromask': None,  # kept for compatibilty
+                  'image_02': image_02_image,
+                  'label': gTruth}
+
+        assert self.transform, "no transform list provided"
+
+        # call all the transforms
+        bev_with_new_label = self.transform(sample)
+
+        # check whether the <GenerateNewDataset> transform was included (check the path); if yes, save the generated BEV
+        # please notice that the path.parameter isn't actually used, was our first intention, but then was simpler to do
+        # the following... OPTIMIZE change "path" as string with boolean
+        if "path" in bev_with_new_label:
+            # folder, file = os.path.split(image_02_file.replace("data_raw", "data_raw_bev").replace("image_02", ""))
+            # dataset_path = os.path.join(bev_with_new_label['path'], os.path.basename(folder))
+            # base_file_star = str(file.split(".")[0]) + "*"
+            # last_number = len([x for x in current_filelist if "json" not in x])
+            # final_filename = str(file.split(".")[0]) + '.' + str(last_number + 1).zfill(3) + ".png"
+
+            dataset_path = os.path.join(bev_with_new_label['path'], str(bev_with_new_label['label']))
+            base_file_star = os.path.splitext(os.path.split(image_02_file)[1])[0]
+            current_filelist = glob.glob1(dataset_path, base_file_star + '*')
+            last_number = len([x for x in current_filelist if "json" not in x])
+            final_filename = base_file_star + '.' + str(last_number + 1).zfill(3) + '.png'
+            bev_path_filename = os.path.join(dataset_path, final_filename)
+
+            # path must already exist!
+            if not os.path.exists(dataset_path):
+                os.makedirs(dataset_path)
+            flag = cv2.imwrite(bev_path_filename, bev_with_new_label['data'])
+            assert flag, "can't write file"
+            bev_with_new_label['bev_path_filename'] = bev_path_filename
+
+            # for debuggin' purposes
+            if "save_out_points" in bev_with_new_label:
+                cv2.imwrite(bev_path_filename + "original.png", image_02_image)
+                write_ply(bev_path_filename + ".ply", bev_with_new_label['save_out_points'],
+                          bev_with_new_label['save_out_colors'])
+
+            if "debug" in bev_with_new_label:
+                debug_values = bev_with_new_label.copy()
+
+                #delete images from the json - these are not json serializable
+                debug_values.pop('data')
+                debug_values.pop('generated_osm')
+                debug_values.pop('negative_osm')
+
+                json_path_filename = bev_path_filename + ".json"
+                with open(json_path_filename, 'w') as outfile:
+                    json.dump(debug_values, outfile)
+                bev_with_new_label['json_path_filename'] = json_path_filename
+
+                # for debuggin' purposes
+                if "save_out_points" in bev_with_new_label:
+                    debug_values.pop('save_out_points')
+                    debug_values.pop('save_out_colors')
+
+        return bev_with_new_label
+

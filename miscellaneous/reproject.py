@@ -38,7 +38,7 @@ import time
 
 
 visible = False
-DOPCL = True #fa le point cloud o meno.
+DOPCL = True  # create or not point clouds.
 
 ### data_folder_left = "data_road/training/image_2/"
 ### data_folder_right = "data_road/training_right/image_3/"
@@ -52,14 +52,14 @@ DOPCL = True #fa le point cloud o meno.
 ### img_fname = fname + '.png'
 ### calib_fname = fname + '.txt'
 
-#img_left_color = cv2.imread("image2_000000.png")
-#img_right_color = cv2.imread("image3_000000.png")
+# img_left_color = cv2.imread("image2_000000.png")
+# img_right_color = cv2.imread("image3_000000.png")
 img_left_color  = cv2.imread(sys.argv[5])
 img_right_color = cv2.imread(sys.argv[6])
 calib_fname = "calib.txt"
 
-#img_left_bw = cv2.blur(cv2.cvtColor(img_left_color, cv2.COLOR_RGB2GRAY), (5, 5))
-#img_right_bw = cv2.blur(cv2.cvtColor(img_right_color, cv2.COLOR_RGB2GRAY), (5, 5))
+# img_left_bw = cv2.blur(cv2.cvtColor(img_left_color, cv2.COLOR_RGB2GRAY), (5, 5))
+# img_right_bw = cv2.blur(cv2.cvtColor(img_right_color, cv2.COLOR_RGB2GRAY), (5, 5))
 
 def showImg(img):
     if visible:
@@ -134,19 +134,19 @@ with open(calib_file, 'r') as f:
 
 
 # Calculate depth-to-disparity
-cam1 = calib_matrix_1[:,:3] # left image - P2
-cam2 = calib_matrix_2[:,:3] # right image - P3
+cam1 = calib_matrix_1[:, :3]  # left image - P2
+cam2 = calib_matrix_2[:, :3]  # right image - P3
 
 Tmat = np.array([0.54, 0., 0.])
-rev_proj_matrix = np.zeros((4,4))
+rev_proj_matrix = np.zeros((4, 4))
 
 # TO GET THE Q-MATRIX, SAVED IN <<rev_proj_matrix>>
-#cv2.stereoRectify(cameraMatrix1 = cam1,cameraMatrix2 = cam2, \
-#                  distCoeffs1 = 0, distCoeffs2 = 0, \
-#                  imageSize = img_left_color.shape[:2], \
-#                  R = np.identity(3), T = Tmat, \
-#                  R1 = None, R2 = None, \
-#                  P1 =  None, P2 =  None, Q = rev_proj_matrix)
+# cv2.stereoRectify(cameraMatrix1=cam1, cameraMatrix2=cam2,
+#                   distCoeffs1=0, distCoeffs2=0,
+#                   imageSize=img_left_color.shape[:2],
+#                   R=np.identity(3), T=Tmat,
+#                   R1=None, R2=None,
+#                   P1=None, P2=None, Q=rev_proj_matrix)
 
 ########################################################################################################################
 

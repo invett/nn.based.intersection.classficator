@@ -352,7 +352,8 @@ class GenerateBev(object):
                  random_Ty_meters=2.0,
                  random_Tz_meters=2.0,
                  returnPoints=False,
-                 excludeMask=False
+                 excludeMask=False,
+                 qmatrix='kitti'
                  ):
         self.max_front_distance = max_front_distance
         self.max_height = max_height
@@ -365,6 +366,7 @@ class GenerateBev(object):
         self.random_Tz_meters = random_Tz_meters
         self.returnPoints = returnPoints
         self.excludeMask = excludeMask
+        self.qmatrix = qmatrix
 
         assert self.random_Rx_degrees is not None, "transform value can't be None in GenerateBEV"
         assert self.random_Ry_degrees is not None, "transform value can't be None in GenerateBEV"
@@ -376,11 +378,24 @@ class GenerateBev(object):
     def __call__(self, sample):
 
         # this Q matrix was obtained using STEREORECTIFY; would be nice to import this part of the code too.
-        rev_proj_matrix = np.array([
-            [1., 0., 0., -607.19281006],
-            [0., 1., 0., -185.21570587],
-            [0., 0., 0., 718.85601807],
-            [0., 0., -1.85185185, 0.]], dtype=np.float64)
+        # in the meanwhile, check the wiki page with a mini-tutorial
+        if self.qmatrix == 'kitti':
+            rev_proj_matrix = np.array([
+                [1., 0., 0., -607.19281006],
+                [0., 1., 0., -185.21570587],
+                [0., 0., 0., 718.85601807],
+                [0., 0., -1.85185185, 0.]], dtype=np.float64)
+
+        elif self.qmatrix == 'kitti360':
+            # KITTI-360
+            rev_proj_matrix = np.array([
+                 [1., 0.,  0., -682.04943848],
+                 [0., 1.,  0., -238.76953888],
+                 [0., 0.,  0.,  552.55426025],
+                 [0., 0., -1.66666667, 0.]], dtype=np.float64)
+        else:
+            print("Invalid qmatrix parameter")
+            exit(-1)
 
         points = cv2.reprojectImageTo3D(sample['aanet'], rev_proj_matrix)
 
@@ -409,11 +424,17 @@ class GenerateBev(object):
         # ALVARO MASK # TODO this is the right place to disable ALVARO MASK s and so get the FULL - BEVs
         alvaro = sample['alvaromask']
 
-        # nice trick to avoid touching more code than needed...
-        if self.excludeMask:
-            alvaro = np.ones(alvaro.shape, dtype=alvaro.dtype)
-        out_points = out_points[alvaro > 0]
-        out_colors = out_colors[alvaro > 0]
+        # this if was added once we have kitti360
+        if alvaro is not None:
+            # nice trick to avoid touching more code than needed... from this out_points needs to be 453620 x 3
+            if self.excludeMask:
+                alvaro = np.ones(alvaro.shape, dtype=alvaro.dtype)
+            out_points = out_points[alvaro > 0]
+            out_colors = out_colors[alvaro > 0]
+        else:
+            out_points = out_points.reshape([-1, 3])
+            out_colors = out_colors.reshape([-1, 3])
+
 
         # filter by dimension
         # idx = np.fabs(out_points[:, 2]) < self.max_front_distance

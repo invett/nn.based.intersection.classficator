@@ -8,7 +8,7 @@ import time
 import torchvision.transforms as transforms
 from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror, GenerateNewDataset, \
     WriteDebugInfoOnNewDataset, GenerateWarping
-from dataloaders.sequencedataloader import fromAANETandDualBisenet
+from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromAANETandDualBisenet360
 import matplotlib.pyplot as plt
 from miscellaneous.utils import send_telegram_message, send_telegram_picture
 
@@ -21,12 +21,36 @@ from miscellaneous.utils import send_telegram_message, send_telegram_picture
 
 def main(args):
 
-    folders = np.array([os.path.join(args.rootfolder, folder) for folder in os.listdir(args.rootfolder) if
+    folders = np.array([os.path.join(args.rootfolder, folder) for folder in sorted(os.listdir(args.rootfolder)) if
                         os.path.isdir(os.path.join(args.rootfolder, folder))])
 
     #folders = [folders[0]]
 
-    execute = 'warping'
+    #execute = 'warping'
+    #execute = 'standard'
+    execute = 'kitti360'
+
+    if execute == 'kitti360':
+
+        dataset = fromAANETandDualBisenet360(folders, transform=transforms.Compose([#Normalize(),
+                                                                                 GenerateBev(returnPoints=False,
+                                                                                             max_front_distance=args.max_front_distance,
+                                                                                             max_height=args.max_height,
+                                                                                             excludeMask=args.excludeMask,
+                                                                                             decimate=1.0,
+                                                                                             random_Rx_degrees=args.random_Rx_degrees,
+                                                                                             random_Ry_degrees=args.random_Ry_degrees,
+                                                                                             random_Rz_degrees=args.random_Rz_degrees,
+                                                                                             random_Tx_meters=args.random_Tx_meters,
+                                                                                             random_Ty_meters=args.random_Ty_meters,
+                                                                                             random_Tz_meters=args.random_Tz_meters,
+                                                                                             qmatrix='kitti360'
+                                                                                             ),
+                                                                                 Mirror(),
+                                                                                 Rescale((224, 224)),
+                                                                                 WriteDebugInfoOnNewDataset(),
+                                                                                 GenerateNewDataset(args.savefolder)]),
+                                             distance=args.distance_from_intersection)
 
     if execute == 'warping':
         # WARNING! MIRROR IS/WAS DISABLED! not sure whether this respects our intentions...
@@ -96,8 +120,10 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--rootfolder', default="/home/malvaro/Documentos/DualBiSeNet/data_raw", type=str, help='Root folder for all datasets')
-    parser.add_argument('--savefolder', default="/home/malvaro/Documentos/DualBiSeNet/data_raw_bev", type=str, help='Where to save the new data')
+    # parser.add_argument('--rootfolder', default="/home/malvaro/Documentos/DualBiSeNet/data_raw", type=str, help='Root folder for all datasets')
+    # parser.add_argument('--savefolder', default="/home/malvaro/Documentos/DualBiSeNet/data_raw_bev", type=str, help='Where to save the new data')
+    parser.add_argument('--rootfolder', default="/media/augusto/500GBHECTOR/augusto/kitti360-augusto", type=str, help='Root folder for all datasets')
+    parser.add_argument('--savefolder', default="/media/augusto/500GBHECTOR/augusto/kitti360-augusto-augmented", type=str, help='Where to save the new data')
     parser.add_argument('--augmentation', type=int, default=50, help='How many files generate for each of the BEVs')
     parser.add_argument('--workers', type=int, default=0, help='How many workers for the dataloader')
     parser.add_argument('--telegram', action='store_true', help='Send info through Telegram')
@@ -113,6 +139,13 @@ if __name__ == '__main__':
     parser.add_argument('--random_Tx_meters',  type=float, default=0.0, help='random_Tx_meters')
     parser.add_argument('--random_Ty_meters',  type=float, default=0.0, help='random_Ty_meters')
     parser.add_argument('--random_Tz_meters',  type=float, default=0.0, help='random_Tz_meters')
+
+    # random_Rx_degrees = 2.0,
+    # random_Ry_degrees = 15.0,
+    # random_Rz_degrees = 2.0,
+    # random_Tx_meters = 2.0,
+    # random_Ty_meters = 2.0,
+    # random_Tz_meters = 2.0,
 
     args = parser.parse_args()
 
