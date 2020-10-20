@@ -280,7 +280,8 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
 
         # Calculate metrics
         loss_train_mean = loss_record / len(dataloader_train)
-        print('\nloss for train : %f' % loss_train_mean)
+        print('...')
+        print('loss for train : {:.4f} - Total elements: {:2d}'.format(loss_train_mean, len(dataloader_train)))
 
         if args.triplet or args.embedding:
             acc_train = acc_record / len(dataloader_train)
@@ -503,13 +504,15 @@ def main(args, model=None):
             # todo delete when ok -----| continue
         else:
             if not args.nowandb:  # if nowandb flag was set, skip
-                if args.resume:
+                if args.wandb_resume:
+                    print('Resuming WANDB run, this run will log into: ', args.wandb_resume)
                     wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito',
-                               job_type="training", reinit=True, resume=True)
+                               job_type="training", reinit=True, resume=args.wandb_resume)
+                    wandb.config.update(args, allow_val_change=True)
                 else:
                     wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito',
                            job_type="training", reinit=True)
-                wandb.config.update(args)
+                    wandb.config.update(args)
 
         # train_path, val_path = folders[train_index], folders[val_index]
         train_path, val_path = np.array(folders), np.array([val_path])  # No kfold
@@ -641,7 +644,8 @@ def main(args, model=None):
                 # Set new learning rate from command line
                 optimizer.param_groups[0]['lr'] = args.lr
         elif args.optimizer == 'adam':
-            optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=5e-4)
+            # optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=5e-4)
+            optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=adam_weight_decay)
             if args.resume:
                 optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
                 # Set new learning rate from command line
@@ -669,8 +673,10 @@ def main(args, model=None):
                     param_epoch = checkpoint['epoch']
                 else:
                     param_epoch = -1
+                print("Creating MultiStepLR optimizer with last_epoch: {}".format(param_epoch))
                 scheduler = MultiStepLR(optimizer, milestones=[5, 10, 15, 18, 20], gamma=0.5, last_epoch=param_epoch)
             if args.scheduler_type == 'ReduceLROnPlateau':
+                print("Creating ReduceLROnPlateau optimizer")
                 scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01,
                                               threshold_mode='rel', cooldown=1, min_lr=0, eps=1e-08, verbose=True)
             # Load Scheduler if exist
@@ -800,6 +806,7 @@ if __name__ == '__main__':
     parser.add_argument('--test', action='store_true', help='Test the model')
     parser.add_argument('--wandb_group_id', type=str, help='Set group id for the wandb experiment')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
+    parser.add_argument('--wandb_resume', type=str, default=None, help='the id of the wandb-resume, e.g. jhc0gvhb')
     parser.add_argument('--sweep', action='store_true', help='if set, this run is part of a wandb-sweep; use it with'
                                                              'as documented in '
                                                              'in https://docs.wandb.com/sweeps/configuration#command')
@@ -828,6 +835,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_model_path', type=str, default='./trainedmodels/', help='path to save model')
     parser.add_argument('--save_prefix', type=str, default='', help='Prefix to all saved models')
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
+    parser.add_argument('--adam_weight_decay', type=float, default=5e-4, help='adam_weight_decay)
     parser.add_argument('--lossfunction', type=str, default='MSE', choices=['MSE', 'SmoothL1', 'L1'],
                         help='lossfunction selection')
     parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
@@ -846,7 +854,8 @@ if __name__ == '__main__':
     parser.add_argument('--scheduler_type', type=str, default='MultiStepLR', choices=['MultiStepLR',
                                                                                       'ReduceLROnPlateau'])
     parser.add_argument('--grayscale', action='store_true', help='Use Grayscale Images')
-    parser.add_argument('--resume', type=str, default=None, help='path to checkpoint model')
+    parser.add_argument('--resume', type=str, default=None,
+                        help='path to checkpoint model; consider check wandb_resume')
 
     # to enable the STUDENT training, set --embedding and provide the teacher path
     parser.add_argument('--embedding', action='store_true', help='Use embedding matching')

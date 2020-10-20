@@ -7,6 +7,9 @@
 # 	1. THE NPZ FILES GENERATED WITH aanet 
 # 	2. THE ALVARO's MASKs
 
+
+# USE generate.bev.dataset.py INSTEAD !!!!
+
 while read folder
 do
   if [[ ${folder:0:1} != "#" ]]
