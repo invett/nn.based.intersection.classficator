@@ -18,6 +18,7 @@ import tqdm
 import wandb
 from torch.optim.lr_scheduler import MultiStepLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
+from torchvision.datasets import ImageFolder
 
 from dataloaders.sequencedataloader import BaseLine, TestDataset, fromAANETandDualBisenet, fromGeneratedDataset, \
     triplet_BOO, triplet_OBB
@@ -511,13 +512,16 @@ def main(args, model=None):
                     wandb.config.update(args, allow_val_change=True)
                 else:
                     wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito',
-                           job_type="training", reinit=True)
+                               job_type="training", reinit=True)
                     wandb.config.update(args)
 
         # train_path, val_path = folders[train_index], folders[val_index]
         train_path, val_path = np.array(folders), np.array([val_path])  # No kfold
 
-        if args.dataloader == "fromAANETandDualBisenet":
+        if args.dataloader == 'Kitti360_RGB':
+            pass
+
+        elif args.dataloader == "fromAANETandDualBisenet":
             val_dataset = fromAANETandDualBisenet(val_path, args.distance, transform=aanetTransforms)
             train_dataset = fromAANETandDualBisenet(train_path, args.distance, transform=aanetTransforms)
 
@@ -589,7 +593,7 @@ def main(args, model=None):
             model = get_model_resnet(args.resnetmodel, args.num_classes, transfer=args.transfer,
                                      pretrained=args.pretrained,
                                      embedding=(
-                                                           args.embedding or args.triplet or args.freeze) and not args.embedding_class)
+                                                       args.embedding or args.triplet or args.freeze) and not args.embedding_class)
         elif args.resnetmodel[0:7] == 'resnext':
             model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
         elif args.resnetmodel == 'personalized':
@@ -678,7 +682,8 @@ def main(args, model=None):
             if args.scheduler_type == 'ReduceLROnPlateau':
                 print("Creating ReduceLROnPlateau optimizer")
                 scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01,
-                                              threshold_mode='rel', cooldown=1, min_lr=0, eps=1e-08, verbose=True)
+                                              threshold_mode='rel', cooldown=1, min_lr=0, eps=1e-08, verbose=True,
+                                              last_epoch=param_epoch)
             # Load Scheduler if exist
             if args.resume and checkpoint['scheduler_state_dict'] is not None:
                 scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
@@ -699,7 +704,7 @@ def main(args, model=None):
         ##########################################
 
         acc, trained_loadpath = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
-                    os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
+                                      os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
 
         k_fold_acc_list.append(acc)
 

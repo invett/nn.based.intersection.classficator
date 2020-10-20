@@ -19,6 +19,82 @@ from miscellaneous.utils import write_ply
 from scripts.OSM_generator import Crossing, test_crossing_pose
 
 
+class kitti360_RGB(Dataset):
+    def __init__(self, path, mode, transform=None):
+        """
+
+                THIS IS THE DATALOADER USED TO DIRECTLY USE RGB IMAGES on Kitti 360 dataset
+
+                Args:
+                    root_dir (string): Directory with all the images.
+                    transform (callable, optional): Optional transform to be applied
+                        on a sample.
+                """
+        self.transform = transform
+
+        images = {}
+
+        for root, dirs, files in os.walk(path, topdown=False):
+            for name in files:
+                head, ext = os.path.splitext(name)
+                if ext == '.png':
+                    sequence = name.split('_')[0:6]
+                    frame = name.split('_')[-1]
+                    label = root.split('/')[-1].astype(int)
+                    if sequence in images:
+                        images[sequence]['labels'].append(label)
+                        images[sequence]['frames'].append(os.path.join(root, frame))
+                    else:
+                        images[sequence]['labels'] = [label]
+                        images[sequence]['frames'] = [os.path.join(root, frame)]
+
+        if mode == 'train':
+            trainimages = []
+            trainlabels = []
+            for sequence, samples  in images.iteritems():
+                if sequence != '2013_05_28_drive_0000_sync' and sequence != '2013_05_28_drive_0002_sync':
+                    for k, list in samples.iteritems():
+                        if k == 'labels':
+                            trainlabels.append(list)
+                        if k == 'frames':
+                            trainimages.append(list)
+
+            self.images = trainimages
+            self.labels = trainlabels
+        if mode == 'val' :
+            trainimages = []
+            trainlabels = []
+            for sequence, samples in images.iteritems():
+                if sequence == '2013_05_28_drive_0002_sync':
+                    for k, list in samples.iteritems():
+                        if k == 'labels':
+                            trainlabels.append(list)
+                        if k == 'frames':
+                            trainimages.append(list)
+
+            self.images = trainimages
+            self.labels = trainlabels
+
+    def __len__(self):
+
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        # Select file subset
+        imagepath = self.images[idx]
+        image = Image.open(imagepath)
+
+        label = self.labels[idx]
+
+        sample = {'data': image,
+                  'label': label}
+
+        if self.transform:
+            sample['data'] = self.transform(sample['data'])
+
+        return sample
+
+
 class BaseLine(Dataset):
     def __init__(self, folders, transform=None):
         """
@@ -259,7 +335,7 @@ class fromAANETandDualBisenet(Dataset):
             if "debug" in bev_with_new_label:
                 debug_values = bev_with_new_label.copy()
 
-                #delete images from the json - these are not json serializable
+                # delete images from the json - these are not json serializable
                 debug_values.pop('data')
                 debug_values.pop('generated_osm')
                 debug_values.pop('negative_osm')
@@ -416,9 +492,11 @@ class fromGeneratedDataset(Dataset):
             generated_osm = test_crossing_pose(crossing_type=bev_label, save=False, rnd_width=self.rnd_width,
                                                rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
                                                sampling=not self.canonical, random_rate=self.random_rate)
-            generated_osm_negative = test_crossing_pose(crossing_type=negative_label, save=False, rnd_width=self.rnd_width,
-                                               rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
-                                               sampling=not self.canonical, random_rate=self.random_rate)
+            generated_osm_negative = test_crossing_pose(crossing_type=negative_label, save=False,
+                                                        rnd_width=self.rnd_width,
+                                                        rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial,
+                                                        noise=self.noise,
+                                                        sampling=not self.canonical, random_rate=self.random_rate)
             sample = {'data': bev_image,
                       'label': bev_label,
                       'image_path': self.bev_images[idx],
@@ -448,7 +526,9 @@ class fromGeneratedDataset(Dataset):
         datapath_last = ""
         for file, label in zip(self.bev_images, self.bev_labels):
             head, filename = os.path.split(file)
-            head = head.replace('data_raw_bev', 'data_raw')
+            head, folder = os.path.split(head)
+            head, _ = os.path.split(head)
+            head = os.path.join(os.path.join(head, 'data_raw'), folder)
             datapath = os.path.join(head, 'frames_topology.txt')
             name, _ = os.path.splitext(filename)
             name = name.split('.')[0]
@@ -464,7 +544,7 @@ class fromGeneratedDataset(Dataset):
         self.bev_labels = labels
 
 
-class teacher_tripletloss(Dataset): 
+class teacher_tripletloss(Dataset):
 
     def __init__(self, folders, distance, include_insidecrossing=False, transform=None, noise=True, canonical=True,
                  random_rate=1.0):
@@ -1015,19 +1095,19 @@ class triplet_BOO(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
             sample['OSM_negative'] = self.transform_obs(sample['OSM_negative'])
 
             # DEBUG -- send in telegram. Little HACK for the ANCHOR, get a sub-part of image ...
-        #emptyspace = 255 * torch.ones([224, 30, 3], dtype=torch.uint8)
-        #a = plt.figure()
-        #plt.imshow(torch.cat((torch.tensor(sample['BEV_anchor']), emptyspace,
-                              #torch.tensor(sample['OSM_positive'])[38:262, 38:262, :], emptyspace,
-                              #torch.tensor(sample['OSM_negative'])[38:262, 38:262, :]), 1))
-        #send_telegram_picture(a, \
-                              #"OSM | BEV(positive) | BEV(negative)" + \
-                              #"\nWarning: images of OSM_positive and OSM_negative are CROPPED!\n" + \
-                              #"\nlabel_anchor: " + str(sample['label_anchor']) + \
-                              #"\nlabel_positive: " + str(sample['label_positive']) + \
-                              #"\nlabel_negative: " + str(sample['label_negative']) + \
-                              #"\nfilename positive: " + str(sample['filename_anchor']) \
-                              #)
+        # emptyspace = 255 * torch.ones([224, 30, 3], dtype=torch.uint8)
+        # a = plt.figure()
+        # plt.imshow(torch.cat((torch.tensor(sample['BEV_anchor']), emptyspace,
+        # torch.tensor(sample['OSM_positive'])[38:262, 38:262, :], emptyspace,
+        # torch.tensor(sample['OSM_negative'])[38:262, 38:262, :]), 1))
+        # send_telegram_picture(a, \
+        # "OSM | BEV(positive) | BEV(negative)" + \
+        # "\nWarning: images of OSM_positive and OSM_negative are CROPPED!\n" + \
+        # "\nlabel_anchor: " + str(sample['label_anchor']) + \
+        # "\nlabel_positive: " + str(sample['label_positive']) + \
+        # "\nlabel_negative: " + str(sample['label_negative']) + \
+        # "\nfilename positive: " + str(sample['filename_anchor']) \
+        # )
 
         return sample
 
@@ -1059,7 +1139,8 @@ class fromAANETandDualBisenet360(Dataset):
             for file in sorted(os.listdir(folder_aanet)):
                 image_02_file = file.replace("_pred.npz", ".png")
 
-                if os.path.isfile(os.path.join(folder_aanet, file)) and os.path.isfile(os.path.join(folder_image_02, image_02_file)):
+                if os.path.isfile(os.path.join(folder_aanet, file)) and os.path.isfile(
+                        os.path.join(folder_image_02, image_02_file)):
                     aanet.append(os.path.join(folder_aanet, file))
                     image_02.append(os.path.join(folder_image_02, image_02_file))
                     if os.path.split(folder)[1].isnumeric():
@@ -1137,7 +1218,7 @@ class fromAANETandDualBisenet360(Dataset):
             if "debug" in bev_with_new_label:
                 debug_values = bev_with_new_label.copy()
 
-                #delete images from the json - these are not json serializable
+                # delete images from the json - these are not json serializable
                 debug_values.pop('data')
                 debug_values.pop('generated_osm')
                 debug_values.pop('negative_osm')
@@ -1153,4 +1234,3 @@ class fromAANETandDualBisenet360(Dataset):
                     debug_values.pop('save_out_colors')
 
         return bev_with_new_label
-

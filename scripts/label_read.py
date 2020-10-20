@@ -3,17 +3,25 @@ import pandas as pd
 
 path = '../../DualBiSeNet/data_raw/'
 
-with open('labels.txt', 'w') as logfile:
-    for root, dirs, files in os.walk(path, topdown=False):
-        for name in files:
-            if name == 'frames_topology.txt':
-                gt_path = os.path.join(root, name)
-                logfile.write(gt_path + '\n')
-                gtdata = pd.read_csv(gt_path, sep=';', header=None, dtype=str)
-                (gtdata[(gtdata[1].astype(float) < 20.) & (gtdata[3].astype(int) == 0)][2].value_counts()).to_string(
-                    logfile)
-                logfile.write('\n')
-                
+for i in range(7):
+    logname = 'filelist_{}.txt'.format(i)
+
+    with open(logname, 'w') as logfile:
+        for root, dirs, files in os.walk(path, topdown=False):
+            for name in files:
+                if name == 'frames_topology.txt':
+                    gt_path = os.path.join(root, name)
+                    logfile.write(gt_path + '\n')
+                    gtdata = pd.read_csv(gt_path, sep=';', header=None, dtype=str)
+                    # (gtdata[(gtdata[1].astype(float) < 20.) & (gtdata[3].astype(int) == 0)][2].value_counts()).to_string(
+                    # logfile)
+                    gtdata[0] = gt_path + gtdata[(gtdata[1].astype(float) < 20.) & (gtdata[3].astype(int) == 0) & (gtdata[2].astype(int) == int(i))][
+                                      0].astype(str)
+                    gtdata[0].to_string(logfile)
+                    #(gtdata[(gtdata[1].astype(float) < 20.) & (gtdata[3].astype(int) == 0) & (gtdata[2].astype(int) == int(i))][
+                                      #0].to_string(logfile))
+                    logfile.write('\n')
+
 """
 for root, dirs, files in os.walk(path, topdown=False):
     for name in files:
@@ -38,4 +46,3 @@ for root, dirs, files in os.walk(path, topdown=False):
                 os.remove(pred_path.replace('image_02', 'pred'))
                 
 """
-
