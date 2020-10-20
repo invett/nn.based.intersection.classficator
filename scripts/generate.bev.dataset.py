@@ -24,14 +24,32 @@ def main(args):
     folders = np.array([os.path.join(args.rootfolder, folder) for folder in sorted(os.listdir(args.rootfolder)) if
                         os.path.isdir(os.path.join(args.rootfolder, folder))])
 
-    #folders = [folders[0]]
+    # folders = [folders[1]]
 
-    #execute = 'warping'
-    #execute = 'standard'
-    execute = 'kitti360'
+    # execute = 'warping'
+    # execute = 'standard'
+    # execute = 'kitti360'
+    execute = 'kitti360-warping'
+
+    if execute == 'kitti360-warping':
+        '''
+        in the warping, moving the camera doesn't make sense i think ... better to make standard image augmentation
+        '''
+        dataset = fromAANETandDualBisenet360(folders, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.29,
+                                                                                                    random_Ry_degrees=0.0,
+                                                                                                    random_Rz_degrees=0.0,
+                                                                                                    random_Tx_meters=0.0,
+                                                                                                    random_Ty_meters=0.0,
+                                                                                                    random_Tz_meters=0.0,
+                                                                                                    warpdataset='kitti360'),
+                                                                                    Mirror(),
+                                                                                    Rescale((224, 224)),
+                                                                                    #WriteDebugInfoOnNewDataset(),
+                                                                                    GenerateNewDataset(args.savefolder)]
+                                                                                   ),
+                                             distance=args.distance_from_intersection)
 
     if execute == 'kitti360':
-
         dataset = fromAANETandDualBisenet360(folders, transform=transforms.Compose([#Normalize(),
                                                                                  GenerateBev(returnPoints=False,
                                                                                              max_front_distance=args.max_front_distance,
@@ -44,9 +62,11 @@ def main(args):
                                                                                              random_Tx_meters=args.random_Tx_meters,
                                                                                              random_Ty_meters=args.random_Ty_meters,
                                                                                              random_Tz_meters=args.random_Tz_meters,
-                                                                                             qmatrix='kitti360'
+                                                                                             qmatrix='kitti360',
+                                                                                             base_Tz=22.5,
+                                                                                             base_Ty=22.0
                                                                                              ),
-                                                                                 Mirror(),
+                                                                                 #Mirror(),
                                                                                  Rescale((224, 224)),
                                                                                  WriteDebugInfoOnNewDataset(),
                                                                                  GenerateNewDataset(args.savefolder)]),
@@ -59,7 +79,8 @@ def main(args):
                                                                                                  random_Rz_degrees=1.0,
                                                                                                  random_Tx_meters=5.0,
                                                                                                  random_Ty_meters=1.0,
-                                                                                                 random_Tz_meters=0.1),
+                                                                                                 random_Tz_meters=0.1,
+                                                                                                 warpdataset='kitti'),
                                                                                  #Mirror(),
                                                                                  Rescale((224, 224)),
                                                                                  WriteDebugInfoOnNewDataset(),
@@ -103,8 +124,28 @@ def main(args):
             if args.telegram:
                 a = plt.figure()
                 plt.imshow(sample['data'].numpy().squeeze() / 255.0)
-                send_telegram_picture(a, str(sample['bev_path_filename']))
+                #send_telegram_picture(a, str(sample['bev_path_filename']))
+                send_telegram_picture(a, '')
                 plt.close('all')
+
+            # Or use this to debug
+            # ---> to find the image inside the dataloader
+            #      [(idx, img) for idx, img in enumerate(image_02) if '5232' in img]
+            # sample = dataloader.dataset.__getitem__(5302)
+            # data = sample['data']
+            # label = sample['label']
+            # a = plt.figure()
+            # plt.imshow(sample['data'] / 255.0)
+            # send_telegram_picture(a, str(sample['bev_path_filename']))
+            # plt.close('all')
+
+            # for WARPINGS
+            # data = sample['data']
+            # label = sample['label']
+            # a = plt.figure()
+            # plt.imshow(sample['data'].squeeze() / 255.0)
+            # send_telegram_picture(a, 'fff')
+            # plt.close('all')
 
             if 'bev_path_filename' in sample:
                 print(sample['bev_path_filename'])
@@ -123,7 +164,7 @@ if __name__ == '__main__':
     # parser.add_argument('--rootfolder', default="/home/malvaro/Documentos/DualBiSeNet/data_raw", type=str, help='Root folder for all datasets')
     # parser.add_argument('--savefolder', default="/home/malvaro/Documentos/DualBiSeNet/data_raw_bev", type=str, help='Where to save the new data')
     parser.add_argument('--rootfolder', default="/media/augusto/500GBHECTOR/augusto/kitti360-augusto", type=str, help='Root folder for all datasets')
-    parser.add_argument('--savefolder', default="/media/augusto/500GBHECTOR/augusto/kitti360-augusto-augmented", type=str, help='Where to save the new data')
+    parser.add_argument('--savefolder', default="/media/augusto/500GBHECTOR/augusto/kitti360-augusto-augmented-warped", type=str, help='Where to save the new data')
     parser.add_argument('--augmentation', type=int, default=50, help='How many files generate for each of the BEVs')
     parser.add_argument('--workers', type=int, default=0, help='How many workers for the dataloader')
     parser.add_argument('--telegram', action='store_true', help='Send info through Telegram')

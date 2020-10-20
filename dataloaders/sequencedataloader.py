@@ -1056,7 +1056,7 @@ class fromAANETandDualBisenet360(Dataset):
         for folder in folders:
             folder_aanet = os.path.join(folder, 'pred')
             folder_image_02 = os.path.join(folder, 'left')
-            for file in os.listdir(folder_aanet):
+            for file in sorted(os.listdir(folder_aanet)):
                 image_02_file = file.replace("_pred.npz", ".png")
 
                 if os.path.isfile(os.path.join(folder_aanet, file)) and os.path.isfile(os.path.join(folder_image_02, image_02_file)):

@@ -201,7 +201,8 @@ class GenerateWarping(object):
                  random_Rz_degrees=0.0,
                  random_Tx_meters=0.0,
                  random_Ty_meters=0.0,
-                 random_Tz_meters=0.0):
+                 random_Tz_meters=0.0,
+                 warpdataset='kitti'):
         #######################################################################################
         # Code for the warping of RGB images - we use KORNIA to get the perspective transform #
         #######################################################################################
@@ -222,6 +223,11 @@ class GenerateWarping(object):
             self.K = np.array([[9.786977e+02, 0.000000e+00, 6.900000e+02, 0.000000e+00],
                                [0.000000e+00, 9.717435e+02, 2.497222e+02, 0.000000e+00],
                                [0.000000e+00, 0.000000e+00, 1.000000e+00, 0.000000e+00]], dtype=np.float64)
+
+            # kitti 360 P_rect_00
+            self.K = np.array([[552.554261, 0.00000000, 682.049453, 0.000000],
+                               [0.00000000, 552.554261, 238.769549, 0.000000],
+                               [0.00000000, 0.00000000, 1.00000000, 0.000000]], dtype=np.float64)
         else:
             self.K = cameramatrix
 
@@ -233,6 +239,7 @@ class GenerateWarping(object):
         self.random_Tz_meters = random_Tz_meters
         self.bev_height = bev_height
         self.bev_width = bev_width
+        self.warpdataset = warpdataset
 
         assert self.random_Rx_radians is not None, "transform value can't be None in GenerateWarping"
         assert self.random_Ry_radians is not None, "transform value can't be None in GenerateWarping"
@@ -258,13 +265,26 @@ class GenerateWarping(object):
         random_Ty = np.random.uniform(-self.random_Ty_meters, self.random_Ty_meters)
         random_Tz = np.random.uniform(-self.random_Tz_meters, self.random_Tz_meters)
 
-        # position of the virtual camera
-        dx = 6 + random_Tx
-        dy = 0 + random_Ty
-        dz = 2.0 + random_Tz
-        pitchCorrection = 0.084 + random_Rx
-        yawCorrection = 0.1 + random_Ry
-        rollCorrection = 0.0 + random_Rz
+        if self.warpdataset == 'kitti':
+            # position of the virtual camera -- standard kitti
+            dx = 6 + random_Tx
+            dy = 0 + random_Ty
+            dz = 2.0 + random_Tz
+            pitchCorrection = 0.084 + random_Rx
+            yawCorrection = 0.1 + random_Ry
+            rollCorrection = 0.0 + random_Rz
+        elif self.warpdataset == 'kitti360':
+            # position of the virtual camera -- standard kitti 360
+            dx = 15   + random_Tx
+            dy = 0    + random_Ty
+            dz = 1.5  + random_Tz
+            pitchCorrection = 0.1   + random_Rx  # 0.29 deg 0.005rad feasible
+            yawCorrection = -0.055  + random_Ry
+            rollCorrection = 0.000  + random_Rz
+        else:
+            assert "unknown warping .... check generatewarping"
+
+
         points_3d = np.array([[16, 16, 120, 120], [16, -16, -16, 16], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
         points_dst = torch.FloatTensor(
             [[[0, self.bev_width], [self.bev_height, self.bev_width], [self.bev_height, 0], [0, 0], ]])
@@ -351,6 +371,9 @@ class GenerateBev(object):
                  random_Tx_meters=2.0,
                  random_Ty_meters=2.0,
                  random_Tz_meters=2.0,
+                 base_Tx=0.000000e+00,
+                 base_Ty=17.00000e+00,
+                 base_Tz=10.50000e+00,
                  returnPoints=False,
                  excludeMask=False,
                  qmatrix='kitti'
@@ -367,6 +390,10 @@ class GenerateBev(object):
         self.returnPoints = returnPoints
         self.excludeMask = excludeMask
         self.qmatrix = qmatrix
+
+        self.base_Tx = base_Tx
+        self.base_Ty = base_Ty
+        self.base_Tz = base_Tz
 
         assert self.random_Rx_degrees is not None, "transform value can't be None in GenerateBEV"
         assert self.random_Ry_degrees is not None, "transform value can't be None in GenerateBEV"
@@ -469,13 +496,9 @@ class GenerateBev(object):
         random_Ty = np.random.uniform(-self.random_Ty_meters, self.random_Ty_meters)
         random_Tz = np.random.uniform(-self.random_Tz_meters, self.random_Tz_meters)
 
-        # avoid performing rotations of type:1 and type:2 intersections as the should appear as type:0
-        if sample['label'] == 1 or sample['label'] == 2:
-            random_Ty = 0.0
-
-        T_00 = np.array([0.000000e+00 + random_Tx,
-                         17.00000e+00 + random_Ty,
-                         10.50000e+00 + random_Tz], dtype=np.float64)
+        T_00 = np.array([self.base_Tx + random_Tx,
+                         self.base_Ty + random_Ty,
+                         self.base_Tz + random_Tz], dtype=np.float64)
 
         # No distortion
         D_00 = np.array([0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float64)
@@ -493,6 +516,10 @@ class GenerateBev(object):
         random_Rx = np.random.uniform(-self.random_Rx_degrees, self.random_Rx_degrees)
         random_Ry = np.random.uniform(-self.random_Ry_degrees, self.random_Ry_degrees)
         random_Rz = np.random.uniform(-self.random_Rz_degrees, self.random_Rz_degrees)
+
+        # avoid performing rotations of type:1 and type:2 intersections as the should appear as type:0
+        if sample['label'] == 1 or sample['label'] == 2:
+            random_Ry = 0.0
 
         dataAugmentationRotationMatrixX = R.from_euler('x', random_Rx, degrees=True).as_matrix()
         dataAugmentationRotationMatrixY = R.from_euler('y', random_Ry, degrees=True).as_matrix()
