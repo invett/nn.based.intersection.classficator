@@ -36,16 +36,17 @@ class kitti360_RGB(Dataset):
         for root, dirs, files in os.walk(path, topdown=False):
             for name in files:
                 head, ext = os.path.splitext(name)
-                if ext == '.png':
+                if (ext == '.png') and (root.split('/')[-1] == 'left'):
                     sequence = '_'.join(name.split('_')[0:6])
                     frame = name.split('_')[-1]
-                    label = int(root.split('/')[-1])
+                    label = int(root.split('/')[-2])
                     if sequence in images:
                         images[sequence]['labels'].append(label)
-                        images[sequence]['frames'].append(os.path.join(root,'_'.join([sequence,frame])))
+                        images[sequence]['frames'].append(os.path.join(root, '_'.join([sequence, frame])))
                     else:
-                        images[sequence] = {'labels': [label], 'frames': [os.path.join(root, '_'.join([sequence,frame]))]}
-        print('folders searched')
+                        images[sequence] = {'labels': [label],
+                                            'frames': [os.path.join(root, '_'.join([sequence, frame]))]}
+
         trainimages = []
         trainlabels = []
         for sequence, samples in images.items():
@@ -58,8 +59,6 @@ class kitti360_RGB(Dataset):
 
         self.images = trainimages
         self.labels = trainlabels
-
-        print('Kitti360 dataset loaded')
 
     def __len__(self):
 

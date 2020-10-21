@@ -8,6 +8,7 @@ import warnings
 from datetime import datetime
 from functools import partial
 
+import kornia
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -26,7 +27,7 @@ from dataloaders.transforms import GenerateBev, GrayScale, Mirror, Normalize, Re
 from dropout_models import get_resnet, get_resnext
 from miscellaneous.utils import init_function, reset_wandb_env, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_data, svm_train
-from model.resnet_models import Personalized, Personalized_small, get_model_resnet, get_model_resnext
+from model.resnet_models import Personalized, Personalized_small, get_model_resnet, get_model_resnext, get_model_vgg
 
 
 def test(args, dataloader_test, classifier=None):
@@ -168,12 +169,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
     kfold_loss = np.inf
 
     # Build loss criterion
-    if args.weighted and not args.embedding:
-        weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
-        class_weights = torch.FloatTensor(weights).cuda()
-        traincriterion = torch.nn.CrossEntropyLoss(weight=class_weights)
-        valcriterion = torch.nn.CrossEntropyLoss()
-    elif args.embedding:
+    if args.embedding:
         if args.weighted:
             if args.lossfunction == 'SmoothL1':
                 traincriterion = torch.nn.SmoothL1Loss(reduction='none')
@@ -198,8 +194,25 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
         traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
         valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
     else:
-        traincriterion = torch.nn.CrossEntropyLoss()
-        valcriterion = torch.nn.CrossEntropyLoss()
+        if args.weighted:
+            if args.dataloader == 'Kitti360_RGB':
+                weights = [0.85, 0.86, 0.84, 0.85, 0.90, 0.84, 0.85]
+                class_weights = torch.FloatTensor(weights).cuda()
+                traincriterion = torch.nn.CrossEntropyLoss(weight=class_weights)
+                valcriterion = torch.nn.CrossEntropyLoss()
+            else:
+                weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
+                class_weights = torch.FloatTensor(weights).cuda()
+                traincriterion = torch.nn.CrossEntropyLoss(weight=class_weights)
+                valcriterion = torch.nn.CrossEntropyLoss()
+        else:
+            if args.lossfunction == 'focal':
+                kwargs = {"alpha": 0.5, "gamma": 2.0, "reduction": 'mean'}
+                traincriterion = kornia.losses.FocalLoss(**kwargs)
+                valcriterion = kornia.losses.FocalLoss(**kwargs)
+            else:
+                traincriterion = torch.nn.CrossEntropyLoss()
+                valcriterion = torch.nn.CrossEntropyLoss()
 
     # Build gt images for validation
     if args.embedding:
@@ -457,13 +470,13 @@ def main(args, model=None):
         val_path = os.path.join(data_path, '2011_10_03_drive_0034_sync')
     else:
         train_sequence_list = ['2013_05_28_drive_0003_sync',
-                               '2013_05_28_drive_0004_sync',
+                               '2013_05_28_drive_0002_sync',
                                '2013_05_28_drive_0005_sync',
                                '2013_05_28_drive_0006_sync',
                                '2013_05_28_drive_0007_sync',
                                '2013_05_28_drive_0009_sync',
                                '2013_05_28_drive_0010_sync']
-        val_sequence_list = ['2013_05_28_drive_0002_sync']
+        val_sequence_list = ['2013_05_28_drive_0004_sync']
         test_sequence_list = ['2013_05_28_drive_0000_sync']
 
     if args.grayscale:
@@ -619,11 +632,8 @@ def main(args, model=None):
             model = Personalized(args.num_classes)
         elif args.resnetmodel == 'personalized_small':
             model = Personalized_small(args.num_classes)
-        elif args.dropout:
-            if args.resnetmodel == 'resnet':
-                model = get_resnext(args, args.cardinality, args.d_width, args.num_classes)
-            else:
-                model = get_resnet(args, args.cardinality)
+        elif 'vgg' in args.resnetmodel:
+            model = get_model_vgg(args.resnetmodel, args.num_classes, pretrained=args.pretrained, embedding=args.triplet)
 
         if args.freeze:
             # load best trained model
@@ -863,7 +873,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_prefix', type=str, default='', help='Prefix to all saved models')
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
     parser.add_argument('--adam_weight_decay', type=float, default=5e-4, help='adam_weight_decay')
-    parser.add_argument('--lossfunction', type=str, default='MSE', choices=['MSE', 'SmoothL1', 'L1'],
+    parser.add_argument('--lossfunction', type=str, default='MSE', choices=['MSE', 'SmoothL1', 'L1', 'focal'],
                         help='lossfunction selection')
     parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
     parser.add_argument('--patience_start', type=int, default=2,
@@ -943,7 +953,7 @@ if __name__ == '__main__':
     if args.wandb_group_id:
         group_id = args.wandb_group_id
     else:
-        group_id = 'Teacher_Student_nomask'
+        group_id = 'Kitti360_RGB'
     print(args)
     warnings.filterwarnings("ignore")
 
