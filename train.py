@@ -952,7 +952,8 @@ if __name__ == '__main__':
     if args.wandb_group_id:
         group_id = args.wandb_group_id
     else:
-        group_id = 'Kitti2011_RGB'
+        group_id = 'Kitti2011_Homography'
+
     print(args)
     warnings.filterwarnings("ignore")
 

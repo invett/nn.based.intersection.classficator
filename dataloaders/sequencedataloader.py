@@ -99,7 +99,8 @@ class BaseLine(Dataset):
         for folder in folders:
             folder_image_02 = os.path.join(folder, 'image_02')
             for image_02_file in os.listdir(folder_image_02):
-                if os.path.isfile(os.path.join(folder_image_02, image_02_file)) and '.png' in image_02_file:
+                _, ext = os.path.splitext(image_02_file)
+                if os.path.isfile(os.path.join(folder_image_02, image_02_file)) and (ext == '.png'):
                     image_02.append(os.path.join(folder_image_02, image_02_file))
 
         self.image_02 = image_02
@@ -117,12 +118,17 @@ class BaseLine(Dataset):
         image = Image.open(imagepath)
 
         # Obtaining ground truth
-        head, tail = os.path.split(imagepath)
-        head, _ = os.path.split(head)
-        filename, _ = os.path.splitext(tail)
-        gt_path = os.path.join(head, 'frames_topology.txt')
-        gtdata = pd.read_csv(gt_path, sep=';', header=None, dtype=str)
-        gTruth = int(gtdata.loc[gtdata[0] == filename][2])
+        if os.path.isfile(imagepath+'.json'):
+            with open(imagepath+'.json') as json_file:
+                gTruth_info = json.load(json_file)
+                gTruth = int(gTruth_info['label'])
+        else:
+            head, tail = os.path.split(imagepath)
+            head, _ = os.path.split(head)
+            filename, _ = os.path.splitext(tail)
+            gt_path = os.path.join(head, 'frames_topology.txt')
+            gtdata = pd.read_csv(gt_path, sep=';', header=None, dtype=str)
+            gTruth = int(gtdata.loc[gtdata[0] == filename][2])
 
         sample = {'data': image,
                   'label': gTruth}
