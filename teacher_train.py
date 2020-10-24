@@ -17,6 +17,7 @@ import wandb
 from sklearn.metrics import accuracy_score
 from torch import nn
 from torch.utils.data import DataLoader
+# from torch.optim.lr_scheduler import MultiStepLR, ReduceLROnPlateau
 
 from dataloaders.sequencedataloader import teacher_tripletloss, teacher_tripletloss_generated
 from miscellaneous.utils import init_function, send_telegram_picture, teacher_network_pass
@@ -381,12 +382,14 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
     else:
         current_random_rate = 1.0
 
+    # scheduler = ReduceLROnPlateau(optimizer, 'min', verbose=True, patience=0, threshold=1e-2)
+
     for epoch in range(args.num_epochs):
         with GLOBAL_EPOCH.get_lock():
             GLOBAL_EPOCH.value = epoch
         lr = optimizer.param_groups[0]['lr']
         tq = tqdm.tqdm(total=len(dataloader_train) * args.batch_size)
-        tq.set_description('epoch %d, lr %f' % (epoch, lr))
+        tq.set_description('epoch %d, lr %.e' % (epoch, lr))
         loss_record = 0.0
         acc_record = 0.0
 
@@ -437,6 +440,8 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
             else:
                 confusion_matrix, acc_val, loss_val = validation(args, model, criterion, dataloader_val,
                                                                  random_rate=current_random_rate)
+
+            # scheduler.step(loss_val)
 
             if (acc_pre < acc_val) or (loss_pre > loss_val):
                 patience = 0
