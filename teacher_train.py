@@ -454,7 +454,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
                     wandb.log({"Val/loss": loss_val,
                                "Val/Acc": acc_val,
                                "random_rate": random_rate,
-                               "conf-matrix_{}_{}".format(wandb.run.name, epoch): wandb.Image(plt)}, step=epoch)
+                               "conf-matrix_{}_{}".format(wandb.run.id, epoch): wandb.Image(plt)}, step=epoch)
                 if args.nowandb:
                     if args.triplet:
                         print('Saving model: ',
@@ -472,17 +472,17 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
                 else:
                     if args.triplet:
                         print('Saving model: ',
-                              os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(wandb.run.name)))
+                              os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(wandb.run.id)))
                         torch.save(bestModel, os.path.join(args.save_model_path,
-                                                           'teacher_model_{}.pth'.format(wandb.run.name)))
-                        savepath = os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(wandb.run.name))
+                                                           'teacher_model_{}.pth'.format(wandb.run.id)))
+                        savepath = os.path.join(args.save_model_path, 'teacher_model_{}.pth'.format(wandb.run.id))
                     else:
                         print('Saving model: ',
-                              os.path.join(args.save_model_path, 'teacher_model_class_{}.pth'.format(wandb.run.name)))
+                              os.path.join(args.save_model_path, 'teacher_model_class_{}.pth'.format(wandb.run.id)))
                         torch.save(bestModel, os.path.join(args.save_model_path,
-                                                           'teacher_model_class_{}.pth'.format(wandb.run.name)))
+                                                           'teacher_model_class_{}.pth'.format(wandb.run.id)))
                         savepath = os.path.join(args.save_model_path,
-                                                'teacher_model_class_{}.pth'.format(wandb.run.name))
+                                                'teacher_model_class_{}.pth'.format(wandb.run.id))
 
             elif epoch < args.patience_start:
                 patience = 0
@@ -533,7 +533,7 @@ if __name__ == '__main__':
                                                              'in https://docs.wandb.com/sweeps/configuration#command')
     parser.add_argument('--telegram', action='store_true', help='Send info through Telegram')
 
-    parser.add_argument('--triplet', type=bool, default=True, help='Triplet Loss')
+    parser.add_argument('--triplet', action='store_true', help='Triplet Loss')
     parser.add_argument('--swap', action='store_true', help='Triplet Loss swap')
     parser.add_argument('--margin', type=float, default=2.0, help='margin in triplet')
     parser.add_argument('--no_noise', action='store_true', help='In case you want to disable the noise injection in '
