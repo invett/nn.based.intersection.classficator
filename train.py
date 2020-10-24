@@ -207,7 +207,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
                 valcriterion = torch.nn.CrossEntropyLoss()
         else:
             if args.lossfunction == 'focal':
-                kwargs = {"alpha": 0.5, "gamma": 2.0, "reduction": 'mean'}
+                kwargs = {"alpha": 0.5, "gamma": 5.0, "reduction": 'mean'}
                 traincriterion = kornia.losses.FocalLoss(**kwargs)
                 valcriterion = kornia.losses.FocalLoss(**kwargs)
             else:
@@ -491,12 +491,10 @@ def main(args, model=None):
                                             transforms.Resize((224, 224)),
                                             transforms.ToTensor(),
                                             ])
-        baselineTransforms = transforms.Compose([transforms.Resize((224, 224)),
-                                                 transforms.ToTensor(),
-                                                 transforms.Normalize(
-                                                     (0.485, 0.456, 0.406),
-                                                     (0.229, 0.224, 0.225))
-                                                 ])
+        baselineTransforms = transforms.Compose(
+            [transforms.Resize((224, 224)), transforms.RandomAffine(15, translate=(0.0, 0.1), shear=(-5, 5)),
+             transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5), transforms.ToTensor(),
+             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
 
     k_fold_acc_list = []
 
@@ -633,7 +631,8 @@ def main(args, model=None):
         elif args.resnetmodel == 'personalized_small':
             model = Personalized_small(args.num_classes)
         elif 'vgg' in args.resnetmodel:
-            model = get_model_vgg(args.resnetmodel, args.num_classes, pretrained=args.pretrained, embedding=args.triplet)
+            model = get_model_vgg(args.resnetmodel, args.num_classes, pretrained=args.pretrained,
+                                  embedding=args.triplet)
 
         if args.freeze:
             # load best trained model
@@ -731,12 +730,12 @@ def main(args, model=None):
         #    | |  |  _ <  / ___ \  | | | |\  |   #
         #    |_|  |_| \_\/_/   \_\|___||_| \_|   #
         ##########################################
-
-        #acc, trained_loadpath = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
-                                      #os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
-
-        acc, trained_loadpath = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
-                                        valfolder=val_sequence_list[0], GLOBAL_EPOCH=GLOBAL_EPOCH)
+        if args.dataloader != 'Kitti360_RGB':
+            acc, trained_loadpath = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
+                                          os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
+        else:
+            acc, trained_loadpath = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
+                                          valfolder=val_sequence_list[0], GLOBAL_EPOCH=GLOBAL_EPOCH)
 
         k_fold_acc_list.append(acc)
 
@@ -953,7 +952,8 @@ if __name__ == '__main__':
     if args.wandb_group_id:
         group_id = args.wandb_group_id
     else:
-        group_id = 'Kitti360_RGB'
+        group_id = 'Kitti2011_mask'
+
     print(args)
     warnings.filterwarnings("ignore")
 
