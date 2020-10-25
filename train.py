@@ -466,7 +466,7 @@ def main(args, model=None):
         # test_path = os.path.join(data_path, '2011_09_30_drive_0028_sync')
 
         # Exclude validation samples
-        folders = folders[folders != os.path.join(data_path, '2011_10_03_drive_0034_sync')]
+        train_path = folders[folders != os.path.join(data_path, '2011_10_03_drive_0034_sync')]
         val_path = os.path.join(data_path, '2011_10_03_drive_0034_sync')
     else:
         train_sequence_list = ['2013_05_28_drive_0003_sync',
@@ -952,7 +952,7 @@ if __name__ == '__main__':
     if args.wandb_group_id:
         group_id = args.wandb_group_id
     else:
-        group_id = 'Kitti2011_mask'
+        group_id = 'Kitti2011_Homograpy'
 
     print(args)
     warnings.filterwarnings("ignore")
