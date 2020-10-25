@@ -545,7 +545,8 @@ def main(args, model=None):
 
         # train_path, val_path = folders[train_index], folders[val_index]
         if args.dataloader != 'Kitti360_RGB':
-            train_path, val_path = np.array(folders), np.array([val_path])  # No kfold
+            train_path = np.array(train_path)
+            val_path = np.array([val_path])
 
         if args.dataloader == 'Kitti360_RGB':
             train_dataset = kitti360_RGB(args.dataset, train_sequence_list, transform=baselineTransforms)
