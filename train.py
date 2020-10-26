@@ -19,12 +19,10 @@ import tqdm
 import wandb
 from torch.optim.lr_scheduler import MultiStepLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
-from torchvision.datasets import ImageFolder
 
 from dataloaders.sequencedataloader import BaseLine, TestDataset, fromAANETandDualBisenet, fromGeneratedDataset, \
     triplet_BOO, triplet_OBB, kitti360_RGB
 from dataloaders.transforms import GenerateBev, GrayScale, Mirror, Normalize, Rescale, ToTensor
-from dropout_models import get_resnet, get_resnext
 from miscellaneous.utils import init_function, reset_wandb_env, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_data, svm_train
 from model.resnet_models import Personalized, Personalized_small, get_model_resnet, get_model_resnext, get_model_vgg
@@ -278,7 +276,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
                     print("Warning, k-fold index is not passed. Ignore if not k-folding")
 
                 wandb.log({"batch_training_accuracy": acc,
-                           "batch_training_loss": loss,
+                           "batch_training_loss": loss.item(),
                            "batch_current_batch": current_batch,
                            "batch_current_epoch": epoch,
                            "batch_kfold_index": kfold_index})
@@ -633,7 +631,7 @@ def main(args, model=None):
             model = Personalized_small(args.num_classes)
         elif 'vgg' in args.resnetmodel:
             model = get_model_vgg(args.resnetmodel, args.num_classes, pretrained=args.pretrained,
-                                  embedding=args.triplet)
+                                  embedding=args.triplet or args.embedding)
 
         if args.freeze:
             # load best trained model
@@ -738,7 +736,7 @@ def main(args, model=None):
             acc, trained_loadpath = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
                                           valfolder=val_sequence_list[0], GLOBAL_EPOCH=GLOBAL_EPOCH)
 
-        k_fold_acc_list.append(acc)
+        # k_fold_acc_list.append(acc)
 
         if args.telegram:
             send_telegram_message("K-Fold finished")
@@ -750,7 +748,7 @@ def main(args, model=None):
                 wandb.join()
 
         if not args.nowandb:  # if nowandb flag was set, skip
-            wandb.log({"Val/mean acc": np.average(np.array(k_fold_acc_list))})
+            wandb.log({"Val/Max acc": acc})
 
         # todo delete when ok -----| print("==============================================================================")
         # todo delete when ok -----| print("=============the end of the test ===eh===eh===eh=====:-)======================")
@@ -953,7 +951,7 @@ if __name__ == '__main__':
     if args.wandb_group_id:
         group_id = args.wandb_group_id
     else:
-        group_id = 'Kitti2011_Ultimate'
+        group_id = 'Kitti360_Ultimate_student'
 
     print(args)
     warnings.filterwarnings("ignore")
