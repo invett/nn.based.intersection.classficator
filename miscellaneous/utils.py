@@ -357,11 +357,11 @@ def student_network_pass(args, sample, criterion, model, svm=None, gt_list=None,
 
         if args.weighted:
             assert weights_param is not None, '--weighted parameter specified but not passed to student_network_pass'
-                # weights = torch.FloatTensor([0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67])
-                weights = torch.FloatTensor(weights_param)
-                weighted_tensor = weights[label.squeeze()]
-                loss = loss * weighted_tensor.cuda().unsqueeze(1)
-                loss = loss.mean()
+            # weights = torch.FloatTensor([0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67])
+            weights = torch.FloatTensor(weights_param)
+            weighted_tensor = weights[label.squeeze()]
+            loss = loss * weighted_tensor.cuda().unsqueeze(1)
+            loss = loss.mean()
 
         if gt_list is not None:
             if args.lossfunction == 'triplet':
