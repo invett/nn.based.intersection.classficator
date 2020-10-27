@@ -463,7 +463,7 @@ def test_crossing_pose(crossing_type=6, standard_width=6.0, rnd_width=2.0, rnd_a
     if crossing_type == 0:
         branches = 2
         rotation_list = [0. + rot_a, pi + rot_b]
-        branch_widths = [6. + width_a, 6. + width_b]
+        branch_widths = [standard_width + width_a, standard_width + width_b]
     elif crossing_type == 1:
         branches = 2
         rotation_list = [0. + rot_a, pi / 2 + rot_b]
