@@ -116,6 +116,7 @@ class ToTensor(object):
                 return {'data': torch.from_numpy(image),
                         'generated_osm': torch.from_numpy(generated_osm).float(),
                         'negative_osm': torch.from_numpy(negative_osm).float(),
+                        'neg_label': sample['neg_label'],
                         'label': label,
                         'image_path': sample['image_path']}
             else:
