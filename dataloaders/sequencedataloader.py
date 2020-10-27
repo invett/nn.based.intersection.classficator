@@ -6,17 +6,16 @@ import random
 import time
 
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import torch
 from PIL import Image
 from numpy import load
 from torch.utils.data import Dataset
 
-from miscellaneous.utils import send_telegram_picture
 from miscellaneous.utils import write_ply
 from scripts.OSM_generator import Crossing, test_crossing_pose
+
+from random import choice
 
 
 class kitti360_RGB(Dataset):
@@ -70,9 +69,11 @@ class kitti360_RGB(Dataset):
         image = Image.open(imagepath)
 
         label = self.labels[idx]
+        neg_label = choice([i for i in range(0, 7) if i != label])
 
         sample = {'data': image,
-                  'label': label}
+                  'label': label,
+                  'neg_label': neg_label}
 
         if self.transform:
             sample['data'] = self.transform(sample['data'])
@@ -118,8 +119,8 @@ class BaseLine(Dataset):
         image = Image.open(imagepath)
 
         # Obtaining ground truth
-        if os.path.isfile(imagepath+'.json'):
-            with open(imagepath+'.json') as json_file:
+        if os.path.isfile(imagepath + '.json'):
+            with open(imagepath + '.json') as json_file:
                 gTruth_info = json.load(json_file)
                 gTruth = int(gTruth_info['label'])
         else:
@@ -429,7 +430,11 @@ class fromGeneratedDataset(Dataset):
                 print("A saved version of the datasets exists. Consider using --loadlist")
 
             for folder in folders:
-                current_filelist = glob.glob1(str(folder), "*.png")
+                if os.path.isdir(os.path.join(folder, 'image_02')):
+                    folder = os.path.join(folder, 'image_02')
+                    current_filelist = glob.glob1(str(folder), "*.png")
+                else:
+                    current_filelist = glob.glob1(str(folder), "*.png")
                 for file in current_filelist:
                     bev_filename = os.path.join(folder, file)
                     json_filename = str(bev_filename.replace('png', 'png.json'))
@@ -518,8 +523,10 @@ class fromGeneratedDataset(Dataset):
         for file, label in zip(self.bev_images, self.bev_labels):
             head, filename = os.path.split(file)
             head, folder = os.path.split(head)
-            head, _ = os.path.split(head)
-            head = os.path.join(os.path.join(head, 'data_raw'), folder)
+            if not os.path.isfile(os.path.join(head, 'frames_topology.txt')):
+                head, seq = os.path.split(head)
+            if not os.path.isfile(os.path.join(head, 'frames_topology.txt')):
+                head = os.path.join(os.path.join(head, 'data_raw'), folder)
             datapath = os.path.join(head, 'frames_topology.txt')
             name, _ = os.path.splitext(filename)
             name = name.split('.')[0]

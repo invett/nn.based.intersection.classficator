@@ -19,12 +19,10 @@ import tqdm
 import wandb
 from torch.optim.lr_scheduler import MultiStepLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
-from torchvision.datasets import ImageFolder
 
 from dataloaders.sequencedataloader import BaseLine, TestDataset, fromAANETandDualBisenet, fromGeneratedDataset, \
     triplet_BOO, triplet_OBB, kitti360_RGB
 from dataloaders.transforms import GenerateBev, GrayScale, Mirror, Normalize, Rescale, ToTensor
-from dropout_models import get_resnet, get_resnext
 from miscellaneous.utils import init_function, reset_wandb_env, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_data, svm_train
 from model.resnet_models import Personalized, Personalized_small, get_model_resnet, get_model_resnext, get_model_vgg
@@ -180,6 +178,9 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
             elif args.lossfunction == 'MSE':
                 traincriterion = torch.nn.MSELoss(reduction='none')
                 valcriterion = torch.nn.MSELoss(reduction='none')
+            elif args.lossfunction == 'triplet':
+                traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='none')
+                valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='none')
         else:
             if args.lossfunction == 'SmoothL1':
                 traincriterion = torch.nn.SmoothL1Loss(reduction='mean')
@@ -190,6 +191,10 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
             elif args.lossfunction == 'MSE':
                 traincriterion = torch.nn.MSELoss(reduction='mean')
                 valcriterion = torch.nn.MSELoss(reduction='mean')
+            elif args.lossfunction == 'triplet':
+                traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
+                valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
+
     elif args.triplet:
         traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
         valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
@@ -217,6 +222,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
     # Build gt images for validation
     if args.embedding:
         gt_list = []
+        # TODO Changhe this to student -->student (args?)
         embeddings = np.loadtxt("./trainedmodels/teacher/embeddings/all_embedding_matrix.txt", delimiter='\t')
         splits = np.array_split(embeddings, 7)
         for i in range(7):
@@ -278,7 +284,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
                     print("Warning, k-fold index is not passed. Ignore if not k-folding")
 
                 wandb.log({"batch_training_accuracy": acc,
-                           "batch_training_loss": loss,
+                           "batch_training_loss": loss.item(),
                            "batch_current_batch": current_batch,
                            "batch_current_epoch": epoch,
                            "batch_kfold_index": kfold_index})
@@ -466,7 +472,7 @@ def main(args, model=None):
         # test_path = os.path.join(data_path, '2011_09_30_drive_0028_sync')
 
         # Exclude validation samples
-        folders = folders[folders != os.path.join(data_path, '2011_10_03_drive_0034_sync')]
+        train_path = folders[folders != os.path.join(data_path, '2011_10_03_drive_0034_sync')]
         val_path = os.path.join(data_path, '2011_10_03_drive_0034_sync')
     else:
         train_sequence_list = ['2013_05_28_drive_0003_sync',
@@ -545,7 +551,8 @@ def main(args, model=None):
 
         # train_path, val_path = folders[train_index], folders[val_index]
         if args.dataloader != 'Kitti360_RGB':
-            train_path, val_path = np.array(folders), np.array([val_path])  # No kfold
+            train_path = np.array(train_path)
+            val_path = np.array([val_path])
 
         if args.dataloader == 'Kitti360_RGB':
             train_dataset = kitti360_RGB(args.dataset, train_sequence_list, transform=baselineTransforms)
@@ -632,7 +639,7 @@ def main(args, model=None):
             model = Personalized_small(args.num_classes)
         elif 'vgg' in args.resnetmodel:
             model = get_model_vgg(args.resnetmodel, args.num_classes, pretrained=args.pretrained,
-                                  embedding=args.triplet)
+                                  embedding=args.triplet or args.embedding)
 
         if args.freeze:
             # load best trained model
@@ -737,7 +744,7 @@ def main(args, model=None):
             acc, trained_loadpath = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
                                           valfolder=val_sequence_list[0], GLOBAL_EPOCH=GLOBAL_EPOCH)
 
-        k_fold_acc_list.append(acc)
+        # k_fold_acc_list.append(acc)
 
         if args.telegram:
             send_telegram_message("K-Fold finished")
@@ -749,7 +756,7 @@ def main(args, model=None):
                 wandb.join()
 
         if not args.nowandb:  # if nowandb flag was set, skip
-            wandb.log({"Val/mean acc": np.average(np.array(k_fold_acc_list))})
+            wandb.log({"Val/Max acc": acc})
 
         # todo delete when ok -----| print("==============================================================================")
         # todo delete when ok -----| print("=============the end of the test ===eh===eh===eh=====:-)======================")
@@ -759,7 +766,7 @@ def main(args, model=None):
 
     if args.svm:
         # load best trained model
-        loadpath = trained_loadpath
+        loadpath = args.student_path
         checkpoint = torch.load(loadpath, map_location='cpu')
         model.load_state_dict(checkpoint['model_state_dict'])
         # save the model to disk
@@ -872,7 +879,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_prefix', type=str, default='', help='Prefix to all saved models')
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
     parser.add_argument('--adam_weight_decay', type=float, default=5e-4, help='adam_weight_decay')
-    parser.add_argument('--lossfunction', type=str, default='MSE', choices=['MSE', 'SmoothL1', 'L1', 'focal'],
+    parser.add_argument('--lossfunction', type=str, default='MSE', choices=['MSE', 'SmoothL1', 'L1', 'focal', 'triplet'],
                         help='lossfunction selection')
     parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
     parser.add_argument('--patience_start', type=int, default=2,
@@ -952,7 +959,7 @@ if __name__ == '__main__':
     if args.wandb_group_id:
         group_id = args.wandb_group_id
     else:
-        group_id = 'Kitti2011_mask'
+        group_id = 'Kitti360_Ultimate_student'
 
     print(args)
     warnings.filterwarnings("ignore")
