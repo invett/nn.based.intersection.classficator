@@ -495,6 +495,7 @@ class fromGeneratedDataset(Dataset):
                                                         sampling=not self.canonical, random_rate=self.random_rate)
             sample = {'data': bev_image,
                       'label': bev_label,
+                      'neg_label': negative_label,
                       'image_path': self.bev_images[idx],
                       'generated_osm': generated_osm[0],
                       'negative_osm': generated_osm_negative[0]}
