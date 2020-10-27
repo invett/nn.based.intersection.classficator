@@ -17,6 +17,8 @@ from sklearn.metrics import accuracy_score
 from torch import nn
 
 
+
+
 def PrintException():
     exc_type, exc_obj, tb = sys.exc_info()
     f = tb.tb_frame
@@ -346,7 +348,12 @@ def student_network_pass(args, sample, criterion, model, svm=None, gt_list=None)
         output = model(data)
         output_gt = gt_list[label.squeeze()]  # --> Embeddings centroid of the label
 
-        loss = criterion(output.squeeze(), output_gt.cuda())  # --> 128 x 512
+        if args.lossfunction == 'triplet':
+            neg_label = sample['neg_label']
+            neg_output_gt = gt_list[neg_label.squeeze()]
+            loss = criterion(output.squeeze(), output_gt.cuda(), neg_output_gt.cuda())  # --> 128 x 512
+        else:
+            loss = criterion(output.squeeze(), output_gt.cuda())  # --> 128 x 512
 
         if args.weighted:
             weights = torch.FloatTensor([0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67])

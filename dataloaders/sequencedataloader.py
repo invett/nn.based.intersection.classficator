@@ -6,17 +6,16 @@ import random
 import time
 
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import torch
 from PIL import Image
 from numpy import load
 from torch.utils.data import Dataset
 
-from miscellaneous.utils import send_telegram_picture
 from miscellaneous.utils import write_ply
 from scripts.OSM_generator import Crossing, test_crossing_pose
+
+from random import choice
 
 
 class kitti360_RGB(Dataset):
@@ -70,9 +69,11 @@ class kitti360_RGB(Dataset):
         image = Image.open(imagepath)
 
         label = self.labels[idx]
+        neg_label = choice([i for i in range(0, 7) if i != label])
 
         sample = {'data': image,
-                  'label': label}
+                  'label': label,
+                  'neg_label': neg_label}
 
         if self.transform:
             sample['data'] = self.transform(sample['data'])

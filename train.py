@@ -178,6 +178,9 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
             elif args.lossfunction == 'MSE':
                 traincriterion = torch.nn.MSELoss(reduction='none')
                 valcriterion = torch.nn.MSELoss(reduction='none')
+            elif args.lossfunction == 'triplet':
+                traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='none')
+                valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='none')
         else:
             if args.lossfunction == 'SmoothL1':
                 traincriterion = torch.nn.SmoothL1Loss(reduction='mean')
@@ -188,6 +191,10 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
             elif args.lossfunction == 'MSE':
                 traincriterion = torch.nn.MSELoss(reduction='mean')
                 valcriterion = torch.nn.MSELoss(reduction='mean')
+            elif args.lossfunction == 'triplet':
+                traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
+                valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
+
     elif args.triplet:
         traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
         valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
@@ -731,13 +738,11 @@ def main(args, model=None):
         #    |_|  |_| \_\/_/   \_\|___||_| \_|   #
         ##########################################
         if args.dataloader != 'Kitti360_RGB':
-            pass
-            #acc, trained_loadpath = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
-                                          #os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
+            acc, trained_loadpath = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
+                                          os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
         else:
-            pass
-            #acc, trained_loadpath = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
-                                          #valfolder=val_sequence_list[0], GLOBAL_EPOCH=GLOBAL_EPOCH)
+            acc, trained_loadpath = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
+                                          valfolder=val_sequence_list[0], GLOBAL_EPOCH=GLOBAL_EPOCH)
 
         # k_fold_acc_list.append(acc)
 
@@ -874,7 +879,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_prefix', type=str, default='', help='Prefix to all saved models')
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
     parser.add_argument('--adam_weight_decay', type=float, default=5e-4, help='adam_weight_decay')
-    parser.add_argument('--lossfunction', type=str, default='MSE', choices=['MSE', 'SmoothL1', 'L1', 'focal'],
+    parser.add_argument('--lossfunction', type=str, default='MSE', choices=['MSE', 'SmoothL1', 'L1', 'focal', 'triplet'],
                         help='lossfunction selection')
     parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
     parser.add_argument('--patience_start', type=int, default=2,
