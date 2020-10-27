@@ -313,7 +313,7 @@ def teacher_network_pass(args, sample, model, criterion, gt_list=None):
         return acc, loss, label, predict
 
 
-def student_network_pass(args, sample, criterion, model, svm=None, gt_list=None):
+def student_network_pass(args, sample, criterion, model, svm=None, gt_list=None, weights_param=None):
     cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
     if args.triplet:
         if args.dataloader == 'triplet_OBB':
@@ -356,10 +356,12 @@ def student_network_pass(args, sample, criterion, model, svm=None, gt_list=None)
             loss = criterion(output.squeeze(), output_gt.cuda())  # --> 128 x 512
 
         if args.weighted:
-            weights = torch.FloatTensor([0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67])
-            weighted_tensor = weights[label.squeeze()]
-            loss = loss * weighted_tensor.cuda().unsqueeze(1)
-            loss = loss.mean()
+            assert weights_param is not None, '--weighted parameter specified but not passed to student_network_pass'
+                # weights = torch.FloatTensor([0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67])
+                weights = torch.FloatTensor(weights_param)
+                weighted_tensor = weights[label.squeeze()]
+                loss = loss * weighted_tensor.cuda().unsqueeze(1)
+                loss = loss.mean()
 
         if gt_list is not None:
             predict = gt_validation(output, gt_list, criterion)

@@ -21,7 +21,7 @@ from torch.optim.lr_scheduler import MultiStepLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
 from dataloaders.sequencedataloader import BaseLine, TestDataset, fromAANETandDualBisenet, fromGeneratedDataset, \
-    triplet_BOO, triplet_OBB, kitti360_RGB
+    kitti360_RGB, triplet_BOO, triplet_OBB
 from dataloaders.transforms import GenerateBev, GrayScale, Mirror, Normalize, Rescale, ToTensor
 from miscellaneous.utils import init_function, reset_wandb_env, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_data, svm_train
@@ -211,6 +211,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
                 traincriterion = torch.nn.CrossEntropyLoss(weight=class_weights)
                 valcriterion = torch.nn.CrossEntropyLoss()
         else:
+            weights = None
             if args.lossfunction == 'focal':
                 kwargs = {"alpha": 0.5, "gamma": 5.0, "reduction": 'mean'}
                 traincriterion = kornia.losses.FocalLoss(**kwargs)
@@ -263,9 +264,10 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
 
         for sample in dataloader_train:
             if args.embedding or args.triplet:
-                acc, loss, _, _ = student_network_pass(args, sample, traincriterion, model, gt_list=gt_list)
+                acc, loss, _, _ = student_network_pass(args, sample, traincriterion, model, gt_list=gt_list,
+                                                       weights_param=weights)
             else:
-                acc, loss, _, _ = student_network_pass(args, sample, traincriterion, model)
+                acc, loss, _, _ = student_network_pass(args, sample, traincriterion, model, weights_param=weights)
 
             loss.backward()
 
