@@ -215,6 +215,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
     # Build gt images for validation
     if args.embedding:
         gt_list = []
+        # TODO Changhe this to student -->student (args?)
         embeddings = np.loadtxt("./trainedmodels/teacher/embeddings/all_embedding_matrix.txt", delimiter='\t')
         splits = np.array_split(embeddings, 7)
         for i in range(7):
@@ -730,11 +731,13 @@ def main(args, model=None):
         #    |_|  |_| \_\/_/   \_\|___||_| \_|   #
         ##########################################
         if args.dataloader != 'Kitti360_RGB':
-            acc, trained_loadpath = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
-                                          os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
+            pass
+            #acc, trained_loadpath = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
+                                          #os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
         else:
-            acc, trained_loadpath = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
-                                          valfolder=val_sequence_list[0], GLOBAL_EPOCH=GLOBAL_EPOCH)
+            pass
+            #acc, trained_loadpath = train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
+                                          #valfolder=val_sequence_list[0], GLOBAL_EPOCH=GLOBAL_EPOCH)
 
         # k_fold_acc_list.append(acc)
 
@@ -758,7 +761,7 @@ def main(args, model=None):
 
     if args.svm:
         # load best trained model
-        loadpath = trained_loadpath
+        loadpath = args.student_path
         checkpoint = torch.load(loadpath, map_location='cpu')
         model.load_state_dict(checkpoint['model_state_dict'])
         # save the model to disk
