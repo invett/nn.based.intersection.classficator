@@ -364,7 +364,10 @@ def student_network_pass(args, sample, criterion, model, svm=None, gt_list=None,
                 loss = loss.mean()
 
         if gt_list is not None:
-            predict = gt_validation(output, gt_list, criterion)
+            if args.lossfunction == 'triplet':
+                predict = gt_validation(output, gt_list)
+            else:
+                predict = gt_validation(output, gt_list, criterion)
             acc = accuracy_score(label.squeeze().numpy(), predict)
         else:
             result = ((cos_sim(output.squeeze(), output_gt.squeeze()) + 1.0) * 0.5)
@@ -489,8 +492,10 @@ def svm_data(args, model, dataloader_train, dataloader_val, save=False):
     return embeddingRecord, labelRecord
 
 
-def gt_validation(output, gt_list, criterion):
+def gt_validation(output, gt_list, criterion=None):
     l = []
+    if criterion is None:
+        criterion = nn.MSELoss()
     for batch_item in output:
         for gt in gt_list:
             l.append(criterion(batch_item.squeeze(), gt.cuda()).mean().item())
