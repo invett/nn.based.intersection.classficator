@@ -34,7 +34,8 @@ def test(args, dataloader_test, classifier=None):
     if args.triplet:
         criterion = torch.nn.TripletMarginLoss(margin=args.margin)
     elif args.embedding:
-        criterion = torch.nn.CosineEmbeddingLoss(margin=args.margin)
+        # criterion = torch.nn.CosineEmbeddingLoss(margin=args.margin)
+        criterion = torch.nn.MSELoss(reduction='mean')
     else:
         criterion = torch.nn.CrossEntropyLoss()
 
@@ -812,7 +813,7 @@ def main(args, model=None):
             test_dataset = triplet_BOO([test_path], args.distance, elements=200, canonical=True,
                                        transform_obs=obsTransforms, transform_bev=generateTransforms)
 
-        dataloader_test = DataLoader(test_dataset, batch_size=1, shuffle=False,
+        dataloader_test = DataLoader(test_dataset, batch_size=4, shuffle=False,
                                      num_workers=args.num_workers, worker_init_fn=init_fn)
 
         if not args.nowandb:  # if nowandb flag was set, skip

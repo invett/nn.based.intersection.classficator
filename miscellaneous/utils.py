@@ -492,7 +492,7 @@ def svm_data(args, model, dataloader_train, dataloader_val, save=False):
     return embeddingRecord, labelRecord
 
 
-def gt_validation(output, gt_list, criterion=None):
+def gt_validation(output, gt_list, criterion=None) -> object:
     l = []
     if criterion is None:
         criterion = nn.MSELoss()
