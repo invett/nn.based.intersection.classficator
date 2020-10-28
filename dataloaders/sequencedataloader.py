@@ -479,11 +479,12 @@ class fromGeneratedDataset(Dataset):
         bev_image = cv2.imread(self.bev_images[idx], cv2.IMREAD_UNCHANGED)
         bev_label = self.bev_labels[idx]
 
+        # Sample an intersection given a label; this is used in the STUDENT training
+        r = [0, 1, 2, 3, 4, 5, 6]
+        r.remove(bev_label)
+        negative_label = random.choice(r)
+
         if self.addGeneratedOSM:
-            # Sample an intersection given a label; this is used in the STUDENT training
-            r = [0, 1, 2, 3, 4, 5, 6]
-            r.remove(bev_label)
-            negative_label = random.choice(r)
 
             generated_osm = test_crossing_pose(crossing_type=bev_label, save=False, rnd_width=self.rnd_width,
                                                rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
@@ -502,6 +503,7 @@ class fromGeneratedDataset(Dataset):
         else:
             sample = {'data': bev_image,
                       'label': bev_label,
+                      'neg_label': negative_label,
                       'image_path': self.bev_images[idx]
                       }
 

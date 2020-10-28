@@ -356,7 +356,7 @@ def student_network_pass(args, sample, criterion, model, svm=None, gt_list=None,
             loss = criterion(output.squeeze(), output_gt.cuda())  # --> 128 x 512
 
         if args.weighted:
-            assert weights_param is not None, '--weighted parameter specified but not passed to student_network_pass'
+            assert weights_param is None, '--weighted parameter specified but not passed to student_network_pass'
             # weights = torch.FloatTensor([0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67])
             weights = torch.FloatTensor(weights_param)
             weighted_tensor = weights[label.squeeze()]
