@@ -88,7 +88,7 @@ def test(args, dataloader_test, classifier=None):
         wandb.log({"Test/Acc": acc, "conf-matrix_test": wandb.Image(plt)})
 
 
-def validation(args, model, criterion, dataloader_val, classifier=None, gt_list=None):
+def validation(args, model, criterion, dataloader_val, classifier=None, gt_list=None, weights=None):
     print('\n>>>> start val!')
 
     loss_record = 0.0
@@ -104,7 +104,7 @@ def validation(args, model, criterion, dataloader_val, classifier=None, gt_list=
 
         for sample in dataloader_val:
             acc, loss, label, predict = student_network_pass(args, sample, criterion, model,
-                                                             svm=classifier, gt_list=gt_list)
+                                                             svm=classifier, gt_list=gt_list, weights_param=weights)
             labelRecord = np.append(labelRecord, label)
             predRecord = np.append(predRecord, predict)
 
@@ -322,7 +322,8 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
                        "Completed epoch": epoch})
 
         if epoch % args.validation_step == 0:
-            confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gt_list=gt_list)
+            confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gt_list=gt_list,
+                                                             weights=weights)
 
             if args.scheduler_type == 'ReduceLROnPlateau':
                 print("ReduceLROnPlateau step call")
