@@ -1,10 +1,8 @@
-import argparse
+import multiprocessing
 import multiprocessing
 import os
 import pickle
 import socket  # to get the machine name
-import time
-import warnings
 from datetime import datetime
 from functools import partial
 
@@ -28,7 +26,7 @@ from miscellaneous.utils import init_function, reset_wandb_env, send_telegram_me
 from model.resnet_models import Personalized, Personalized_small, get_model_resnet, get_model_resnext, get_model_vgg
 
 
-def test(args, dataloader_test, classifier=None):
+def test(args, dataloader_test, classifier=None, save_embeddings=None):
     print('start Test!')
 
     if args.triplet:
@@ -84,18 +82,45 @@ def test(args, dataloader_test, classifier=None):
 
     # Start testing
     confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test,
-                                          classifier=classifier, gt_list=gt_list)
+                                          classifier=classifier, gt_list=gt_list, save_embeddings)
     if not args.nowandb:  # if nowandb flag was set, skip
         wandb.log({"Test/Acc": acc, "conf-matrix_test": wandb.Image(plt)})
 
 
-def validation(args, model, criterion, dataloader_val, classifier=None, gt_list=None, weights=None):
-    print('\n>>>> start val!')
+def validation(args, model, criterion, dataloader_val, classifier=None, gt_list=None, weights=None,
+               save_embeddings=None):
+    """
+
+    This function is called both from actual 'validation' and during the 'test'.
+    Save embeddings to disk in a similar way of teacher_train.py. Useful in testing
+    
+    Args:
+        args:
+        model: 
+        criterion: 
+        dataloader_val: 
+        classifier: 
+        gt_list: 
+        weights: 
+        save_embeddings: PATH+FILENAME (FILEPATH) /.../name.txt ; save the embeddings here
+
+    Returns:
+        depends...
+
+        not args.triplet: -> conf_matrix, acc, loss_val_mean
+            args.triplet: -> None       , acc, loss_val_mean
+
+
+    """
+    print('\n>>>>>>>>>>>>>>>>>> START VALIDATION <<<<<<<<<<<<<<<<<<')
 
     loss_record = 0.0
     acc_record = 0.0
     labelRecord = np.array([], dtype=np.uint8)
     predRecord = np.array([], dtype=np.uint8)
+    
+    # if save_embeddings, this will be populated 
+    all_embedding_matrix = []
 
     with torch.no_grad():
         model.eval()
@@ -104,9 +129,17 @@ def validation(args, model, criterion, dataloader_val, classifier=None, gt_list=
         tq.set_description('Validation... ')
 
         for sample in dataloader_val:
-            acc, loss, label, predict = student_network_pass(args, sample, criterion, model,
-                                                             svm=classifier, gt_list=gt_list, weights_param=weights)
-            labelRecord = np.append(labelRecord, label)
+            if save_embeddings:
+                acc, loss, label, predict, embedding = student_network_pass(args, sample, criterion, model,
+                                                                            svm=classifier,
+                                                                            gt_list=gt_list, weights_param=weights,
+                                                                            return_embedding=True)
+                all_embedding_matrix.append(embedding)
+            else:
+                acc, loss, label, predict = student_network_pass(args, sample, criterion, model,
+                                                                 svm=classifier, gt_list=gt_list,
+                                                                 weights_param=weights)
+                 labelRecord = np.append(labelRecord, label)
             predRecord = np.append(predRecord, predict)
 
             loss_record += loss.item()
@@ -126,6 +159,12 @@ def validation(args, model, criterion, dataloader_val, classifier=None, gt_list=
     else:
         acc = acc_record / len(dataloader_val)
     print('Accuracy for test/validation : %f\n' % acc)
+    
+    if save_embeddings:
+        all_embedding_matrix = np.asarray(all_embedding_matrix)
+        np.savetxt(os.path.join(args.saveEmbeddingsPath, save_embeddings), np.asarray(all_embedding_matrix),
+                   delimiter='\t')
+        np.savetxt(os.path.join(args.saveEmbeddingsPath, save_embeddings), labelRecord, delimiter='\t')
 
     if not args.triplet:
         conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'])
@@ -824,7 +863,7 @@ def main(args, model=None):
         if args.svm:
             filename = os.path.join(args.save_model_path, 'svm_classsifier.sav')
             loaded_model = pickle.load(open(filename, 'rb'))
-            test(args, dataloader_test, classifier=loaded_model)
+            test(args, dataloader_test, classifier=loaded_model, save_embeddings=args.save_embeddings)
         else:
             test(args, dataloader_test)
 
@@ -857,6 +896,17 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=0, help='Starting seed, for reproducibility. Default is ZERO!')
     parser.add_argument('--train', action='store_true', help='Train/Validate the model')
     parser.add_argument('--test', action='store_true', help='Test the model')
+    parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
+    parser.add_argument('--start_epoch', type=int, default=0, help='Number of epochs to train for')
+    parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
+                                                                       'checkpoint (epochs)')
+    ### save things
+    parser.add_argument('--save_embeddings', type=str, default=None,
+                        help='Filename to save the embeddings in testing. None for doing nothing')
+    parser.add_argument('--save_model_path', type=str, default='./trainedmodels/', help='path to save model')
+    parser.add_argument('--save_prefix', type=str, default='', help='Prefix to all saved models')
+
+    ### wandb stuff
     parser.add_argument('--wandb_group_id', type=str, help='Set group id for the wandb experiment')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     parser.add_argument('--wandb_resume', type=str, default=None, help='the id of the wandb-resume, e.g. jhc0gvhb')
@@ -867,11 +917,6 @@ if __name__ == '__main__':
     parser.add_argument('--telegram', action='store_true', help='Send info through Telegram')
     parser.add_argument('--freeze', action='store_true', help='fc finetuning of student model')
     parser.add_argument('--svm', action='store_true', help='support vector machine for student classification')
-
-    parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
-    parser.add_argument('--start_epoch', type=int, default=0, help='Number of epochs to train for')
-    parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
-                                                                       'checkpoint (epochs)')
     parser.add_argument('--dataset', type=str, help='path to the dataset you are using.')
     parser.add_argument('--transfer', action='store_true', help='Fine tuning or transfer learning')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
@@ -885,8 +930,6 @@ if __name__ == '__main__':
     parser.add_argument('--num_classes', type=int, default=7, help='num of object classes')
     parser.add_argument('--cuda', type=str, default='0', help='GPU is used for training')
     parser.add_argument('--use_gpu', type=bool, default=True, help='whether to user gpu for training')
-    parser.add_argument('--save_model_path', type=str, default='./trainedmodels/', help='path to save model')
-    parser.add_argument('--save_prefix', type=str, default='', help='Prefix to all saved models')
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
     parser.add_argument('--adam_weight_decay', type=float, default=5e-4, help='adam_weight_decay')
     parser.add_argument('--lossfunction', type=str, default='MSE', choices=['MSE', 'SmoothL1', 'L1', 'focal', 'triplet'],

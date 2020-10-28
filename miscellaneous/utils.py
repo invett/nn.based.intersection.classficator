@@ -313,8 +313,11 @@ def teacher_network_pass(args, sample, model, criterion, gt_list=None):
         return acc, loss, label, predict
 
 
-def student_network_pass(args, sample, criterion, model, svm=None, gt_list=None, weights_param=None):
+def student_network_pass(args, sample, criterion, model, svm=None, gt_list=None, weights_param=None,
+                         return_embedding=False):
     cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
+    embedding = None
+
     if args.triplet:
         if args.dataloader == 'triplet_OBB':
             anchor = sample['OSM_anchor']  # OSM Anchor
@@ -333,6 +336,9 @@ def student_network_pass(args, sample, criterion, model, svm=None, gt_list=None,
         out_positive = model(positive)
         out_negative = model(negative)
 
+        # save the embedding vector to return it - used in testing
+        embedding = np.asarray(out_anchor.squeeze().cpu().detach().numpy())
+
         loss = criterion(out_anchor, out_positive, out_negative)
 
         result = ((cos_sim(out_anchor.squeeze(), out_positive.squeeze()) + 1.0) * 0.5)
@@ -347,6 +353,9 @@ def student_network_pass(args, sample, criterion, model, svm=None, gt_list=None,
 
         output = model(data)
         output_gt = gt_list[label.squeeze()]  # --> Embeddings centroid of the label
+
+        # save the embedding vector to return it - used in testing
+        embedding = np.asarray(output.squeeze().cpu().detach().numpy())
 
         if args.lossfunction == 'triplet':
             neg_label = sample['neg_label']
@@ -382,6 +391,9 @@ def student_network_pass(args, sample, criterion, model, svm=None, gt_list=None,
 
         output = model(data)
 
+        # save the embedding vector to return it - used in testing
+        embedding = np.asarray(output.squeeze().cpu().detach().numpy())
+
         loss = criterion(output, label)
         if args.svm:
             dec = svm.decision_function(output.cpu().squeeze().numpy())  # --> (samples x classes)
@@ -396,9 +408,15 @@ def student_network_pass(args, sample, criterion, model, svm=None, gt_list=None,
         acc = accuracy_score(label, predict)
 
     if (args.triplet or args.embedding) and gt_list is None:
-        return acc, loss
+        if return_embedding:
+            return acc, loss, embedding
+        else:
+            return acc, loss
     else:
-        return acc, loss, label, predict
+        if return_embedding:
+            return acc, loss, label, predict, embedding
+        else:
+            return acc, loss, label, predict
 
 
 def init_function(worker_id, seed, epoch):

@@ -23,6 +23,7 @@ class kitti360_RGB(Dataset):
         """
 
                 THIS IS THE DATALOADER USED TO DIRECTLY USE RGB IMAGES on Kitti 360 dataset
+                ALSO WORKS WITH THE KITTI 360 WARPINGS, as the folders are organized in the same way.
 
                 Args:
                     root_dir (string): Directory with all the images.
