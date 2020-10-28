@@ -1,8 +1,10 @@
-import multiprocessing
+import argparse
 import multiprocessing
 import os
 import pickle
 import socket  # to get the machine name
+import time
+import warnings
 from datetime import datetime
 from functools import partial
 
@@ -85,7 +87,7 @@ def test(args, dataloader_test, classifier=None, save_embeddings=None):
 
     # Start testing
     confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test,
-                                          classifier=classifier, gt_list=gt_list, save_embeddings)
+                                          classifier=classifier, gt_list=gt_list, save_embeddings=save_embeddings)
     if not args.nowandb:  # if nowandb flag was set, skip
         plt.figure(figsize=(10, 7))
         sn.heatmap(confusion_matrix, annot=True, fmt='.2f')
@@ -144,7 +146,7 @@ def validation(args, model, criterion, dataloader_val, classifier=None, gt_list=
                 acc, loss, label, predict = student_network_pass(args, sample, criterion, model,
                                                                  svm=classifier, gt_list=gt_list,
                                                                  weights_param=weights)
-                 labelRecord = np.append(labelRecord, label)
+                labelRecord = np.append(labelRecord, label)
             predRecord = np.append(predRecord, predict)
 
             loss_record += loss.item()
@@ -870,7 +872,7 @@ def main(args, model=None):
             loaded_model = pickle.load(open(filename, 'rb'))
             test(args, dataloader_test, classifier=loaded_model, save_embeddings=args.save_embeddings)
         else:
-            test(args, dataloader_test)
+            test(args, dataloader_test, save_embeddings=args.save_embeddings)
 
     if args.telegram:
         send_telegram_message("Finish successfully")
