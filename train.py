@@ -57,6 +57,9 @@ def test(args, dataloader_test, classifier=None):
         model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
     elif args.resnetmodel == 'personalized':
         model = Personalized(args.num_classes)
+    elif 'vgg' in args.resnetmodel:
+        model = get_model_vgg(args.resnetmodel, args.num_classes, pretrained=args.pretrained,
+                              embedding=args.triplet or args.embedding)
     else:
         model = Personalized_small(args.num_classes)
 
@@ -85,7 +88,10 @@ def test(args, dataloader_test, classifier=None):
     # Start testing
     confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test,
                                           classifier=classifier, gt_list=gt_list)
+
     if not args.nowandb:  # if nowandb flag was set, skip
+        plt.figure(figsize=(10, 7))
+        sn.heatmap(confusion_matrix, annot=True, fmt='.2f')
         wandb.log({"Test/Acc": acc, "conf-matrix_test": wandb.Image(plt)})
 
 
@@ -128,9 +134,9 @@ def validation(args, model, criterion, dataloader_val, classifier=None, gt_list=
     print('Accuracy for test/validation : %f\n' % acc)
 
     if not args.triplet:
-        conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'])
+        conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'], normalize='index')
         conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6],
-                                          fill_value=0)
+                                          fill_value=0.0)
         return conf_matrix, acc, loss_val_mean
     else:
         return None, acc, loss_val_mean
@@ -813,7 +819,7 @@ def main(args, model=None):
             test_dataset = triplet_BOO([test_path], args.distance, elements=200, canonical=True,
                                        transform_obs=obsTransforms, transform_bev=generateTransforms)
 
-        dataloader_test = DataLoader(test_dataset, batch_size=4, shuffle=False,
+        dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
                                      num_workers=args.num_workers, worker_init_fn=init_fn)
 
         if not args.nowandb:  # if nowandb flag was set, skip
