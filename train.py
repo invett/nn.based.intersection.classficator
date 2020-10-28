@@ -480,6 +480,7 @@ def main(args, model=None):
         # Exclude validation samples
         train_path = folders[folders != os.path.join(data_path, '2011_10_03_drive_0034_sync')]
         val_path = os.path.join(data_path, '2011_10_03_drive_0034_sync')
+        test_path = os.path.join(data_path, '2011_10_03_drive_0034_sync')
     else:
         train_sequence_list = ['2013_05_28_drive_0003_sync',
                                '2013_05_28_drive_0002_sync',
@@ -782,8 +783,9 @@ def main(args, model=None):
         pickle.dump(model_svm, open(filename, 'wb'))
 
     if args.test:
-        # Final Test on 2011_10_03_drive_0027_sync
-        if args.dataloader == "fromAANETandDualBisenet":
+        if args.dataloader == 'Kitti360_RGB':
+            test_dataset = kitti360_RGB(args.dataset, test_sequence_list, transform=baselineTransforms)
+        elif args.dataloader == "fromAANETandDualBisenet":
             test_dataset = TestDataset(test_path, args.distance,
                                        transform=transforms.Compose([transforms.Resize((224, 224)),
                                                                      transforms.ToTensor(),
