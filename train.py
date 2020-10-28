@@ -55,6 +55,9 @@ def test(args, dataloader_test, classifier=None, save_embeddings=None):
         model = get_model_resnext(args.resnetmodel, args.num_classes, args.transfer, args.pretrained)
     elif args.resnetmodel == 'personalized':
         model = Personalized(args.num_classes)
+    elif 'vgg' in args.resnetmodel:
+        model = get_model_vgg(args.resnetmodel, args.num_classes, pretrained=args.pretrained,
+                              embedding=args.triplet or args.embedding)
     else:
         model = Personalized_small(args.num_classes)
 
@@ -84,6 +87,8 @@ def test(args, dataloader_test, classifier=None, save_embeddings=None):
     confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test,
                                           classifier=classifier, gt_list=gt_list, save_embeddings)
     if not args.nowandb:  # if nowandb flag was set, skip
+        plt.figure(figsize=(10, 7))
+        sn.heatmap(confusion_matrix, annot=True, fmt='.2f')
         wandb.log({"Test/Acc": acc, "conf-matrix_test": wandb.Image(plt)})
 
 
@@ -93,15 +98,15 @@ def validation(args, model, criterion, dataloader_val, classifier=None, gt_list=
 
     This function is called both from actual 'validation' and during the 'test'.
     Save embeddings to disk in a similar way of teacher_train.py. Useful in testing
-    
+
     Args:
         args:
-        model: 
-        criterion: 
-        dataloader_val: 
-        classifier: 
-        gt_list: 
-        weights: 
+        model:
+        criterion:
+        dataloader_val:
+        classifier:
+        gt_list:
+        weights:
         save_embeddings: PATH+FILENAME (FILEPATH) /.../name.txt ; save the embeddings here
 
     Returns:
@@ -118,8 +123,8 @@ def validation(args, model, criterion, dataloader_val, classifier=None, gt_list=
     acc_record = 0.0
     labelRecord = np.array([], dtype=np.uint8)
     predRecord = np.array([], dtype=np.uint8)
-    
-    # if save_embeddings, this will be populated 
+
+    # if save_embeddings, this will be populated
     all_embedding_matrix = []
 
     with torch.no_grad():
@@ -159,7 +164,7 @@ def validation(args, model, criterion, dataloader_val, classifier=None, gt_list=
     else:
         acc = acc_record / len(dataloader_val)
     print('Accuracy for test/validation : %f\n' % acc)
-    
+
     if save_embeddings:
         all_embedding_matrix = np.asarray(all_embedding_matrix)
         np.savetxt(os.path.join(args.saveEmbeddingsPath, save_embeddings), np.asarray(all_embedding_matrix),
@@ -167,9 +172,9 @@ def validation(args, model, criterion, dataloader_val, classifier=None, gt_list=
         np.savetxt(os.path.join(args.saveEmbeddingsPath, save_embeddings), labelRecord, delimiter='\t')
 
     if not args.triplet:
-        conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'])
+        conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'], normalize='index')
         conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6],
-                                          fill_value=0)
+                                          fill_value=0.0)
         return conf_matrix, acc, loss_val_mean
     else:
         return None, acc, loss_val_mean
@@ -852,7 +857,7 @@ def main(args, model=None):
             test_dataset = triplet_BOO([test_path], args.distance, elements=200, canonical=True,
                                        transform_obs=obsTransforms, transform_bev=generateTransforms)
 
-        dataloader_test = DataLoader(test_dataset, batch_size=4, shuffle=False,
+        dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
                                      num_workers=args.num_workers, worker_init_fn=init_fn)
 
         if not args.nowandb:  # if nowandb flag was set, skip
