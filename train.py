@@ -169,6 +169,10 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, a
     # Build loss criterion
     if args.embedding:
         if args.weighted:
+            if args.dataloader == 'Kitti360_RGB':
+                weights = [0.85, 0.86, 0.84, 0.85, 0.90, 0.84, 0.85]
+            else:
+                weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
             if args.lossfunction == 'SmoothL1':
                 traincriterion = torch.nn.SmoothL1Loss(reduction='none')
                 valcriterion = torch.nn.SmoothL1Loss(reduction='none')
