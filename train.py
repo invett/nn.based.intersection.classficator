@@ -529,6 +529,7 @@ def main(args, model=None):
         train_path = folders[folders != os.path.join(data_path, '2011_10_03_drive_0034_sync')]
         val_path = os.path.join(data_path, '2011_10_03_drive_0034_sync')
         test_path = os.path.join(data_path, '2011_10_03_drive_0034_sync')
+
     else:
         train_sequence_list = ['2013_05_28_drive_0003_sync',
                                '2013_05_28_drive_0002_sync',
@@ -539,6 +540,15 @@ def main(args, model=None):
                                '2013_05_28_drive_0010_sync']
         val_sequence_list = ['2013_05_28_drive_0004_sync']
         test_sequence_list = ['2013_05_28_drive_0000_sync']
+        kitti2011_test_list = ['2013_05_28_drive_0003_sync',
+                               '2013_05_28_drive_0002_sync',
+                               '2013_05_28_drive_0005_sync',
+                               '2013_05_28_drive_0006_sync',
+                               '2013_05_28_drive_0007_sync',
+                               '2013_05_28_drive_0009_sync',
+                               '2013_05_28_drive_0010_sync',
+                               '2013_05_28_drive_0004_sync',
+                               '2013_05_28_drive_0000_sync']
 
     if args.grayscale:
         aanetTransforms = transforms.Compose(
@@ -556,6 +566,11 @@ def main(args, model=None):
             [transforms.Resize((224, 224)), transforms.RandomAffine(15, translate=(0.0, 0.1), shear=(-5, 5)),
              transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5), transforms.ToTensor(),
              transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
+        rgb_test_baselineTransforms = transforms.Compose(
+            [transforms.Resize((224, 224)),transforms.ToTensor(),
+             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
+        test_baselineTransforms = transforms.Compose(
+            [transforms.Resize((224, 224)), transforms.ToTensor()])
 
     k_fold_acc_list = []
 
@@ -832,7 +847,12 @@ def main(args, model=None):
 
     if args.test:
         if args.dataloader == 'Kitti360_RGB':
-            test_dataset = kitti360_RGB(args.dataset, test_sequence_list, transform=baselineTransforms)
+            if args.oposite: #Testing kitti2011 with kitti360
+                test_dataset = kitti360_RGB(args.dataset, kitti2011_test_list, transform=test_baselineTransforms)
+                #test_dataset = kitti360_RGB(args.dataset, kitti2011_test_list, transform=rgb_test_baselineTransforms)
+            else:
+                test_dataset = kitti360_RGB(args.dataset, test_sequence_list, transform=test_baselineTransforms)
+                #test_dataset = kitti360_RGB(args.dataset, test_sequence_list, transform=rgb_test_baselineTransforms)
         elif args.dataloader == "fromAANETandDualBisenet":
             test_dataset = TestDataset(test_path, args.distance,
                                        transform=transforms.Compose([transforms.Resize((224, 224)),
@@ -841,13 +861,21 @@ def main(args, model=None):
                                                                                           (0.229, 0.224, 0.225))
                                                                      ]))
         elif args.dataloader == 'BaseLine':
-            test_dataset = BaseLine([test_path], transform=transforms.Compose(
-                [transforms.Resize((224, 224)), transforms.ToTensor(),
-                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))]))
+            if args.oposite: #Testing kitti360 with kitti2011
+                test_dataset = BaseLine(folders, transform=transforms.Compose(
+                    [transforms.Resize((224, 224)), transforms.ToTensor(),
+                     transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))]))
+            else:
+                test_dataset = BaseLine([test_path], transform=transforms.Compose(
+                    [transforms.Resize((224, 224)), transforms.ToTensor(),
+                     transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))]))
 
         elif args.dataloader == 'generatedDataset':
             if args.embedding:
-                test_dataset = fromGeneratedDataset(np.array([test_path]), args.distance, transform=generateTransforms)
+                if args.oposite:  # Testing kitti360 with kitti2011
+                    test_dataset = fromGeneratedDataset(np.array(folders), args.distance, transform=test_baselineTransforms)
+                else:
+                    test_dataset = fromGeneratedDataset(np.array([test_path]), args.distance, transform=test_baselineTransforms)
             else:
                 test_path = test_path.replace('data_raw_bev', 'data_raw')
                 test_dataset = TestDataset(test_path, args.distance, transform=generateTransforms)
@@ -903,6 +931,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=0, help='Starting seed, for reproducibility. Default is ZERO!')
     parser.add_argument('--train', action='store_true', help='Train/Validate the model')
     parser.add_argument('--test', action='store_true', help='Test the model')
+    parser.add_argument('--oposite', action='store_true', help='Test the model with the oposite dataset')
     parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
     parser.add_argument('--start_epoch', type=int, default=0, help='Number of epochs to train for')
     parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
@@ -988,6 +1017,10 @@ if __name__ == '__main__':
 
     if args.svm and not args.embedding:
         print("Parameter --embedding is REQUIRED when --svm is set")
+        exit(-1)
+    if args.oposite and not args.test:
+        print("Parameter --test is REQUIRED when --oposite is set")
+        exit(-1)
 
     if args.dataset == "":
         print("Empty path. Please provide the path of the dataset you want to use."

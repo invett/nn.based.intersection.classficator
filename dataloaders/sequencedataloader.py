@@ -477,7 +477,8 @@ class fromGeneratedDataset(Dataset):
 
         assert os.path.isfile(self.bev_images[idx]), "os.path.isfile(self.bev_images[idx]) -- no image"
 
-        bev_image = cv2.imread(self.bev_images[idx], cv2.IMREAD_UNCHANGED)
+        #bev_image = cv2.imread(self.bev_images[idx], cv2.IMREAD_UNCHANGED)
+        bev_image = Image.open(self.bev_images[idx]) #For testing only...?
         bev_label = self.bev_labels[idx]
 
         # Sample an intersection given a label; this is used in the STUDENT training
@@ -516,7 +517,8 @@ class fromGeneratedDataset(Dataset):
         # send_telegram_picture(a, "generated_osm")
 
         if self.transform_generated:
-            sample = self.transform_generated(sample)
+            #sample = self.transform_generated(sample)
+            sample['data'] = self.transform_generated(sample['data'])
 
         return sample
 
