@@ -477,8 +477,7 @@ class fromGeneratedDataset(Dataset):
 
         assert os.path.isfile(self.bev_images[idx]), "os.path.isfile(self.bev_images[idx]) -- no image"
 
-        #bev_image = cv2.imread(self.bev_images[idx], cv2.IMREAD_UNCHANGED)
-        bev_image = Image.open(self.bev_images[idx]) #For testing only...?
+        bev_image = Image.open(self.bev_images[idx])  # pil image open is faster than opencv
         bev_label = self.bev_labels[idx]
 
         # Sample an intersection given a label; this is used in the STUDENT training
@@ -487,7 +486,7 @@ class fromGeneratedDataset(Dataset):
         negative_label = random.choice(r)
 
         if self.addGeneratedOSM:
-
+            # This can be used for loss functions without the centroids
             generated_osm = test_crossing_pose(crossing_type=bev_label, save=False, rnd_width=self.rnd_width,
                                                rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
                                                sampling=not self.canonical, random_rate=self.random_rate)
@@ -503,21 +502,14 @@ class fromGeneratedDataset(Dataset):
                       'generated_osm': generated_osm[0],
                       'negative_osm': generated_osm_negative[0]}
         else:
+            # this can be used for loss functions with centroids
             sample = {'data': bev_image,
                       'label': bev_label,
                       'neg_label': negative_label,
                       'image_path': self.bev_images[idx]
                       }
 
-        # debug code to send the sample over telegram
-        # a = plt.figure()
-        # plt.imshow(np.asarray(sample['data'], dtype=np.uint8))
-        # send_telegram_picture(a, "data")
-        # plt.imshow(np.asarray(sample['generated_osm'], dtype=np.uint8))
-        # send_telegram_picture(a, "generated_osm")
-
         if self.transform_generated:
-            #sample = self.transform_generated(sample)
             sample['data'] = self.transform_generated(sample['data'])
 
         return sample

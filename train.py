@@ -501,37 +501,23 @@ def main(args, model=None):
                                '2013_05_28_drive_0004_sync',
                                '2013_05_28_drive_0000_sync']
 
-    if args.grayscale:
-        aanetTransforms = transforms.Compose(
-            [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), GrayScale(), ToTensor()])
-        generateTransforms = transforms.Compose([Rescale((224, 224)), Normalize(), GrayScale(), ToTensor()])
-    else:
         aanetTransforms = transforms.Compose(
             [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), ToTensor()])
-        generateTransforms = transforms.Compose([Rescale((224, 224)), Normalize(), ToTensor()])
-        obsTransforms = transforms.Compose([transforms.ToPILImage(),
-                                            transforms.Resize((224, 224)),
-                                            transforms.ToTensor(),
-                                            ])
-        baselineTransforms = transforms.Compose(
+        obsTransforms = transforms.Compose(
+            [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
+
+        # Transforms for RGB images (RGB // Homography)
+        rgb_image_train_transforms = transforms.Compose(
             [transforms.Resize((224, 224)), transforms.RandomAffine(15, translate=(0.0, 0.1), shear=(-5, 5)),
              transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5), transforms.ToTensor(),
              transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
-        rgb_test_baselineTransforms = transforms.Compose(
-            [transforms.Resize((224, 224)), transforms.ToTensor(),
-             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
-        test_baselineTransforms = transforms.Compose(
-            [transforms.Resize((224, 224)), transforms.ToTensor()])
-
-    # k_fold_acc_list = []
+        rgb_image_test_transforms = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(),
+                                                        transforms.Normalize((0.485, 0.456, 0.406),
+                                                                             (0.229, 0.224, 0.225))])
+        # Transforms for Three-dimensional images (The DA was made offline)
+        threedimensional_transfomrs = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
 
     if args.train:
-        # loo = LeaveOneOut()
-        # sweep_config = sweep.config
-
-        # for train_index, val_index in loo.split(folders):
-
-        # todo delete when ok -----| print("\n\n NOW K-FOLDING .... ", train_index, val_index)
 
         if args.sweep:
             print("******* BEGIN *******")
@@ -543,21 +529,6 @@ def main(args, model=None):
             wandb_current_run = wandb.init(id=wandb_id, group=sweep_id, name=wandb_local_name, job_type=sweep.name,
                                            tags=["Teacher", "sweep", "class", hostname])
 
-            # todo delete when ok -----| if "sweep" in args and args.sweep:
-            # todo delete when ok -----|     print("YES IT IS A SWEEP! and should be called ---> " + wandb_local_name)
-            # todo delete when ok -----|     print("YES IT IS A SWEEP! and its name is this ---> " + wandb_current_run.name)
-            # todo delete when ok -----|     print("ITS RUN ID IS                           ---> " + wandb_current_run.id)
-            # todo delete when ok -----|     print("ITS SWEEP ID IS                         ---> " + sweep_id)
-            # todo delete when ok -----|     val_accuracy = random.random()
-            # todo delete when ok -----|     wandb_current_run.log(dict(val_accuracy=val_accuracy))
-            # todo delete when ok -----|     wandb_current_run.join()
-            # todo delete when ok -----|     wandb_current_run.finish()
-            # todo delete when ok -----|     print("END_RUN!!! MOVING TO THE NEXT ONE IN k-fold!" + wandb_local_name)
-            # todo delete when ok -----| else:
-            # todo delete when ok -----|     print("VERY SAD TIMES....")
-            # todo delete when ok -----|
-            # todo delete when ok -----| print("*******  END  *******")
-            # todo delete when ok -----| continue
         else:
             if not args.nowandb:  # if nowandb flag was set, skip
                 if args.wandb_resume:
@@ -570,74 +541,53 @@ def main(args, model=None):
                                job_type="training", reinit=True)
                     wandb.config.update(args)
 
-        # train_path, val_path = folders[train_index], folders[val_index]
         if args.dataloader != 'Kitti360_RGB':
             train_path = np.array(train_path)
             val_path = np.array([val_path])
 
         if args.dataloader == 'Kitti360_RGB':
-            train_dataset = kitti360_RGB(args.dataset, train_sequence_list, transform=baselineTransforms)
-            val_dataset = kitti360_RGB(args.dataset, val_sequence_list, transform=baselineTransforms)
+            train_dataset = kitti360_RGB(args.dataset, train_sequence_list, transform=rgb_image_train_transforms)
+            val_dataset = kitti360_RGB(args.dataset, val_sequence_list, transform=rgb_image_train_transforms)
 
         elif args.dataloader == "fromAANETandDualBisenet":
             val_dataset = fromAANETandDualBisenet(val_path, args.distance, transform=aanetTransforms)
             train_dataset = fromAANETandDualBisenet(train_path, args.distance, transform=aanetTransforms)
 
         elif args.dataloader == "generatedDataset":
-            val_dataset = fromGeneratedDataset(val_path, args.distance, transform=generateTransforms,
+            val_dataset = fromGeneratedDataset(val_path, args.distance, transform=threedimensional_transfomrs,
                                                loadlist=False,
                                                decimateStep=args.decimate,
-                                               addGeneratedOSM=False)  # todo fix loadlist for k-fold
-            train_dataset = fromGeneratedDataset(train_path, args.distance, transform=generateTransforms,
+                                               addGeneratedOSM=False)
+            train_dataset = fromGeneratedDataset(train_path, args.distance, transform=threedimensional_transfomrs,
                                                  loadlist=False,
                                                  decimateStep=args.decimate,
-                                                 addGeneratedOSM=False)  # todo fix loadlist for k-fold
+                                                 addGeneratedOSM=False)
 
         elif args.dataloader == "triplet_OBB":
 
             print("\nCreating train dataset from triplet_OBB")
             train_dataset = triplet_OBB(train_path, args.distance, elements=args.num_elements_OBB, canonical=False,
-                                        transform_obs=obsTransforms, transform_bev=generateTransforms,
+                                        transform_obs=obsTransforms, transform_bev=threedimensional_transfomrs,
                                         loadlist=False, decimateStep=args.decimate)
 
             print("\nCreating validation dataset from triplet_OBB")
             val_dataset = triplet_OBB(val_path, args.distance, elements=args.num_elements_OBB, canonical=False,
-                                      transform_obs=obsTransforms, transform_bev=generateTransforms, loadlist=False,
+                                      transform_obs=obsTransforms, transform_bev=threedimensional_transfomrs, loadlist=False,
                                       decimateStep=args.decimate)
 
         elif args.dataloader == "triplet_BOO":
 
             val_dataset = triplet_BOO(val_path, args.distance, canonical=False,
-                                      transform_obs=obsTransforms, transform_bev=generateTransforms,
+                                      transform_obs=obsTransforms, transform_bev=threedimensional_transfomrs,
                                       decimateStep=args.decimate)
 
             train_dataset = triplet_BOO(train_path, args.distance, canonical=False,
-                                        transform_obs=obsTransforms, transform_bev=generateTransforms,
+                                        transform_obs=obsTransforms, transform_bev=threedimensional_transfomrs,
                                         decimateStep=args.decimate)
 
         elif args.dataloader == "BaseLine":
-            val_dataset = BaseLine(val_path, transform=transforms.Compose([transforms.Resize((224, 224)),
-                                                                           transforms.ToTensor(),
-                                                                           transforms.Normalize(
-                                                                               (0.485, 0.456, 0.406),
-                                                                               (0.229, 0.224, 0.225))
-                                                                           ]))
-            train_dataset = BaseLine(train_path, transform=transforms.Compose([transforms.Resize((224, 224)),
-                                                                               transforms.RandomAffine(15,
-                                                                                                       translate=(
-                                                                                                           0.0,
-                                                                                                           0.1),
-                                                                                                       shear=(
-                                                                                                           -15,
-                                                                                                           15)),
-                                                                               transforms.ColorJitter(
-                                                                                   brightness=0.5, contrast=0.5,
-                                                                                   saturation=0.5),
-                                                                               transforms.ToTensor(),
-                                                                               transforms.Normalize(
-                                                                                   (0.485, 0.456, 0.406),
-                                                                                   (0.229, 0.224, 0.225))
-                                                                               ]))
+            val_dataset = BaseLine(val_path, transform=transforms.Compose(rgb_image_test_transforms))
+            train_dataset = BaseLine(train_path, transform=transforms.Compose(rgb_image_train_transforms))
         else:
             raise Exception("Dataloader not found")
 
@@ -750,40 +700,37 @@ def main(args, model=None):
             if not args.nowandb:  # if nowandb flag was set, skip
                 wandb.join()
 
-        if not args.nowandb:  # if nowandb flag was set, skip
-            wandb.log({"Val/Max acc": acc})
-
     if args.test:
         if args.dataloader == 'Kitti360_RGB':
             if args.oposite:  # Testing kitti2011 with kitti360
-                test_dataset = kitti360_RGB(args.dataset, kitti2011_test_list, transform=test_baselineTransforms)
+                test_dataset = kitti360_RGB(args.dataset, kitti2011_test_list, transform=rgb_image_test_transforms)
             else:
-                test_dataset = kitti360_RGB(args.dataset, test_sequence_list, transform=test_baselineTransforms)
+                test_dataset = kitti360_RGB(args.dataset, test_sequence_list, transform=rgb_image_test_transforms)
 
         elif args.dataloader == 'BaseLine':
             if args.oposite:  # Testing kitti360 with kitti2011
-                test_dataset = BaseLine(folders, transform=rgb_test_baselineTransforms)
+                test_dataset = BaseLine(folders, transform=rgb_image_test_transforms)
             else:
-                test_dataset = BaseLine([test_path], transform=rgb_test_baselineTransforms)
+                test_dataset = BaseLine([test_path], transform=rgb_image_test_transforms)
 
         elif args.dataloader == 'generatedDataset':
             if args.embedding:
                 if args.oposite:  # Testing kitti360 with kitti2011
                     test_dataset = fromGeneratedDataset(np.array(folders), args.distance,
-                                                        transform=test_baselineTransforms)
+                                                        transform=threedimensional_transfomrs)
                 else:
                     test_dataset = fromGeneratedDataset(np.array([test_path]), args.distance,
-                                                        transform=test_baselineTransforms)
+                                                        transform=threedimensional_transfomrs)
             else:
                 test_path = test_path.replace('data_raw_bev', 'data_raw')
-                test_dataset = TestDataset(test_path, args.distance, transform=generateTransforms)
+                test_dataset = TestDataset(test_path, args.distance, transform=threedimensional_transfomrs)
 
         elif args.dataloader == "triplet_OBB":
             test_dataset = triplet_OBB([test_path], args.distance, elements=200, canonical=True,
-                                       transform_obs=obsTransforms, transform_bev=generateTransforms)
+                                       transform_obs=obsTransforms, transform_bev=threedimensional_transfomrs)
         elif args.dataloader == "triplet_BOO":
             test_dataset = triplet_BOO([test_path], args.distance, elements=200, canonical=True,
-                                       transform_obs=obsTransforms, transform_bev=generateTransforms)
+                                       transform_obs=obsTransforms, transform_bev=threedimensional_transfomrs)
 
         dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
                                      num_workers=args.num_workers, worker_init_fn=init_fn)
