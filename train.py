@@ -1,7 +1,6 @@
 import argparse
 import multiprocessing
 import os
-import pickle
 import socket  # to get the machine name
 import time
 import warnings
@@ -20,21 +19,18 @@ import wandb
 from torch.optim.lr_scheduler import MultiStepLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
-from dataloaders.sequencedataloader import BaseLine, TestDataset, fromAANETandDualBisenet, fromGeneratedDataset, \
-    kitti360_RGB, triplet_BOO, triplet_OBB
-from dataloaders.transforms import GenerateBev, GrayScale, Mirror, Normalize, Rescale, ToTensor
-from miscellaneous.utils import init_function, reset_wandb_env, send_telegram_message, send_telegram_picture, \
-    student_network_pass, svm_data, svm_train
+from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromGeneratedDataset, \
+    triplet_BOO, triplet_OBB, kitti360, Kitti2011_RGB, triplet_ROO, triplet_ROO_360
+from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
+from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
+    student_network_pass
 from model.models import Resnet18, Vgg11, LSTM
-from model.resnet_models import Personalized, Personalized_small, get_model_resnet, get_model_resnext, get_model_vgg
 
 
 def test(args, dataloader_test, save_embeddings=None):
     print('start Test!')
 
-    if args.triplet:
-        criterion = torch.nn.TripletMarginLoss(margin=args.margin)
-    elif args.embedding:
+    if args.embedding:
         criterion = torch.nn.MSELoss(reduction='mean')
     else:
         criterion = torch.nn.CrossEntropyLoss()
@@ -191,10 +187,10 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
     train_acc = 0.0
     train_loss = np.inf
 
-    # Build loss criterion
-    if args.embedding:
+    if args.embedding:  # For Teacher/Student training
+        # Build loss criterion
         if args.weighted:
-            if args.dataloader == 'Kitti360_RGB':
+            if args.dataloader == 'Kitti360':
                 weights = [0.85, 0.86, 0.84, 0.85, 0.90, 0.84, 0.85]
             else:
                 weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
@@ -212,6 +208,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                 traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='none')
                 valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='none')
         else:
+            weights = None
             if args.lossfunction == 'SmoothL1':
                 traincriterion = torch.nn.SmoothL1Loss(reduction='mean')
                 valcriterion = torch.nn.SmoothL1Loss(reduction='mean')
@@ -225,9 +222,44 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                 traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
                 valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
 
-    else:
+        # Build gt centroids to measure distances
+        gt_list = []
+        embeddings = np.loadtxt(args.centroids_path, delimiter='\t')
+        splits = np.array_split(embeddings, 7)
+        for i in range(7):
+            gt_list.append((np.mean(splits[i], axis=0)))
+        gt_list = torch.FloatTensor(gt_list)
+
+    elif args.triplet:
+        # Build loss criterion
         if args.weighted:
-            if args.dataloader == 'Kitti360_RGB':
+            if args.dataloader == 'Kitti360':
+                weights = [0.85, 0.86, 0.84, 0.85, 0.90, 0.84, 0.85]
+            else:
+                weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
+
+            if args.distance_function == 'Pairwise':
+                torch.nn.TripletMarginWithDistanceLoss(distance_function=torch.nn.PairwiseDistance(),
+                                                       margin=args.margin, reduction='none')
+                torch.nn.TripletMarginWithDistanceLoss(distance_function=torch.nn.PairwiseDistance(),
+                                                       margin=args.margin, reduction='none')
+            else:
+                traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='none')
+                valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='none')
+        else:
+            if args.distance_function == 'Pairwise':
+                torch.nn.TripletMarginWithDistanceLoss(distance_function=torch.nn.PairwiseDistance(),
+                                                       margin=args.margin, reduction='mean')
+                torch.nn.TripletMarginWithDistanceLoss(distance_function=torch.nn.PairwiseDistance(),
+                                                       margin=args.margin, reduction='mean')
+            else:
+                traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
+                valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
+
+    else:
+        gt_list = None  # No need of centroids
+        if args.weighted:
+            if args.dataloader == 'Kitti360':
                 weights = [0.85, 0.86, 0.84, 0.85, 0.90, 0.84, 0.85]
                 class_weights = torch.FloatTensor(weights).cuda()
                 traincriterion = torch.nn.CrossEntropyLoss(weight=class_weights)
@@ -246,17 +278,6 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
             else:
                 traincriterion = torch.nn.CrossEntropyLoss()
                 valcriterion = torch.nn.CrossEntropyLoss()
-
-    # Build gt images for validation
-    if args.embedding:
-        gt_list = []
-        embeddings = np.loadtxt(args.centroids_path, delimiter='\t')
-        splits = np.array_split(embeddings, 7)
-        for i in range(7):
-            gt_list.append((np.mean(splits[i], axis=0)))
-        gt_list = torch.FloatTensor(gt_list)
-    else:
-        gt_list = None  # This is made to better structure of the code ahead
 
     model.train()
 
@@ -333,7 +354,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
             plt.figure(figsize=(10, 7))
             title = str(socket.gethostname()) + '\nEpoch: ' + str(epoch) + '\n' + str(valfolder)
             plt.title(title)
-            sn.heatmap(confusion_matrix, annot=True, fmt='d')
+            sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
 
             if args.telegram:
                 send_telegram_picture(plt,
@@ -362,7 +383,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
 
                 if args.nowandb:
                     loadpath = os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
-                                                                                             args.resnetmodel,
+                                                                                             args.model,
                                                                                              epoch))
                     print('Saving model: ', loadpath)
                     torch.save({
@@ -372,7 +393,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                         'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
                         'loss': loss,
                     }, os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
-                                                                                     args.resnetmodel, epoch)))
+                                                                                     args.model, epoch)))
                 else:
                     loadpath = os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
                                                                                              wandb.run.id, epoch))
@@ -401,56 +422,6 @@ def main(args, model=None):
     # torch.backends.cudnn.deterministic = True
     # torch.backends.cudnn.benchmark = False
 
-    if args.sweep:
-        hyperparameter_defaults = dict(batch_size=64, cuda='0', dataloader='BaseLine', decimate=1.0,
-                                       distance=20.0, embedding=False, embedding_class=False, grayscale=False,
-                                       lr=0.0001,
-                                       margin=0.5, momentum=0.9, nowandb=False, num_classes=7, num_epochs=50,
-                                       num_workers=4,
-                                       optimizer='sgd', patience=-1, patience_start=50, pretrained=False,
-                                       resnetmodel='resnet18', save_model_path='./trainedmodels/', scheduler=False,
-                                       seed=0,
-                                       sweep=True, telegram=False, train=True, test=False,
-                                       transfer=False, triplet=False, use_gpu=True, validation_step=5, weighted=False,
-                                       num_elements_OBB=2000)
-
-        sweep = wandb.init(project="test-kfold", entity="chiringuito", config=hyperparameter_defaults, job_type="sweep",
-                           reinit=True)
-
-        # the part passed from wandb through the sweep does not contain the command line parameters in the "config" but
-        # they are inside the "args" because the train.py was called... little mess.. update the config with the FEW values
-        # you have in "args".
-        # Example:
-        # 2020-10-01 18:53:18,896 - wandb.wandb_agent - INFO - About to run command:
-        # /usr/bin/env python train.py
-        # --lr=0.00075 --optimizer=Adamax                                                      <<<< SWEEP PARAMETERS   !!!!
-        # --embedding --teacher_path ./trainedmodels/teacher/teacher_model_sunny-sweep-1.pth   <<<< THESE ARE COMMANDS !!!!
-        # --dataset ../DualBiSeNet/data_raw --sweep --train True                               <<<< THESE ARE COMMANDS !!!!
-        # commands are not set in "sweep.config" so if you overwrite args with sweep.config, you'll loose some part of
-        # the commands you want to give to the script
-
-        sweep.config.update(args, allow_val_change=True)
-        args = sweep.config  # get the config from the sweep
-
-        sweep_id = sweep.sweep_id or "unknown"
-        # sweep_url = sweep._get_sweep_url()
-        project_url = sweep._get_project_url()
-        sweep.notes = "{}/groups/{}".format(project_url, sweep_id)
-        sweep_run_name = sweep.name or sweep.id or "unknown"
-        sweep.join()
-
-        print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-        print("Starting from outer --for loop--. This is the config:")
-        print("sweep.config:\n", sweep.config)
-        print("sweep_id: ", sweep_id)  # this is the 'group'
-        print("sweep_run_name: ", sweep_run_name)
-        print("sweep project_name: ", sweep.project_name())
-        print("sweep entity: ", sweep.entity)
-        print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-
-        # Getting the hostname to add to wandb (seem useful for sweeps)
-        hostname = str(socket.gethostname())
-
     if args.resume:
         if os.path.isfile(args.resume):
             checkpoint = torch.load(args.resume, map_location='cpu')
@@ -461,25 +432,21 @@ def main(args, model=None):
 
     init_fn = partial(init_function, seed=seed, epoch=GLOBAL_EPOCH)
 
-    # Accuracy accumulator
-    acc = 0.0
-
     # create dataset and dataloader
     data_path = args.dataset
 
-    if args.dataloader != 'Kitti360_RGB':
+    if args.dataloader != 'Kitti360' and args.dataloader != 'Kitti360_3D':
         # All sequence folders
         folders = np.array([os.path.join(data_path, folder) for folder in os.listdir(data_path) if
                             os.path.isdir(os.path.join(data_path, folder))])
 
         # Exclude test samples
-        # folders = folders[folders != os.path.join(data_path, '2011_09_30_drive_0028_sync')] #Testing in 360 by now
-        # test_path = os.path.join(data_path, '2011_09_30_drive_0028_sync')
+        folders = folders[folders != os.path.join(data_path, '2011_09_30_drive_0028_sync')]
+        test_path = os.path.join(data_path, '2011_09_30_drive_0028_sync')
 
         # Exclude validation samples
         train_path = folders[folders != os.path.join(data_path, '2011_10_03_drive_0034_sync')]
         val_path = os.path.join(data_path, '2011_10_03_drive_0034_sync')
-        test_path = os.path.join(data_path, '2011_10_03_drive_0034_sync')
 
     else:
         train_sequence_list = ['2013_05_28_drive_0003_sync',
@@ -491,69 +458,63 @@ def main(args, model=None):
                                '2013_05_28_drive_0010_sync']
         val_sequence_list = ['2013_05_28_drive_0004_sync']
         test_sequence_list = ['2013_05_28_drive_0000_sync']
-        kitti2011_test_list = ['2013_05_28_drive_0003_sync',
-                               '2013_05_28_drive_0002_sync',
-                               '2013_05_28_drive_0005_sync',
-                               '2013_05_28_drive_0006_sync',
-                               '2013_05_28_drive_0007_sync',
-                               '2013_05_28_drive_0009_sync',
-                               '2013_05_28_drive_0010_sync',
-                               '2013_05_28_drive_0004_sync',
-                               '2013_05_28_drive_0000_sync']
+        kitti360_sequence_list = ['2013_05_28_drive_0003_sync',
+                                  '2013_05_28_drive_0002_sync',
+                                  '2013_05_28_drive_0005_sync',
+                                  '2013_05_28_drive_0006_sync',
+                                  '2013_05_28_drive_0007_sync',
+                                  '2013_05_28_drive_0009_sync',
+                                  '2013_05_28_drive_0010_sync',
+                                  '2013_05_28_drive_0004_sync',
+                                  '2013_05_28_drive_0000_sync']
 
-        aanetTransforms = transforms.Compose(
-            [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), ToTensor()])
-        obsTransforms = transforms.Compose(
-            [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
+    aanetTransforms = transforms.Compose(
+        [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), ToTensor()])
+    # Transforms for OSM in Triplet_OBB and Triplet_BOO dataloaders
+    osmTransforms = transforms.Compose(
+        [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
 
-        # Transforms for RGB images (RGB // Homography)
-        rgb_image_train_transforms = transforms.Compose(
-            [transforms.Resize((224, 224)), transforms.RandomAffine(15, translate=(0.0, 0.1), shear=(-5, 5)),
-             transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5), transforms.ToTensor(),
-             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
-        rgb_image_test_transforms = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(),
-                                                        transforms.Normalize((0.485, 0.456, 0.406),
-                                                                             (0.229, 0.224, 0.225))])
-        # Transforms for Three-dimensional images (The DA was made offline)
-        threedimensional_transfomrs = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
+    # Transforms for RGB images (RGB // Homography)
+    rgb_image_train_transforms = transforms.Compose(
+        [transforms.Resize((224, 224)), transforms.RandomAffine(15, translate=(0.0, 0.1), shear=(-5, 5)),
+         transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5), transforms.ToTensor(),
+         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
+    rgb_image_test_transforms = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(),
+                                                    transforms.Normalize((0.485, 0.456, 0.406),
+                                                                         (0.229, 0.224, 0.225))])
+    # Transforms for Three-dimensional images (The DA was made offline)
+    threedimensional_transfomrs = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
 
     if args.train:
 
-        if args.sweep:
-            print("******* BEGIN *******")
-            reset_wandb_env()
-            wandb_local_name = str(sweep_run_name) + "-split-" + str(val_index[0])
-            print("Initializing wandb_current_run with name: ", wandb_local_name)
-            wandb_id = wandb.util.generate_id()
+        if not args.nowandb:  # if nowandb flag was set, skip
+            if args.wandb_resume:
+                print('Resuming WANDB run, this run will log into: ', args.wandb_resume)
+                wandb.init(project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
+                           job_type="training", reinit=True, resume=args.wandb_resume)
+                wandb.config.update(args, allow_val_change=True)
+            else:
+                wandb.init(project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
+                           job_type="training", reinit=True)
+                wandb.config.update(args)
 
-            wandb_current_run = wandb.init(id=wandb_id, group=sweep_id, name=wandb_local_name, job_type=sweep.name,
-                                           tags=["Teacher", "sweep", "class", hostname])
-
-        else:
-            if not args.nowandb:  # if nowandb flag was set, skip
-                if args.wandb_resume:
-                    print('Resuming WANDB run, this run will log into: ', args.wandb_resume)
-                    wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito',
-                               job_type="training", reinit=True, resume=args.wandb_resume)
-                    wandb.config.update(args, allow_val_change=True)
-                else:
-                    wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito',
-                               job_type="training", reinit=True)
-                    wandb.config.update(args)
-
-        if args.dataloader != 'Kitti360_RGB':
+        if args.dataloader != 'Kitti360':  # The dataloaders that not use Kitti360 uses list-like inputs
             train_path = np.array(train_path)
             val_path = np.array([val_path])
 
-        if args.dataloader == 'Kitti360_RGB':
-            train_dataset = kitti360_RGB(args.dataset, train_sequence_list, transform=rgb_image_train_transforms)
-            val_dataset = kitti360_RGB(args.dataset, val_sequence_list, transform=rgb_image_train_transforms)
+        if args.dataloader == 'Kitti360':  # Used in kitti360 RGB // Homography
+            train_dataset = kitti360(args.dataset, train_sequence_list, transform=rgb_image_train_transforms)
+            val_dataset = kitti360(args.dataset, val_sequence_list, transform=rgb_image_train_transforms)
 
-        elif args.dataloader == "fromAANETandDualBisenet":
+        elif args.dataloader == 'Kitti360_3D':  # Used in Kitti360 3D
+            train_dataset = kitti360(args.dataset, train_sequence_list, transform=threedimensional_transfomrs)
+            val_dataset = kitti360(args.dataset, val_sequence_list, transform=threedimensional_transfomrs)
+
+        elif args.dataloader == "fromAANETandDualBisenet":  # Used in kitti2011 online generated masked 3D images (Deprecated)
             val_dataset = fromAANETandDualBisenet(val_path, args.distance, transform=aanetTransforms)
             train_dataset = fromAANETandDualBisenet(train_path, args.distance, transform=aanetTransforms)
 
-        elif args.dataloader == "generatedDataset":
+        elif args.dataloader == "generatedDataset":  # Used in Kitti2011 // 3D // Masked 3D
             val_dataset = fromGeneratedDataset(val_path, args.distance, transform=threedimensional_transfomrs,
                                                loadlist=False,
                                                decimateStep=args.decimate,
@@ -563,31 +524,55 @@ def main(args, model=None):
                                                  decimateStep=args.decimate,
                                                  addGeneratedOSM=False)
 
-        elif args.dataloader == "triplet_OBB":
+        elif args.dataloader == "triplet_OBB":  # Used in Kitti2011 Masked 3D // 3D (Not Replicated)
 
-            print("\nCreating train dataset from triplet_OBB")
             train_dataset = triplet_OBB(train_path, args.distance, elements=args.num_elements_OBB, canonical=False,
-                                        transform_obs=obsTransforms, transform_bev=threedimensional_transfomrs,
-                                        loadlist=False, decimateStep=args.decimate)
+                                        transform_obs=osmTransforms, transform_bev=threedimensional_transfomrs,
+                                        loadlist=False)
 
-            print("\nCreating validation dataset from triplet_OBB")
             val_dataset = triplet_OBB(val_path, args.distance, elements=args.num_elements_OBB, canonical=False,
-                                      transform_obs=obsTransforms, transform_bev=threedimensional_transfomrs, loadlist=False,
-                                      decimateStep=args.decimate)
+                                      transform_obs=osmTransforms, transform_bev=threedimensional_transfomrs,
+                                      loadlist=False)
 
-        elif args.dataloader == "triplet_BOO":
+        elif args.dataloader == "triplet_BOO":  # Used in Kitti2011 Masked 3D // 3D
 
             val_dataset = triplet_BOO(val_path, args.distance, canonical=False,
-                                      transform_obs=obsTransforms, transform_bev=threedimensional_transfomrs,
+                                      transform_obs=osmTransforms, transform_bev=threedimensional_transfomrs,
                                       decimateStep=args.decimate)
 
             train_dataset = triplet_BOO(train_path, args.distance, canonical=False,
-                                        transform_obs=obsTransforms, transform_bev=threedimensional_transfomrs,
+                                        transform_obs=osmTransforms, transform_bev=threedimensional_transfomrs,
                                         decimateStep=args.decimate)
 
-        elif args.dataloader == "BaseLine":
-            val_dataset = BaseLine(val_path, transform=transforms.Compose(rgb_image_test_transforms))
-            train_dataset = BaseLine(train_path, transform=transforms.Compose(rgb_image_train_transforms))
+        elif args.dataloader == "triplet_ROO":  # Used in Kitti2011 RGB // Homograpy
+
+            val_dataset = triplet_ROO(val_path, transform_obs=osmTransforms, transform_rgb=rgb_image_train_transforms)
+
+            train_dataset = triplet_ROO(train_path, transform_obs=osmTransforms,
+                                        transform_rgb=rgb_image_train_transforms)
+
+        elif args.dataloader == "triplet_ROO_360":  # Used in Kitti360 RGB // Homograpy
+
+            val_dataset = triplet_ROO_360(args.dataset, val_sequence_list, transform_obs=osmTransforms,
+                                          transform_rgb=rgb_image_train_transforms)
+
+            train_dataset = triplet_ROO_360(args.dataset, train_sequence_list, transform_obs=osmTransforms,
+                                            transform_rgb=rgb_image_train_transforms)
+
+        elif args.dataloader == "triplet_3DOO_360":  # Used in Kitti360 3D
+
+            val_dataset = triplet_ROO_360(args.dataset, val_sequence_list, transform_obs=osmTransforms,
+                                          transform_3d=threedimensional_transfomrs)
+
+            train_dataset = triplet_ROO_360(args.dataset, train_sequence_list, transform_obs=osmTransforms,
+                                            transform_3d=threedimensional_transfomrs)
+
+        elif args.dataloader == "Kitti2011_RGB":  # Used in Kitti2011 // RGB // Homography
+
+            val_dataset = Kitti2011_RGB(val_path, transform=rgb_image_test_transforms)
+
+            train_dataset = Kitti2011_RGB(train_path, transform=rgb_image_train_transforms)
+
         else:
             raise Exception("Dataloader not found")
 
@@ -597,10 +582,13 @@ def main(args, model=None):
                                     num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
 
         # Build model
+        # The embeddings should be returned if we are using Techer/Student or triplet loss
+        return_embeddings = args.embedding or args.triplet
+
         if args.model == 'resnet18':
-            model = Resnet18(pretrained=args.pretrained, embeddings=args.embedding, num_classes=args.num_classes)
+            model = Resnet18(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
         elif args.model == 'vgg11':
-            model = Vgg11(pretrained=args.pretrained, embeddings=args.embedding, num_classes=args.num_classes)
+            model = Vgg11(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
         elif args.model == 'LSTM':
             model = LSTM(args.feature_model, args.num_classes, pretrained_path=args.feature_detector_path)
 
@@ -684,59 +672,64 @@ def main(args, model=None):
         #    | |  |  _ <  / ___ \  | | | |\  |   #
         #    |_|  |_| \_\/_/   \_\|___||_| \_|   #
         ##########################################
-        if args.dataloader != 'Kitti360_RGB':
-            train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
+        if args.dataloader != 'Kitti360' and args.dataloader != 'Kitti360_3D':
+            train(args, model, optimizer, scheduler, dataloader_train, dataloader_val,
                   os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
         else:
-            train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, acc,
+            train(args, model, optimizer, scheduler, dataloader_train, dataloader_val,
                   valfolder=val_sequence_list[0], GLOBAL_EPOCH=GLOBAL_EPOCH)
 
         if args.telegram:
-            send_telegram_message("K-Fold finished")
-
-        if args.sweep:
-            wandb_current_run.join()
-        else:
-            if not args.nowandb:  # if nowandb flag was set, skip
-                wandb.join()
+            send_telegram_message("Train finished")
 
     if args.test:
-        if args.dataloader == 'Kitti360_RGB':
-            if args.oposite:  # Testing kitti2011 with kitti360
-                test_dataset = kitti360_RGB(args.dataset, kitti2011_test_list, transform=rgb_image_test_transforms)
+        if args.dataloader == 'Kitti360':  # Trained with RGB images or Homography
+            if args.oposite:
+                # Testing trained model in kitti2011 with kitti360
+                test_dataset = kitti360(args.dataset, kitti360_sequence_list, transform=rgb_image_test_transforms)
             else:
-                test_dataset = kitti360_RGB(args.dataset, test_sequence_list, transform=rgb_image_test_transforms)
+                # Testing trained model with kitti360 test sequence
+                test_dataset = kitti360(args.dataset, test_sequence_list, transform=rgb_image_test_transforms)
 
-        elif args.dataloader == 'BaseLine':
-            if args.oposite:  # Testing kitti360 with kitti2011
-                test_dataset = BaseLine(folders, transform=rgb_image_test_transforms)
+        elif args.dataloader == 'Kitti360_3D':  # Trained with 3D images
+            if args.oposite:
+                # Testing trained model in kitti2011 with kitti360
+                test_dataset = kitti360(args.dataset, kitti360_sequence_list, transform=threedimensional_transfomrs)
             else:
-                test_dataset = BaseLine([test_path], transform=rgb_image_test_transforms)
+                # Testing trained model with kitti360 test sequence
+                test_dataset = kitti360(args.dataset, test_sequence_list, transform=threedimensional_transfomrs)
 
-        elif args.dataloader == 'generatedDataset':
+        elif args.dataloader == 'Kitti2011_RGB':  # Trained with RGB images or Homography
+            if args.oposite:
+                # Testing trained model in kitti360 with kitti2011
+                test_dataset = Kitti2011_RGB(folders, transform=rgb_image_test_transforms)
+            else:
+                # Testing trained model with kitti2011 test sequence
+                test_dataset = Kitti2011_RGB([test_path], transform=rgb_image_test_transforms)
+
+        elif args.dataloader == 'generatedDataset':  # Trained with 3D images
             if args.embedding:
-                if args.oposite:  # Testing kitti360 with kitti2011
+                if args.oposite:
+                    # Testing trained model in kitti360 with kitti2011
                     test_dataset = fromGeneratedDataset(np.array(folders), args.distance,
                                                         transform=threedimensional_transfomrs)
                 else:
+                    # Testing trained model with kitti2011 test sequence
                     test_dataset = fromGeneratedDataset(np.array([test_path]), args.distance,
                                                         transform=threedimensional_transfomrs)
-            else:
-                test_path = test_path.replace('data_raw_bev', 'data_raw')
-                test_dataset = TestDataset(test_path, args.distance, transform=threedimensional_transfomrs)
 
         elif args.dataloader == "triplet_OBB":
             test_dataset = triplet_OBB([test_path], args.distance, elements=200, canonical=True,
-                                       transform_obs=obsTransforms, transform_bev=threedimensional_transfomrs)
+                                       transform_obs=osmTransforms, transform_bev=threedimensional_transfomrs)
         elif args.dataloader == "triplet_BOO":
-            test_dataset = triplet_BOO([test_path], args.distance, elements=200, canonical=True,
-                                       transform_obs=obsTransforms, transform_bev=threedimensional_transfomrs)
+            test_dataset = triplet_BOO([test_path], args.distance, canonical=True,
+                                       transform_obs=osmTransforms, transform_bev=threedimensional_transfomrs)
 
         dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
                                      num_workers=args.num_workers, worker_init_fn=init_fn)
 
         if not args.nowandb:  # if nowandb flag was set, skip
-            wandb.init(project="nn-based-intersection-classficator", group=group_id, entity='chiringuito',
+            wandb.init(project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
                        job_type="eval")
             wandb.config.update(args)
 
@@ -786,17 +779,11 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_group_id', type=str, help='Set group id for the wandb experiment')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     parser.add_argument('--wandb_resume', type=str, default=None, help='the id of the wandb-resume, e.g. jhc0gvhb')
-    parser.add_argument('--sweep', action='store_true', help='if set, this run is part of a wandb-sweep; use it with'
-                                                             'as documented in '
-                                                             'in https://docs.wandb.com/sweeps/configuration#command')
 
     parser.add_argument('--telegram', action='store_true', help='Send info through Telegram')
-    parser.add_argument('--freeze', action='store_true', help='fc finetuning of student model')
-    parser.add_argument('--svm', action='store_true', help='support vector machine for student classification')
     parser.add_argument('--dataset', type=str, help='path to the dataset you are using.')
-    parser.add_argument('--transfer', action='store_true', help='Fine tuning or transfer learning')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
-    parser.add_argument('--resnetmodel', type=str, default="resnet18",
+    parser.add_argument('--model', type=str, default="resnet18",
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate used for train')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum used for train')
@@ -820,45 +807,35 @@ if __name__ == '__main__':
     parser.add_argument('--distance', type=float, default=20.0, help='Distance from the cross')
 
     parser.add_argument('--weighted', action='store_true', help='Weighted losses')
-    ######    parser.add_argument('--pretrained', type=bool, default=True, help='pretrained net')
     parser.add_argument('--pretrained', type=bool, default=True, help='whether to use a pretrained net, or not')
-    #####    parser.add_argument('--scheduler', type=bool, default=True, help='scheduling lr')
     parser.add_argument('--scheduler', action='store_true', help='scheduling lr')
     parser.add_argument('--scheduler_type', type=str, default='MultiStepLR', choices=['MultiStepLR',
                                                                                       'ReduceLROnPlateau'])
-    parser.add_argument('--grayscale', action='store_true', help='Use Grayscale Images')
     parser.add_argument('--resume', type=str, default=None,
                         help='path to checkpoint model; consider check wandb_resume')
 
     # to enable the STUDENT training, set --embedding and provide the teacher path
     parser.add_argument('--embedding', action='store_true', help='Use embedding matching')
-    parser.add_argument('--embedding_class', action='store_true', help='Use embedding matching with classification')
-    parser.add_argument('--triplet', action='store_true', help='Use triplet learing')
-    parser.add_argument('--teacher_path', type=str, help='Insert teacher path (for student training)')
+    parser.add_argument('--triplet', action='store_true', help='Use embedding matching')
+    parser.add_argument('--centroids_path', type=str, help='Insert centroids teacher path (for student training)')
     parser.add_argument('--student_path', type=str, help='Insert student path (for student testing)')
     parser.add_argument('--margin', type=float, default=1., help='margin in triplet and embedding')
 
     # different data loaders, use one from choices; a description is provided in the documentation of each dataloader
     parser.add_argument('--dataloader', type=str, default='generatedDataset', choices=['fromAANETandDualBisenet',
                                                                                        'generatedDataset',
-                                                                                       'BaseLine',
+                                                                                       'Kitti2011_RGB',
                                                                                        'triplet_OBB',
                                                                                        'triplet_BOO',
-                                                                                       'TestDataset',
-                                                                                       'Kitti360_RGB'],
+                                                                                       'triplet_ROO',
+                                                                                       'triplet_ROO_360',
+                                                                                       'triplet_3DOO_360',
+                                                                                       'Kitti360',
+                                                                                       'Kitti360_3D'],
                         help='One of the supported datasets')
-    parser.add_argument('--num_elements_OBB', type=int, default=2000, help='Number of OSM in OBB training')
 
     args = parser.parse_args()
 
-    # check whether --embedding was set but with no teacher path
-    # if args.embedding and not args.teacher_path:
-    # print("Parameter --teacher_path is REQUIRED when --embedding is set")
-    # exit(-1)
-
-    if args.svm and not args.embedding:
-        print("Parameter --embedding is REQUIRED when --svm is set")
-        exit(-1)
     if args.oposite and not args.test:
         print("Parameter --test is REQUIRED when --oposite is set")
         exit(-1)
@@ -866,10 +843,6 @@ if __name__ == '__main__':
     if args.dataset == "":
         print("Empty path. Please provide the path of the dataset you want to use."
               "Ex: --dataset=../DualBiSeNet/data_raw")
-        exit(-1)
-
-    if args.triplet != (args.dataloader == 'triplet_OBB' or args.dataloader == 'triplet_BOO'):
-        print("Args triplet and triplet dataloaders must be called together")
         exit(-1)
 
     if args.student_path:
@@ -899,14 +872,15 @@ if __name__ == '__main__':
     warnings.filterwarnings("ignore")
 
     if args.telegram:
-        send_telegram_message("Starting experiment nn-based-intersection-classficator on " + str(socket.gethostname()))
+        send_telegram_message(
+            "Starting experiment lstm-based-intersection-classficator on " + str(socket.gethostname()))
 
     try:
         tic = time.time()
         main(args)
         toc = time.time()
         if args.telegram:
-            send_telegram_message("Experiment of nn-based-intersection-classficator ended after " +
+            send_telegram_message("Experiment of lstm-based-intersection-classficator ended after " +
                                   str(time.strftime("%H:%M:%S", time.gmtime(toc - tic))) + "\n" + "Run was on: " +
                                   str(socket.gethostname()))
 
@@ -919,5 +893,6 @@ if __name__ == '__main__':
             exit()
         print(e)
         if args.telegram:
-            send_telegram_message("Error catched in nn-based-intersection-classficator :" + str(e) + "\nRun was on: " +
-                                  str(socket.gethostname()))
+            send_telegram_message(
+                "Error catched in lstm-based-intersection-classficator :" + str(e) + "\nRun was on: " +
+                str(socket.gethostname()))

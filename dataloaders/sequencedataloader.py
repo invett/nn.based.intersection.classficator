@@ -18,7 +18,7 @@ from scripts.OSM_generator import Crossing, test_crossing_pose
 from random import choice
 
 
-class kitti360_RGB(Dataset):
+class kitti360(Dataset):
     def __init__(self, path, sequence_list, transform=None):
         """
 
@@ -82,7 +82,7 @@ class kitti360_RGB(Dataset):
         return sample
 
 
-class BaseLine(Dataset):
+class Kitti2011_RGB(Dataset):
     def __init__(self, folders, transform=None):
         """
 
@@ -951,7 +951,7 @@ class triplet_OBB(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
 
     def __init__(self, folders, distance, elements=1000, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
                  canonical=True, transform_obs=None, transform_bev=None, random_rate=1.0, loadlist=True, savelist=False,
-                 decimateStep=1):
+                 ):
 
         fromGeneratedDataset.__init__(self, folders, distance, transform=transform_bev, rnd_width=rnd_width,
                                       rnd_angle=rnd_angle, rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
@@ -961,6 +961,9 @@ class triplet_OBB(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
                                                rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
                                                transform=transform_obs, random_rate=random_rate,
                                                crossing_type_set=self.feasible_intersections)
+
+        self.transform_obs = transform_obs
+        self.transform_bev = transform_bev
 
     def __len__(self):
         # In this multi inherit class we have both [teacher_tripletloss_generated] and [fromGeneratedDataset] items.
@@ -1005,6 +1008,13 @@ class triplet_OBB(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
                   'filename_positive': SAMPLE_POSITIVE['image_path'],
                   'filename_negative': SAMPLE_NEGATIVE['image_path']}
 
+        if self.transform_obs:
+            sample['OSM_anchor'] = self.transform_obs(sample['OSM_anchor'])
+
+        if self.transform_bev:
+            sample['BEV_positive'] = self.transform_bev(sample['BEV_positive'])
+            sample['BEV_negative'] = self.transform_bev(sample['BEV_negative'])
+
         # DEBUG -- send in telegram. Little HACK for the ANCHOR, get a sub-part of image ...
         '''
         emptyspace = 255 * torch.ones([224, 30, 3], dtype=torch.uint8)
@@ -1024,7 +1034,7 @@ class triplet_OBB(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
         return sample
 
 
-class triplet_BOO(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
+class triplet_BOO(fromGeneratedDataset, Dataset):
     """
         In this dataloader, <<teacher_tripletloss_generated>> is not actually used; what we really need is the
         <<test_crossing_pose>> that is used inside <<teacher_tripletloss_generated>> but using the class to get
@@ -1035,12 +1045,9 @@ class triplet_BOO(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
 
     """
 
-    def __init__(self, folders, distance, elements=1000, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
+    def __init__(self, folders, distance, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
                  canonical=True, transform_obs=None, transform_bev=None, random_rate=1.0, loadlist=True, savelist=False,
                  decimateStep=1):
-        # teacher_tripletloss_generated.__init__(self, elements=elements, rnd_width=rnd_width, rnd_angle=rnd_angle,
-        # rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
-        # transform=transform_obs, random_rate=random_rate)
 
         fromGeneratedDataset.__init__(self, folders, distance, transform=transform_bev, rnd_width=rnd_width,
                                       rnd_angle=rnd_angle, rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
@@ -1056,6 +1063,7 @@ class triplet_BOO(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
         self.random_rate = random_rate
         self.canonical = canonical
         self.transform_obs = transform_obs
+        self.transform_bev = transform_bev
 
     def __len__(self):
         # In this multi inherit class we have both [teacher_tripletloss_generated] and [fromGeneratedDataset] items.
@@ -1078,17 +1086,20 @@ class triplet_BOO(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
                                           rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
                                           sampling=not self.canonical, random_rate=self.random_rate)
 
-        sample = {'BEV_anchor': BEV,
-                  'OSM_positive': OSM_positive[0],
-                  'OSM_negative': OSM_negative[0],
+        sample = {'anchor': BEV,
+                  'positive': OSM_positive[0],
+                  'negative': OSM_negative[0],
                   'label_anchor': sample_fgd['label'],
                   'label_positive': item_positive,
                   'label_negative': item_negative,
                   'filename_anchor': sample_fgd['image_path']
                   }
         if self.transform_obs:
-            sample['OSM_positive'] = self.transform_obs(sample['OSM_positive'])
-            sample['OSM_negative'] = self.transform_obs(sample['OSM_negative'])
+            sample['positive'] = self.transform_obs(sample['positive'])
+            sample['negative'] = self.transform_obs(sample['negative'])
+
+        if self.transform_bev:
+            sample['anchor'] = self.transform_bev(sample['anchor'])
 
             # DEBUG -- send in telegram. Little HACK for the ANCHOR, get a sub-part of image ...
         # emptyspace = 255 * torch.ones([224, 30, 3], dtype=torch.uint8)
@@ -1104,6 +1115,138 @@ class triplet_BOO(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
         # "\nlabel_negative: " + str(sample['label_negative']) + \
         # "\nfilename positive: " + str(sample['filename_anchor']) \
         # )
+
+        return sample
+
+
+class triplet_ROO(Kitti2011_RGB, Dataset):
+    """
+        In this dataloader, <<teacher_tripletloss_generated>> is not actually used; what we really need is the
+        <<test_crossing_pose>> that is used inside <<teacher_tripletloss_generated>> but using the class to get
+        the OSM-pos/neg seemed a little awkward and required changes in that class; for this reason we directly
+        used the <<test_crossing_pose>> here.
+
+        teacher_tripletloss_generated is here just to keep this triplet_BOO with same init as triplet_BOO :)
+
+    """
+
+    def __init__(self, folders, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
+                 canonical=False, transform_osm=None, transform_rgb=None, random_rate=1.0,
+                 ):
+
+        Kitti2011_RGB.__init__(self, folders, transform=transform_rgb)
+
+        self.types = [0, 1, 2, 3, 4, 5, 6]
+
+        self.rnd_width = rnd_width
+        self.rnd_angle = rnd_angle
+        self.rnd_spatial = rnd_spatial
+        self.noise = noise
+        self.random_rate = random_rate
+        self.canonical = canonical
+        self.transform_obs = transform_osm
+        self.transform_bev = transform_rgb
+
+    def __len__(self):
+        # In this multi inherit class we have both [teacher_tripletloss_generated] and [Kitti2011_RGB] items.
+        # in ROO , RGB + OSM + OSM we want that our list of elements is like the Kitti2011_RGB
+        return len(self.image_02)
+
+    def __getitem__(self, idx):
+        # ROO ... get a random RGB//Homography from Kitti2011_RGB
+        sample_rgb = Kitti2011_RGB.__getitem__(self, idx)
+
+        rgb_image = sample_rgb['data']
+        label_positive = sample_rgb['label']
+        label_negative = random.choice([element for element in self.types if element != label_positive])
+
+        OSM_positive = test_crossing_pose(crossing_type=label_positive, save=False, rnd_width=self.rnd_width,
+                                          rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
+                                          sampling=not self.canonical, random_rate=self.random_rate)
+        OSM_negative = test_crossing_pose(crossing_type=label_negative, save=False, rnd_width=self.rnd_width,
+                                          rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
+                                          sampling=not self.canonical, random_rate=self.random_rate)
+
+        sample = {'anchor': rgb_image,
+                  'positive': OSM_positive[0],
+                  'negative': OSM_negative[0],
+                  'label_anchor': label_positive,
+                  'label_positive': label_positive,
+                  'label_negative': label_negative,
+                  }
+        if self.transform_osm:
+            sample['positive'] = self.transform_obs(sample['positive'])
+            sample['negative'] = self.transform_obs(sample['negative'])
+
+        if self.transform_rgb:
+            sample['anchor'] = self.transform_bev(sample['anchor'])
+
+        return sample
+
+
+class triplet_ROO_360(kitti360, Dataset):
+    """
+        In this dataloader, <<teacher_tripletloss_generated>> is not actually used; what we really need is the
+        <<test_crossing_pose>> that is used inside <<teacher_tripletloss_generated>> but using the class to get
+        the OSM-pos/neg seemed a little awkward and required changes in that class; for this reason we directly
+        used the <<test_crossing_pose>> here.
+
+        teacher_tripletloss_generated is here just to keep this triplet_BOO with same init as triplet_BOO :)
+
+    """
+
+    def __init__(self, path, sequences, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
+                 canonical=False, transform_osm=None, transform_rgb=None, transform_3d=None):
+
+        kitti360.__init__(self, path, sequences, transform=transform_rgb)
+
+        self.types = [0, 1, 2, 3, 4, 5, 6]
+
+        self.rnd_width = rnd_width
+        self.rnd_angle = rnd_angle
+        self.rnd_spatial = rnd_spatial
+        self.noise = noise
+        self.canonical = canonical
+        self.transform_obs = transform_osm
+        self.transform_bev = transform_rgb
+        self.transform_3d = transform_3d
+
+    def __len__(self):
+        # In this multi inherit class we have both [teacher_tripletloss_generated] and [kitti360] items.
+        # in ROO , RGB + OSM + OSM we want that our list of elements is like the Kitti2011_RGB
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        # ROO ... get a random RGB//Homography from kitti360
+        sample_rgb = kitti360.__getitem__(self, idx)
+
+        rgb_image = sample_rgb['data']
+        label_positive = sample_rgb['label']
+        label_negative = sample_rgb['neg_label']
+
+        OSM_positive = test_crossing_pose(crossing_type=label_positive, save=False, rnd_width=self.rnd_width,
+                                          rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
+                                          sampling=not self.canonical, random_rate=1.0)
+        OSM_negative = test_crossing_pose(crossing_type=label_negative, save=False, rnd_width=self.rnd_width,
+                                          rnd_angle=self.rnd_angle, rnd_spatial=self.rnd_spatial, noise=self.noise,
+                                          sampling=not self.canonical, random_rate=1.0)
+
+        sample = {'anchor': rgb_image,
+                  'positive': OSM_positive[0],
+                  'negative': OSM_negative[0],
+                  'label_anchor': label_positive,
+                  'label_positive': label_positive,
+                  'label_negative': label_negative,
+                  }
+        if self.transform_osm:
+            sample['positive'] = self.transform_obs(sample['positive'])
+            sample['negative'] = self.transform_obs(sample['negative'])
+
+        if self.transform_rgb:
+            sample['anchor'] = self.transform_rgb(sample['anchor'])
+
+        if self.transform_3d:
+            sample['anchor'] = self.transform_3d(sample['anchor'])
 
         return sample
 
