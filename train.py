@@ -196,31 +196,19 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                 weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
 
             if args.lossfunction == 'SmoothL1':
-                traincriterion = torch.nn.SmoothL1Loss(reduction='none')
-                valcriterion = torch.nn.SmoothL1Loss(reduction='none')
+                criterion = torch.nn.SmoothL1Loss(reduction='none')
             elif args.lossfunction == 'L1':
-                traincriterion = torch.nn.L1Loss(reduction='none')
-                valcriterion = torch.nn.L1Loss(reduction='none')
+                criterion = torch.nn.L1Loss(reduction='none')
             elif args.lossfunction == 'MSE':
-                traincriterion = torch.nn.MSELoss(reduction='none')
-                valcriterion = torch.nn.MSELoss(reduction='none')
-            elif args.lossfunction == 'triplet':
-                traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='none')
-                valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='none')
+                criterion = torch.nn.MSELoss(reduction='none')
         else:
             weights = None
             if args.lossfunction == 'SmoothL1':
-                traincriterion = torch.nn.SmoothL1Loss(reduction='mean')
-                valcriterion = torch.nn.SmoothL1Loss(reduction='mean')
+                criterion = torch.nn.SmoothL1Loss(reduction='mean')
             elif args.lossfunction == 'L1':
-                traincriterion = torch.nn.L1Loss(reduction='mean')
-                valcriterion = torch.nn.L1Loss(reduction='mean')
+                criterion = torch.nn.L1Loss(reduction='mean')
             elif args.lossfunction == 'MSE':
-                traincriterion = torch.nn.MSELoss(reduction='mean')
-                valcriterion = torch.nn.MSELoss(reduction='mean')
-            elif args.lossfunction == 'triplet':
-                traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
-                valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
+                criterion = torch.nn.MSELoss(reduction='mean')
 
         # Build gt centroids to measure distances
         gt_list = []
@@ -230,7 +218,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
             gt_list.append((np.mean(splits[i], axis=0)))
         gt_list = torch.FloatTensor(gt_list)
 
-    elif args.triplet:
+    elif args.triplet or args.lossfunction == 'triplet':
         # Build loss criterion
         if args.weighted:
             if args.dataloader == 'Kitti360':
@@ -239,22 +227,20 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                 weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
 
             if args.distance_function == 'Pairwise':
-                torch.nn.TripletMarginWithDistanceLoss(distance_function=torch.nn.PairwiseDistance(),
-                                                       margin=args.margin, reduction='none')
-                torch.nn.TripletMarginWithDistanceLoss(distance_function=torch.nn.PairwiseDistance(),
-                                                       margin=args.margin, reduction='none')
+                criterion = torch.nn.TripletMarginWithDistanceLoss(distance_function=torch.nn.PairwiseDistance(),
+                                                                   margin=args.margin, reduction='none')
+            elif args.distance_function == 'Cosine':
+                criterion = torch.nn.TripletMarginWithDistanceLoss(distance_function=torch.nn.CosineSimilarity(),
+                                                                   margin=args.margin, reduction='none')
+
             else:
-                traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='none')
-                valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='none')
+                criterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='none')
         else:
             if args.distance_function == 'Pairwise':
-                torch.nn.TripletMarginWithDistanceLoss(distance_function=torch.nn.PairwiseDistance(),
-                                                       margin=args.margin, reduction='mean')
-                torch.nn.TripletMarginWithDistanceLoss(distance_function=torch.nn.PairwiseDistance(),
-                                                       margin=args.margin, reduction='mean')
+                criterion = torch.nn.TripletMarginWithDistanceLoss(distance_function=torch.nn.PairwiseDistance(),
+                                                                   margin=args.margin, reduction='mean')
             else:
-                traincriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
-                valcriterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
+                criterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
 
     else:
         gt_list = None  # No need of centroids
@@ -262,22 +248,18 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
             if args.dataloader == 'Kitti360':
                 weights = [0.85, 0.86, 0.84, 0.85, 0.90, 0.84, 0.85]
                 class_weights = torch.FloatTensor(weights).cuda()
-                traincriterion = torch.nn.CrossEntropyLoss(weight=class_weights)
-                valcriterion = torch.nn.CrossEntropyLoss()
+                criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
             else:
                 weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
                 class_weights = torch.FloatTensor(weights).cuda()
-                traincriterion = torch.nn.CrossEntropyLoss(weight=class_weights)
-                valcriterion = torch.nn.CrossEntropyLoss()
+                criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
         else:
             weights = None
             if args.lossfunction == 'focal':
                 kwargs = {"alpha": 0.5, "gamma": 5.0, "reduction": 'mean'}
-                traincriterion = kornia.losses.FocalLoss(**kwargs)
-                valcriterion = kornia.losses.FocalLoss(**kwargs)
+                criterion = kornia.losses.FocalLoss(**kwargs)
             else:
-                traincriterion = torch.nn.CrossEntropyLoss()
-                valcriterion = torch.nn.CrossEntropyLoss()
+                criterion = torch.nn.CrossEntropyLoss()
 
     model.train()
 
@@ -299,7 +281,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         acc_record = 0.0
 
         for sample in dataloader_train:
-            acc, loss, _, _, _ = student_network_pass(args, sample, traincriterion, model, gt_list=gt_list,
+            acc, loss, _, _, _ = student_network_pass(args, sample, criterion, model, gt_list=gt_list,
                                                       weights_param=weights)
 
             loss.backward()
@@ -344,7 +326,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                        "Completed epoch": epoch})
 
         if epoch % args.validation_step == 0:
-            confusion_matrix, acc_val, loss_val = validation(args, model, valcriterion, dataloader_val, gt_list=gt_list,
+            confusion_matrix, acc_val, loss_val = validation(args, model, criterion, dataloader_val, gt_list=gt_list,
                                                              weights=weights)
 
             if args.scheduler_type == 'ReduceLROnPlateau':

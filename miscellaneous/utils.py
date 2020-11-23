@@ -312,8 +312,9 @@ def teacher_network_pass(args, sample, model, criterion, gt_list=None):
 
 
 def student_network_pass(args, sample, criterion, model, gt_list=None, weights_param=None, return_embedding=False):
-
     embedding = None
+    label = None
+    predict = None
 
     if args.embedding:
         data = sample['data']
@@ -347,6 +348,23 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
         else:
             predict = gt_validation(output, gt_list, criterion)
         acc = accuracy_score(label.squeeze().numpy(), predict)
+
+    elif args.triplet:
+        anchor = sample['anchor']
+        positive = sample['positive']
+        negative = sample['negative']
+
+        if torch.cuda.is_available() and args.use_gpu:
+            anchor = anchor.cuda()
+            positive = positive.cuda()
+            negative = negative.cuda()
+
+        out_anchor = model(anchor)
+        out_positive = model(positive)
+        out_negative = model(negative)
+
+        loss = criterion(out_anchor, out_positive, out_negative)
+        acc = acc_triplet_score(args, out_anchor, out_positive, out_negative)
 
     else:
         data = sample['data']
@@ -528,3 +546,13 @@ def seed_everything(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
+
+
+def acc_triplet_score(args, out_anchor, out_positive, out_negative):
+    if args.distance_function == 'Pairwise':
+        distance_func = torch.nn.PairwiseDistance()
+        distance_pos = distance_func(out_anchor, out_positive)
+        distance_neg = distance_func(out_anchor, out_negative)
+        acc = ((distance_pos < distance_neg).bincount()) / args.batch_size  # This is the concept i dont know if is right
+
+    return acc
