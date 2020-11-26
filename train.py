@@ -14,10 +14,12 @@ import pandas as pd
 import seaborn as sn
 import torch
 import torchvision.transforms as transforms
+from torch.nn.functional import cosine_similarity
 import tqdm
 import wandb
 from torch.optim.lr_scheduler import MultiStepLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
+from pytorch_metric_learning.distances import SNRDistance
 
 from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromGeneratedDataset, \
     triplet_BOO, triplet_OBB, kitti360, Kitti2011_RGB, triplet_ROO, triplet_ROO_360
@@ -219,6 +221,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         gt_list = torch.FloatTensor(gt_list)
 
     elif args.triplet or args.lossfunction == 'triplet':
+        gt_list = None  # No need of centroids
         # Build loss criterion
         if args.weighted:
             if args.dataloader == 'Kitti360':
@@ -226,21 +229,34 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
             else:
                 weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
 
-            if args.distance_function == 'Pairwise':
-                criterion = torch.nn.TripletMarginWithDistanceLoss(distance_function=torch.nn.PairwiseDistance(),
+            if args.distance_function == 'pairwise':
+                criterion = torch.nn.TripletMarginWithDistanceLoss(distance_function=torch.nn.PairwiseDistance(p=args.p),
                                                                    margin=args.margin, reduction='none')
-            elif args.distance_function == 'Cosine':
-                criterion = torch.nn.TripletMarginWithDistanceLoss(distance_function=torch.nn.CosineSimilarity(),
+            elif args.distance_function == 'cosine':
+                criterion = torch.nn.TripletMarginWithDistanceLoss(
+                    distance_function=lambda x, y: 1.0 - cosine_similarity(x, y),
+                    margin=args.margin, reduction='none')
+            elif args.distance_function == 'SNR':
+                criterion = torch.nn.TripletMarginWithDistanceLoss(distance_function=SNRDistance(),
                                                                    margin=args.margin, reduction='none')
-
             else:
-                criterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='none')
+                criterion = torch.nn.TripletMarginLoss(margin=args.margin, p=args.p, reduction='none')
         else:
-            if args.distance_function == 'Pairwise':
-                criterion = torch.nn.TripletMarginWithDistanceLoss(distance_function=torch.nn.PairwiseDistance(),
+            weights = None
+            if args.distance_function == 'pairwise':
+                criterion = torch.nn.TripletMarginWithDistanceLoss(distance_function=torch.nn.PairwiseDistance(p=args.p),
+                                                                   margin=args.margin, reduction='mean')
+
+            elif args.distance_function == 'cosine':
+                criterion = torch.nn.TripletMarginWithDistanceLoss(
+                    distance_function=lambda x, y: 1.0 - cosine_similarity(x, y),
+                    margin=args.margin, reduction='mean')
+
+            elif args.distance_function == 'SNR':
+                criterion = torch.nn.TripletMarginWithDistanceLoss(distance_function=SNRDistance(),
                                                                    margin=args.margin, reduction='mean')
             else:
-                criterion = torch.nn.TripletMarginLoss(margin=args.margin, p=2.0, reduction='mean')
+                criterion = torch.nn.TripletMarginLoss(margin=args.margin, p=args.p, reduction='mean')
 
     else:
         gt_list = None  # No need of centroids
@@ -417,7 +433,7 @@ def main(args, model=None):
     # create dataset and dataloader
     data_path = args.dataset
 
-    if args.dataloader != 'Kitti360' and args.dataloader != 'Kitti360_3D':
+    if '360' not in args.dataloader:
         # All sequence folders
         folders = np.array([os.path.join(data_path, folder) for folder in os.listdir(data_path) if
                             os.path.isdir(os.path.join(data_path, folder))])
@@ -480,7 +496,7 @@ def main(args, model=None):
                            job_type="training", reinit=True)
                 wandb.config.update(args)
 
-        if args.dataloader != 'Kitti360':  # The dataloaders that not use Kitti360 uses list-like inputs
+        if '360' not in args.dataloader:  # The dataloaders that not use Kitti360 uses list-like inputs
             train_path = np.array(train_path)
             val_path = np.array([val_path])
 
@@ -509,44 +525,44 @@ def main(args, model=None):
         elif args.dataloader == "triplet_OBB":  # Used in Kitti2011 Masked 3D // 3D (Not Replicated)
 
             train_dataset = triplet_OBB(train_path, args.distance, elements=args.num_elements_OBB, canonical=False,
-                                        transform_obs=osmTransforms, transform_bev=threedimensional_transfomrs,
+                                        transform_osm=osmTransforms, transform_bev=threedimensional_transfomrs,
                                         loadlist=False)
 
             val_dataset = triplet_OBB(val_path, args.distance, elements=args.num_elements_OBB, canonical=False,
-                                      transform_obs=osmTransforms, transform_bev=threedimensional_transfomrs,
+                                      transform_osm=osmTransforms, transform_bev=threedimensional_transfomrs,
                                       loadlist=False)
 
         elif args.dataloader == "triplet_BOO":  # Used in Kitti2011 Masked 3D // 3D
 
             val_dataset = triplet_BOO(val_path, args.distance, canonical=False,
-                                      transform_obs=osmTransforms, transform_bev=threedimensional_transfomrs,
+                                      transform_osm=osmTransforms, transform_bev=threedimensional_transfomrs,
                                       decimateStep=args.decimate)
 
             train_dataset = triplet_BOO(train_path, args.distance, canonical=False,
-                                        transform_obs=osmTransforms, transform_bev=threedimensional_transfomrs,
+                                        transform_osm=osmTransforms, transform_bev=threedimensional_transfomrs,
                                         decimateStep=args.decimate)
 
         elif args.dataloader == "triplet_ROO":  # Used in Kitti2011 RGB // Homograpy
 
-            val_dataset = triplet_ROO(val_path, transform_obs=osmTransforms, transform_rgb=rgb_image_train_transforms)
+            val_dataset = triplet_ROO(val_path, transform_osm=osmTransforms, transform_rgb=rgb_image_train_transforms)
 
-            train_dataset = triplet_ROO(train_path, transform_obs=osmTransforms,
+            train_dataset = triplet_ROO(train_path, transform_osm=osmTransforms,
                                         transform_rgb=rgb_image_train_transforms)
 
         elif args.dataloader == "triplet_ROO_360":  # Used in Kitti360 RGB // Homograpy
 
-            val_dataset = triplet_ROO_360(args.dataset, val_sequence_list, transform_obs=osmTransforms,
+            val_dataset = triplet_ROO_360(args.dataset, val_sequence_list, transform_osm=osmTransforms,
                                           transform_rgb=rgb_image_train_transforms)
 
-            train_dataset = triplet_ROO_360(args.dataset, train_sequence_list, transform_obs=osmTransforms,
+            train_dataset = triplet_ROO_360(args.dataset, train_sequence_list, transform_osm=osmTransforms,
                                             transform_rgb=rgb_image_train_transforms)
 
         elif args.dataloader == "triplet_3DOO_360":  # Used in Kitti360 3D
 
-            val_dataset = triplet_ROO_360(args.dataset, val_sequence_list, transform_obs=osmTransforms,
+            val_dataset = triplet_ROO_360(args.dataset, val_sequence_list, transform_osm=osmTransforms,
                                           transform_3d=threedimensional_transfomrs)
 
-            train_dataset = triplet_ROO_360(args.dataset, train_sequence_list, transform_obs=osmTransforms,
+            train_dataset = triplet_ROO_360(args.dataset, train_sequence_list, transform_osm=osmTransforms,
                                             transform_3d=threedimensional_transfomrs)
 
         elif args.dataloader == "Kitti2011_RGB":  # Used in Kitti2011 // RGB // Homography
@@ -654,7 +670,7 @@ def main(args, model=None):
         #    | |  |  _ <  / ___ \  | | | |\  |   #
         #    |_|  |_| \_\/_/   \_\|___||_| \_|   #
         ##########################################
-        if args.dataloader != 'Kitti360' and args.dataloader != 'Kitti360_3D':
+        if '360' not in args.dataloader:
             train(args, model, optimizer, scheduler, dataloader_train, dataloader_val,
                   os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
         else:
@@ -702,10 +718,10 @@ def main(args, model=None):
 
         elif args.dataloader == "triplet_OBB":
             test_dataset = triplet_OBB([test_path], args.distance, elements=200, canonical=True,
-                                       transform_obs=osmTransforms, transform_bev=threedimensional_transfomrs)
+                                       transform_osm=osmTransforms, transform_bev=threedimensional_transfomrs)
         elif args.dataloader == "triplet_BOO":
             test_dataset = triplet_BOO([test_path], args.distance, canonical=True,
-                                       transform_obs=osmTransforms, transform_bev=threedimensional_transfomrs)
+                                       transform_osm=osmTransforms, transform_bev=threedimensional_transfomrs)
 
         dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
                                      num_workers=args.num_workers, worker_init_fn=init_fn)
@@ -780,6 +796,10 @@ if __name__ == '__main__':
     parser.add_argument('--lossfunction', type=str, default='MSE',
                         choices=['MSE', 'SmoothL1', 'L1', 'focal', 'triplet'],
                         help='lossfunction selection')
+    parser.add_argument('--distance_function', type=str, default='pairwise',
+                        choices=['pairwise', 'cosine', 'SNR'],
+                        help='distance function selection')
+    parser.add_argument('--p', type=float, default=2.0, help='p distance value')
     parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
     parser.add_argument('--patience_start', type=int, default=2,
                         help='Starting epoch for patience of validation. Default, 50. ')

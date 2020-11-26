@@ -549,10 +549,15 @@ def seed_everything(seed):
 
 
 def acc_triplet_score(args, out_anchor, out_positive, out_negative):
-    if args.distance_function == 'Pairwise':
+    if args.distance_function == 'pairwise':
         distance_func = torch.nn.PairwiseDistance()
+        distance_pos = distance_func(out_anchor, out_positive)  # (Nx512) · (Nx512) --> (N)
+        distance_neg = distance_func(out_anchor, out_negative)
+        acc = torch.sum(distance_pos < distance_neg) / args.batch_size
+    elif args.distance_function == 'cosine':
+        distance_func = torch.nn.CosineSimilarity()
         distance_pos = distance_func(out_anchor, out_positive)
         distance_neg = distance_func(out_anchor, out_negative)
-        acc = ((distance_pos < distance_neg).bincount()) / args.batch_size  # This is the concept i dont know if is right
+        acc = torch.sum(distance_pos < distance_neg) / args.batch_size
 
     return acc

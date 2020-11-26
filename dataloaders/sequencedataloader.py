@@ -950,7 +950,7 @@ class triplet_OBB(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
     """
 
     def __init__(self, folders, distance, elements=1000, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
-                 canonical=True, transform_obs=None, transform_bev=None, random_rate=1.0, loadlist=True, savelist=False,
+                 canonical=True, transform_osm=None, transform_bev=None, random_rate=1.0, loadlist=True, savelist=False,
                  ):
 
         fromGeneratedDataset.__init__(self, folders, distance, transform=transform_bev, rnd_width=rnd_width,
@@ -959,10 +959,10 @@ class triplet_OBB(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
 
         teacher_tripletloss_generated.__init__(self, elements=elements, rnd_width=rnd_width, rnd_angle=rnd_angle,
                                                rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
-                                               transform=transform_obs, random_rate=random_rate,
+                                               transform=transform_osm, random_rate=random_rate,
                                                crossing_type_set=self.feasible_intersections)
 
-        self.transform_obs = transform_obs
+        self.transform_osm = transform_osm
         self.transform_bev = transform_bev
 
     def __len__(self):
@@ -1008,8 +1008,8 @@ class triplet_OBB(teacher_tripletloss_generated, fromGeneratedDataset, Dataset):
                   'filename_positive': SAMPLE_POSITIVE['image_path'],
                   'filename_negative': SAMPLE_NEGATIVE['image_path']}
 
-        if self.transform_obs:
-            sample['OSM_anchor'] = self.transform_obs(sample['OSM_anchor'])
+        if self.transform_osm:
+            sample['OSM_anchor'] = self.transform_osm(sample['OSM_anchor'])
 
         if self.transform_bev:
             sample['BEV_positive'] = self.transform_bev(sample['BEV_positive'])
@@ -1046,7 +1046,7 @@ class triplet_BOO(fromGeneratedDataset, Dataset):
     """
 
     def __init__(self, folders, distance, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
-                 canonical=True, transform_obs=None, transform_bev=None, random_rate=1.0, loadlist=True, savelist=False,
+                 canonical=True, transform_osm=None, transform_bev=None, random_rate=1.0, loadlist=True, savelist=False,
                  decimateStep=1):
 
         fromGeneratedDataset.__init__(self, folders, distance, transform=transform_bev, rnd_width=rnd_width,
@@ -1062,7 +1062,7 @@ class triplet_BOO(fromGeneratedDataset, Dataset):
         self.noise = noise
         self.random_rate = random_rate
         self.canonical = canonical
-        self.transform_obs = transform_obs
+        self.transform_osm = transform_osm
         self.transform_bev = transform_bev
 
     def __len__(self):
@@ -1094,9 +1094,9 @@ class triplet_BOO(fromGeneratedDataset, Dataset):
                   'label_negative': item_negative,
                   'filename_anchor': sample_fgd['image_path']
                   }
-        if self.transform_obs:
-            sample['positive'] = self.transform_obs(sample['positive'])
-            sample['negative'] = self.transform_obs(sample['negative'])
+        if self.transform_osm:
+            sample['positive'] = self.transform_osm(sample['positive'])
+            sample['negative'] = self.transform_osm(sample['negative'])
 
         if self.transform_bev:
             sample['anchor'] = self.transform_bev(sample['anchor'])
@@ -1144,8 +1144,8 @@ class triplet_ROO(Kitti2011_RGB, Dataset):
         self.noise = noise
         self.random_rate = random_rate
         self.canonical = canonical
-        self.transform_obs = transform_osm
-        self.transform_bev = transform_rgb
+        self.transform_osm = transform_osm
+        self.transform_rgb = transform_rgb
 
     def __len__(self):
         # In this multi inherit class we have both [teacher_tripletloss_generated] and [Kitti2011_RGB] items.
@@ -1175,8 +1175,8 @@ class triplet_ROO(Kitti2011_RGB, Dataset):
                   'label_negative': label_negative,
                   }
         if self.transform_osm:
-            sample['positive'] = self.transform_obs(sample['positive'])
-            sample['negative'] = self.transform_obs(sample['negative'])
+            sample['positive'] = self.transform_osm(sample['positive'])
+            sample['negative'] = self.transform_osm(sample['negative'])
 
         if self.transform_rgb:
             sample['anchor'] = self.transform_bev(sample['anchor'])
@@ -1198,7 +1198,10 @@ class triplet_ROO_360(kitti360, Dataset):
     def __init__(self, path, sequences, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
                  canonical=False, transform_osm=None, transform_rgb=None, transform_3d=None):
 
-        kitti360.__init__(self, path, sequences, transform=transform_rgb)
+        if transform_rgb:
+            kitti360.__init__(self, path, sequences, transform=transform_rgb)
+        elif transform_3d:
+            kitti360.__init__(self, path, sequences, transform=transform_3d)
 
         self.types = [0, 1, 2, 3, 4, 5, 6]
 
@@ -1207,8 +1210,8 @@ class triplet_ROO_360(kitti360, Dataset):
         self.rnd_spatial = rnd_spatial
         self.noise = noise
         self.canonical = canonical
-        self.transform_obs = transform_osm
-        self.transform_bev = transform_rgb
+        self.transform_osm = transform_osm
+        self.transform_rgb = transform_rgb
         self.transform_3d = transform_3d
 
     def __len__(self):
@@ -1217,7 +1220,7 @@ class triplet_ROO_360(kitti360, Dataset):
         return len(self.images)
 
     def __getitem__(self, idx):
-        # ROO ... get a random RGB//Homography from kitti360
+        # ROO ... get a random RGB//Homography//3D from kitti360
         sample_rgb = kitti360.__getitem__(self, idx)
 
         rgb_image = sample_rgb['data']
@@ -1239,14 +1242,8 @@ class triplet_ROO_360(kitti360, Dataset):
                   'label_negative': label_negative,
                   }
         if self.transform_osm:
-            sample['positive'] = self.transform_obs(sample['positive'])
-            sample['negative'] = self.transform_obs(sample['negative'])
-
-        if self.transform_rgb:
-            sample['anchor'] = self.transform_rgb(sample['anchor'])
-
-        if self.transform_3d:
-            sample['anchor'] = self.transform_3d(sample['anchor'])
+            sample['positive'] = self.transform_osm(sample['positive'])
+            sample['negative'] = self.transform_osm(sample['negative'])
 
         return sample
 
