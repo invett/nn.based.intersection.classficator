@@ -556,8 +556,8 @@ def acc_triplet_score(args, out_anchor, out_positive, out_negative):
         acc = torch.sum(distance_pos < distance_neg) / args.batch_size
     elif args.distance_function == 'cosine':
         distance_func = torch.nn.CosineSimilarity()
-        distance_pos = distance_func(out_anchor, out_positive)
-        distance_neg = distance_func(out_anchor, out_negative)
+        distance_pos = 1.0 - distance_func(out_anchor, out_positive)
+        distance_neg = 1.0 - distance_func(out_anchor, out_negative)
         acc = torch.sum(distance_pos < distance_neg) / args.batch_size
 
     return acc
