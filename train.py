@@ -71,9 +71,13 @@ def test(args, dataloader_test, save_embeddings=None):
         model = model.cuda()
 
     # Start testing
-    confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test, gt_list=gt_list,
-                                          save_embeddings=save_embeddings)
-    if not args.nowandb:  # if nowandb flag was set, skip
+    if args.triplet:
+        pass
+    else:
+        confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test, gt_list=gt_list,
+                                              save_embeddings=save_embeddings)
+
+    if not args.nowandb and not args.triplet:  # if nowandb flag was set, skip
         plt.figure(figsize=(10, 7))
         sn.heatmap(confusion_matrix, annot=True, fmt='.2f')
         wandb.log({"Test/Acc": acc, "conf-matrix_test": wandb.Image(plt)})
@@ -152,8 +156,12 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
                    delimiter='\t')
         np.savetxt(os.path.join(args.saveEmbeddingsPath, save_embeddings), labelRecord, delimiter='\t')
 
-    conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'], normalize='index')
-    conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6], fill_value=0.0)
+    if not args.triplet:
+        conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'],
+                                  normalize='index')
+        conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6], fill_value=0.0)
+    else:
+        conf_matrix = None
 
     return conf_matrix, acc, loss_val_mean
 
@@ -230,8 +238,9 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                 weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
 
             if args.distance_function == 'pairwise':
-                criterion = torch.nn.TripletMarginWithDistanceLoss(distance_function=torch.nn.PairwiseDistance(p=args.p),
-                                                                   margin=args.margin, reduction='none')
+                criterion = torch.nn.TripletMarginWithDistanceLoss(
+                    distance_function=torch.nn.PairwiseDistance(p=args.p),
+                    margin=args.margin, reduction='none')
             elif args.distance_function == 'cosine':
                 criterion = torch.nn.TripletMarginWithDistanceLoss(
                     distance_function=lambda x, y: 1.0 - cosine_similarity(x, y),
@@ -244,8 +253,9 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         else:
             weights = None
             if args.distance_function == 'pairwise':
-                criterion = torch.nn.TripletMarginWithDistanceLoss(distance_function=torch.nn.PairwiseDistance(p=args.p),
-                                                                   margin=args.margin, reduction='mean')
+                criterion = torch.nn.TripletMarginWithDistanceLoss(
+                    distance_function=torch.nn.PairwiseDistance(p=args.p),
+                    margin=args.margin, reduction='mean')
 
             elif args.distance_function == 'cosine':
                 criterion = torch.nn.TripletMarginWithDistanceLoss(
@@ -349,27 +359,33 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                 print("ReduceLROnPlateau step call")
                 scheduler.step(loss_val)
 
-            plt.figure(figsize=(10, 7))
-            title = str(socket.gethostname()) + '\nEpoch: ' + str(epoch) + '\n' + str(valfolder)
-            plt.title(title)
-            sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
+            if not args.triplet:
+                plt.figure(figsize=(10, 7))
+                title = str(socket.gethostname()) + '\nEpoch: ' + str(epoch) + '\n' + str(valfolder)
+                plt.title(title)
+                sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
 
-            if args.telegram:
+            if args.telegram and not args.triplet:
                 send_telegram_picture(plt,
                                       "Epoch: " + str(epoch) +
                                       "\nLR: " + str(optimizer.param_groups[0]['lr']) +
                                       "\nacc_val: " + str(acc_val) +
                                       "\nloss_val: " + str(loss_val))
 
-            if not args.nowandb:  # if nowandb flag was set, skip
+            if not args.nowandb and not args.triplet:  # if nowandb flag was set, skip
                 wandb.log({"Val/loss": loss_val,
                            "Val/Acc": acc_val,
                            "Train/lr": optimizer.param_groups[0]['lr'],
                            "Completed epoch": epoch,
                            "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)})
 
-            if (train_acc < acc_val) or (train_loss > loss_val):
+            elif not args.nowandb and args.triplet:
+                wandb.log({"Val/loss": loss_val,
+                           "Val/Acc": acc_val,
+                           "Train/lr": optimizer.param_groups[0]['lr'],
+                           "Completed epoch": epoch})
 
+            if (train_acc < acc_val) or (train_loss > loss_val):
                 patience = 0
 
                 if train_acc < acc_val:
