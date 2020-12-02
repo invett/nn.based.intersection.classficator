@@ -246,8 +246,9 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                     distance_function=lambda x, y: 1.0 - cosine_similarity(x, y),
                     margin=args.margin, reduction='none')
             elif args.distance_function == 'SNR':
-                criterion = torch.nn.TripletMarginWithDistanceLoss(distance_function=SNRDistance(),
-                                                                   margin=args.margin, reduction='none')
+                criterion = torch.nn.TripletMarginWithDistanceLoss(
+                    distance_function=lambda x, y: torch.var(x - y) / torch.var(x),
+                    margin=args.margin, reduction='none')
             else:
                 criterion = torch.nn.TripletMarginLoss(margin=args.margin, p=args.p, reduction='none')
         else:
@@ -263,8 +264,9 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                     margin=args.margin, reduction='mean')
 
             elif args.distance_function == 'SNR':
-                criterion = torch.nn.TripletMarginWithDistanceLoss(distance_function=SNRDistance(),
-                                                                   margin=args.margin, reduction='mean')
+                criterion = torch.nn.TripletMarginWithDistanceLoss(
+                    distance_function=lambda x, y: torch.var(x - y) / torch.var(x),
+                    margin=args.margin, reduction='mean')
             else:
                 criterion = torch.nn.TripletMarginLoss(margin=args.margin, p=args.p, reduction='mean')
 
