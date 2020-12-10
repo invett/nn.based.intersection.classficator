@@ -1,7 +1,7 @@
-'''
+"""
     TO ENABLE THE CREATION OF THE DATASET, ENABLE THE FOLLOWING LINE WITH SIMULATE=FALSE
-    save_frames('/media/ballardini/4tb/KITTI-360/moved', simulate=True)
-'''
+    save_frames('/media/ballardini/4tb/KITTI-360/moved', simulate=False, mono=False)
+"""
 
 import tkinter as tk
 from tkinter import simpledialog
@@ -13,21 +13,50 @@ from os import listdir
 import cv2
 import numpy as np
 
-base_folder = '/media/ballardini/4tb/KITTI-360/'
+# datasets: KITTI360 | ALCALA
+dataset = 'ALCALA'
 
-folders = ['2013_05_28_drive_0000_sync', '2013_05_28_drive_0002_sync', '2013_05_28_drive_0003_sync',
-           '2013_05_28_drive_0004_sync', '2013_05_28_drive_0005_sync', '2013_05_28_drive_0006_sync',
-           '2013_05_28_drive_0007_sync', '2013_05_28_drive_0009_sync', '2013_05_28_drive_0010_sync']
+if dataset == 'KITTI360':
+    base_folder = '/media/ballardini/4tb/ALVARO/KITTI-360/'
+    folders = ['2013_05_28_drive_0000_sync', '2013_05_28_drive_0002_sync', '2013_05_28_drive_0003_sync',
+               '2013_05_28_drive_0004_sync', '2013_05_28_drive_0005_sync', '2013_05_28_drive_0006_sync',
+               '2013_05_28_drive_0007_sync', '2013_05_28_drive_0009_sync', '2013_05_28_drive_0010_sync']
+    width = 1408
+    height = 376
+    position1 = (10, 30)
+    position2 = (1000, 30)
+    position3 = (1000, 60)
+    csv_filename = "kitti360-crossings.csv"
+    pickle_filename = 'kitti360-annotations.pickle'
 
-folder_2013_05_28_drive_0000_sync = []
-folder_2013_05_28_drive_0002_sync = []
-folder_2013_05_28_drive_0003_sync = []
-folder_2013_05_28_drive_0004_sync = []
-folder_2013_05_28_drive_0005_sync = []
-folder_2013_05_28_drive_0006_sync = []
-folder_2013_05_28_drive_0007_sync = []
-folder_2013_05_28_drive_0009_sync = []
-folder_2013_05_28_drive_0010_sync = []
+if dataset == 'ALCALA':
+    # images from raw files are 1920x1200 - resize as needed.
+    # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
+    # scale=800:-1 R2_video_0002_camera2_png/%010d.png
+    base_folder = '/home/ballardini/Desktop/ALCALA/'
+    folders = ['R1_video_0002_camera1_png']
+    width = 800
+    height = 500
+    position1 = (10, 30)
+    position2 = (500, 30)
+    position3 = (500, 60)
+    csv_filename = "alcala-crossings.csv"
+    pickle_filename = 'alcala-annotations.pickle'
+
+font = cv2.FONT_HERSHEY_SIMPLEX
+fontScale = 1
+fontColor = (0, 0, 255)
+lineType = 2
+
+# folder_2013_05_28_drive_0000_sync = []
+# folder_2013_05_28_drive_0002_sync = []
+# folder_2013_05_28_drive_0003_sync = []
+# folder_2013_05_28_drive_0004_sync = []
+# folder_2013_05_28_drive_0005_sync = []
+# folder_2013_05_28_drive_0006_sync = []
+# folder_2013_05_28_drive_0007_sync = []
+# folder_2013_05_28_drive_0009_sync = []
+# folder_2013_05_28_drive_0010_sync = []
 
 left = 81  # 2424832
 up = 82
@@ -35,14 +64,6 @@ right = 83  # 2555904
 down = 84
 space = 32
 f12 = 201
-
-font = cv2.FONT_HERSHEY_SIMPLEX
-position1 = (10, 30)
-position2 = (1000, 30)
-position3 = (1000, 60)
-fontScale = 1
-fontColor = (0, 0, 255)
-lineType = 2
 
 files = []
 
@@ -71,7 +92,7 @@ def hasNumbers(inputString):
     return all(char.isdigit() for char in inputString)
 
 
-def save_csv(annotations, filename="kitti360-crossings.cvs"):
+def save_csv(annotations, filename=csv_filename):
     filename = os.path.join(base_folder, filename)
     with open(filename, 'w') as csv:
         for seq_ann, i in enumerate(annotations):
@@ -91,12 +112,14 @@ def save_frames(where, simulate=True, mono=True):
 
     Args:
         where: destination folder
+        simulate: if TRUE, just print what the routine would do. for debuggin' purposes.
+        mono: where to create a MONOCULAR or STEREO dataset
 
     Returns: nothing, just do the work ...
 
     """
     _simulate = simulate
-    _mono = False
+    _mono = mono
     cameras = []
     if _mono:
         cameras = ["image_00"]
@@ -172,12 +195,15 @@ def summary(annotations):
 
 
 for folder in folders:
-    path = os.path.join(base_folder, 'data_2d_raw', folder, 'image_00/data_rect')
+    if dataset == 'KITTI360':
+        path = os.path.join(base_folder, 'data_2d_raw', folder, 'image_00/data_rect')
+    if dataset == 'ALCALA':
+        path = os.path.join(base_folder, folder)
     # files.append(sorted([f for f in listdir(path) if isfile(join(path, f))]))
     files.append(sorted([path + '/' + f for f in listdir(path)]))
 
 annotations = []
-annotations_file = os.path.join(base_folder, 'annotations.pickle')
+annotations_file = os.path.join(base_folder, pickle_filename)
 
 if os.path.exists(annotations_file):
     with open(annotations_file, 'rb') as f:
