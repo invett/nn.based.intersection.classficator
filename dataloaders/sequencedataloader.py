@@ -1098,8 +1098,6 @@ class triplet_BOO(fromGeneratedDataset, Dataset):
             sample['positive'] = self.transform_osm(sample['positive'])
             sample['negative'] = self.transform_osm(sample['negative'])
 
-        if self.transform_bev:
-            sample['anchor'] = self.transform_bev(sample['anchor'])
 
             # DEBUG -- send in telegram. Little HACK for the ANCHOR, get a sub-part of image ...
         # emptyspace = 255 * torch.ones([224, 30, 3], dtype=torch.uint8)
@@ -1145,7 +1143,6 @@ class triplet_ROO(Kitti2011_RGB, Dataset):
         self.random_rate = random_rate
         self.canonical = canonical
         self.transform_osm = transform_osm
-        self.transform_rgb = transform_rgb
 
     def __len__(self):
         # In this multi inherit class we have both [teacher_tripletloss_generated] and [Kitti2011_RGB] items.
@@ -1177,9 +1174,6 @@ class triplet_ROO(Kitti2011_RGB, Dataset):
         if self.transform_osm:
             sample['positive'] = self.transform_osm(sample['positive'])
             sample['negative'] = self.transform_osm(sample['negative'])
-
-        if self.transform_rgb:
-            sample['anchor'] = self.transform_bev(sample['anchor'])
 
         return sample
 

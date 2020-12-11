@@ -194,8 +194,8 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
     if not os.path.isdir(args.save_model_path):
         os.mkdir(args.save_model_path)
 
-    train_acc = 0.0
-    train_loss = np.inf
+    max_val_acc = 0.0
+    min_val_loss = np.inf
 
     if args.embedding:  # For Teacher/Student training
         # Build loss criterion
@@ -387,15 +387,15 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                            "Train/lr": optimizer.param_groups[0]['lr'],
                            "Completed epoch": epoch})
 
-            if (train_acc < acc_val) or (train_loss > loss_val):
+            if (max_val_acc < acc_val) or (min_val_loss > loss_val):
                 patience = 0
 
-                if train_acc < acc_val:
-                    train_acc = acc_val
-                    print('Best global accuracy: {}'.format(train_acc))
-                if train_loss > loss_val:
-                    train_loss = loss_val
-                    print('Best global loss: {}'.format(train_loss))
+                if max_val_acc < acc_val:
+                    max_val_acc = acc_val
+                    print('Best global accuracy: {}'.format(max_val_acc))
+                if min_val_loss > loss_val:
+                    min_val_loss = loss_val
+                    print('Best global loss: {}'.format(min_val_loss))
 
                 if args.nowandb:
                     loadpath = os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
