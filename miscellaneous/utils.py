@@ -17,8 +17,6 @@ from sklearn.metrics import accuracy_score
 from torch import nn
 
 
-
-
 def PrintException():
     exc_type, exc_obj, tb = sys.exc_info()
     f = tb.tb_frame
@@ -313,38 +311,12 @@ def teacher_network_pass(args, sample, model, criterion, gt_list=None):
         return acc, loss, label, predict
 
 
-def student_network_pass(args, sample, criterion, model, svm=None, gt_list=None, weights_param=None,
-                         return_embedding=False):
-    cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
+def student_network_pass(args, sample, criterion, model, gt_list=None, weights_param=None, return_embedding=False):
     embedding = None
+    label = None
+    predict = None
 
-    if args.triplet:
-        if args.dataloader == 'triplet_OBB':
-            anchor = sample['OSM_anchor']  # OSM Anchor
-            positive = sample['BEV_positive']  # BEV Positive
-            negative = sample['BEV_negative']  # BEV Negative
-        if args.dataloader == 'triplet_BOO':
-            anchor = sample['BEV_anchor']  # BEV Image
-            positive = sample['OSM_positive']  # OSM Positive
-            negative = sample['OSM_negative']  # OSM Negative
-        if torch.cuda.is_available() and args.use_gpu:
-            anchor = anchor.cuda()
-            positive = positive.cuda()
-            negative = negative.cuda()
-
-        out_anchor = model(anchor)
-        out_positive = model(positive)
-        out_negative = model(negative)
-
-        # save the embedding vector to return it - used in testing
-        embedding = np.asarray(out_anchor.squeeze().cpu().detach().numpy())
-
-        loss = criterion(out_anchor, out_positive, out_negative)
-
-        result = ((cos_sim(out_anchor.squeeze(), out_positive.squeeze()) + 1.0) * 0.5)
-        acc = torch.sum(result).item()
-
-    elif args.embedding:
+    if args.embedding:
         data = sample['data']
         label = sample['label']
 
@@ -355,7 +327,8 @@ def student_network_pass(args, sample, criterion, model, svm=None, gt_list=None,
         output_gt = gt_list[label.squeeze()]  # --> Embeddings centroid of the label
 
         # save the embedding vector to return it - used in testing
-        embedding = np.asarray(output.squeeze().cpu().detach().numpy())
+        if return_embedding:
+            embedding = np.asarray(output.squeeze().cpu().detach().numpy())
 
         if args.lossfunction == 'triplet':
             neg_label = sample['neg_label']
@@ -365,22 +338,33 @@ def student_network_pass(args, sample, criterion, model, svm=None, gt_list=None,
             loss = criterion(output.squeeze(), output_gt.cuda())  # --> 128 x 512
 
         if args.weighted:
-            # assert weights_param is not None, '--weighted parameter specified but not passed to student_network_pass'
-            # weights = torch.FloatTensor([0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67])
             weights = torch.FloatTensor(weights_param)
             weighted_tensor = weights[label.squeeze()]
             loss = loss * weighted_tensor.cuda().unsqueeze(1)
             loss = loss.mean()
 
-        if gt_list is not None:
-            if args.lossfunction == 'triplet':
-                predict = gt_validation(output, gt_list)
-            else:
-                predict = gt_validation(output, gt_list, criterion)
-            acc = accuracy_score(label.squeeze().numpy(), predict)
+        if args.lossfunction == 'triplet':
+            predict = gt_validation(output, gt_list)
         else:
-            result = ((cos_sim(output.squeeze(), output_gt.squeeze()) + 1.0) * 0.5)
-            acc = torch.sum(result).item()
+            predict = gt_validation(output, gt_list, criterion)
+        acc = accuracy_score(label.squeeze().numpy(), predict)
+
+    elif args.triplet:
+        anchor = sample['anchor']
+        positive = sample['positive']
+        negative = sample['negative']
+
+        if torch.cuda.is_available() and args.use_gpu:
+            anchor = anchor.cuda()
+            positive = positive.cuda()
+            negative = negative.cuda()
+
+        out_anchor = model(anchor)
+        out_positive = model(positive)
+        out_negative = model(negative)
+
+        loss = criterion(out_anchor, out_positive, out_negative)
+        acc = acc_triplet_score(args, out_anchor, out_positive, out_negative)
 
     else:
         data = sample['data']
@@ -392,31 +376,18 @@ def student_network_pass(args, sample, criterion, model, svm=None, gt_list=None,
         output = model(data)
 
         # save the embedding vector to return it - used in testing
-        embedding = np.asarray(output.squeeze().cpu().detach().numpy())
+        if return_embedding:
+            embedding = np.asarray(output.squeeze().cpu().detach().numpy())
 
         loss = criterion(output, label)
-        if args.svm:
-            dec = svm.decision_function(output.cpu().squeeze().numpy())  # --> (samples x classes)
-            predict = np.argmax(dec)
-            label = label.cpu().numpy()
 
-        else:
-            predict = torch.argmax(output, 1)
-            label = label.cpu().numpy()
-            predict = predict.cpu().numpy()
+        predict = torch.argmax(output, 1)
+        label = label.cpu().numpy()
+        predict = predict.cpu().numpy()
 
         acc = accuracy_score(label, predict)
 
-    if (args.triplet or args.embedding) and gt_list is None:
-        if return_embedding:
-            return acc, loss, embedding
-        else:
-            return acc, loss
-    else:
-        if return_embedding:
-            return acc, loss, label, predict, embedding
-        else:
-            return acc, loss, label, predict
+    return acc, loss, label, predict, embedding
 
 
 def init_function(worker_id, seed, epoch):
@@ -575,3 +546,18 @@ def seed_everything(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
+
+
+def acc_triplet_score(args, out_anchor, out_positive, out_negative):
+    if args.distance_function == 'pairwise':
+        distance_func = torch.nn.PairwiseDistance()
+        distance_pos = distance_func(out_anchor, out_positive)  # (Nx512) · (Nx512) --> (N)
+        distance_neg = distance_func(out_anchor, out_negative)
+        acc = torch.sum(distance_pos < distance_neg) / args.batch_size
+    elif args.distance_function == 'cosine':
+        distance_func = torch.nn.CosineSimilarity()
+        distance_pos = 1.0 - distance_func(out_anchor, out_positive)
+        distance_neg = 1.0 - distance_func(out_anchor, out_negative)
+        acc = torch.sum(distance_pos < distance_neg) / args.batch_size
+
+    return acc
