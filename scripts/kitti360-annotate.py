@@ -9,12 +9,14 @@ import os
 import pickle
 import shutil
 from os import listdir
+import imutils
+import json
 
 import cv2
 import numpy as np
 
-# datasets: KITTI360 | ALCALA
-dataset = 'ALCALA'
+# datasets: KITTI360 | ALCALA | OXFORD
+dataset = 'OXFORD'
 
 if dataset == 'KITTI360':
     base_folder = '/media/ballardini/4tb/ALVARO/KITTI-360/'
@@ -28,6 +30,7 @@ if dataset == 'KITTI360':
     position3 = (1000, 60)
     csv_filename = "kitti360-crossings.csv"
     pickle_filename = 'kitti360-annotations.pickle'
+    resizeme = 0 #resizeme = 0 does not perform the resize
 
 if dataset == 'ALCALA':
     # images from raw files are 1920x1200 - resize as needed.
@@ -42,6 +45,23 @@ if dataset == 'ALCALA':
     position3 = (500, 60)
     csv_filename = "alcala-crossings.csv"
     pickle_filename = 'alcala-annotations.pickle'
+    resizeme = 0 #resizeme = 0 does not perform the resize
+
+if dataset == 'OXFORD':
+    # images from raw files are 1920x1200 - resize as needed.
+    # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
+    # scale=800:-1 R2_video_0002_camera2_png/%010d.png
+    base_folder = '/media/ballardini/7D3AD71E1EACC626/DATASET/JournalVersion/OXFORD/oxford_img_bb'
+    folders = []
+    [folders.append(x[0]) for x in os.walk(base_folder) if 'undistort' in x[0]]
+    width = 320
+    height = 240
+    position1 = (10, 30)
+    position2 = (100, 30)
+    position3 = (100, 60)
+    csv_filename = "oxford-crossings.csv"
+    pickle_filename = 'oxford-annotations.pickle'
+    resizeme = 800
 
 font = cv2.FONT_HERSHEY_SIMPLEX
 fontScale = 1
@@ -199,6 +219,8 @@ for folder in folders:
         path = os.path.join(base_folder, 'data_2d_raw', folder, 'image_00/data_rect')
     if dataset == 'ALCALA':
         path = os.path.join(base_folder, folder)
+    if dataset == 'OXFORD':
+        path = os.path.join(base_folder, folder)
     # files.append(sorted([f for f in listdir(path) if isfile(join(path, f))]))
     files.append(sorted([path + '/' + f for f in listdir(path)]))
 
@@ -234,10 +256,14 @@ for sequence_number, sequence in enumerate(files):
     start_number = int(os.path.splitext(os.path.basename(sequence[file]))[0])
 
     cv2.namedWindow('image', cv2.WINDOW_AUTOSIZE)
-    while k is not 0:
+    while k != 0:
         print(str(folders[sequence_number]) + " -- " + str(file) + "/" + str(len(sequence)) + " -- " + str(
             sequence[file]))
         img = cv2.imread(sequence[file])
+
+        # since datasets has different image shape, let put something easy to resize for labelling purposes
+        if resizeme:
+            img = imutils.resize(img, resizeme)
 
         v_pos = int(img.shape[0] - img_type_0.shape[0] - 10)
         h_pos = int(img.shape[1] / 2 - img_type_0.shape[1] / 2)
@@ -259,6 +285,7 @@ for sequence_number, sequence in enumerate(files):
         cv2.putText(img, str(annotations[sequence_number][file]), position1, font, fontScale, fontColor, lineType)
         cv2.putText(img, str(file) + '/' + str(len(sequence)), position2, font, fontScale, fontColor, lineType)
         cv2.putText(img, os.path.basename(sequence[file]), position3, font, fontScale, fontColor, lineType)
+
 
         cv2.imshow('image', img)
 
@@ -347,3 +374,18 @@ for sequence_number, sequence in enumerate(files):
 
 summary(annotations)
 save_csv(annotations)
+
+# if __name__ == '__main__':
+#
+#     # basic parameters
+#     parser = argparse.ArgumentParser()
+#
+#     parser.add_argument('--basefolder', type=str, default='.', help='Base folders for all datasets')
+#
+#     for folder in folders:
+#         if dataset == 'KITTI360':
+#             path = os.path.join(base_folder, 'data_2d_raw', folder, 'image_00/data_rect')
+#         if dataset == 'ALCALA':
+#             path = os.path.join(base_folder, folder)
+#         # files.append(sorted([f for f in listdir(path) if isfile(join(path, f))]))
+#         files.append(sorted([path + '/' + f for f in listdir(path)]))
