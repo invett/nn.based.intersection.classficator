@@ -1046,12 +1046,12 @@ class triplet_BOO(fromGeneratedDataset, Dataset):
     """
 
     def __init__(self, folders, distance, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
-                 canonical=True, transform_osm=None, transform_bev=None, random_rate=1.0, loadlist=True, savelist=False,
+                 canonical=True, transform_osm=None, transform_bev=None, random_rate=1.0, loadlist=False, savelist=False,
                  decimateStep=1):
 
         fromGeneratedDataset.__init__(self, folders, distance, transform=transform_bev, rnd_width=rnd_width,
                                       rnd_angle=rnd_angle, rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
-                                      addGeneratedOSM=True, decimateStep=decimateStep, savelist=savelist,
+                                      addGeneratedOSM=False, decimateStep=decimateStep, savelist=savelist,
                                       loadlist=loadlist)
 
         self.types = [0, 1, 2, 3, 4, 5, 6]
@@ -1099,7 +1099,7 @@ class triplet_BOO(fromGeneratedDataset, Dataset):
             sample['negative'] = self.transform_osm(sample['negative'])
 
 
-            # DEBUG -- send in telegram. Little HACK for the ANCHOR, get a sub-part of image ...
+        # DEBUG -- send in telegram. Little HACK for the ANCHOR, get a sub-part of image ...
         # emptyspace = 255 * torch.ones([224, 30, 3], dtype=torch.uint8)
         # a = plt.figure()
         # plt.imshow(torch.cat((torch.tensor(sample['BEV_anchor']), emptyspace,
