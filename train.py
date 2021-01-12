@@ -25,11 +25,11 @@ from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromGenerate
     triplet_BOO, triplet_OBB, kitti360, Kitti2011_RGB, triplet_ROO, triplet_ROO_360
 from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
-    student_network_pass
+    student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanovis_testing
 from model.models import Resnet18, Vgg11, LSTM
 
 
-def test(args, dataloader_test, save_embeddings=None):
+def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save_embeddings=None):
     print('start Test!')
 
     if args.embedding:
@@ -72,12 +72,22 @@ def test(args, dataloader_test, save_embeddings=None):
 
     # Start testing
     if args.triplet:
-        pass
+        if args.test_method == 'svm':
+            # Generates svm with the last train
+            classifier = svm_generator(args, model, dataloader_train, dataloader_val)
+            confusion_matrix, acc = svm_testing(args, model, dataloader_test, classifier)
+        elif args.test_method == 'mahalanovis':
+            covariances = covmatrix_generator(args, model, dataloader_train, dataloader_val)
+            confusion_matrix, acc = mahalanovis_testing(args, model, dataloader_test, covariances)
+        else:
+            print("=> no test methof found")
+            exit(-1)
+
     else:
         confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test, gt_list=gt_list,
                                               save_embeddings=save_embeddings)
 
-    if not args.nowandb and not args.triplet:  # if nowandb flag was set, skip
+    if not args.nowandb:  # if nowandb flag was set, skip
         plt.figure(figsize=(10, 7))
         sn.heatmap(confusion_matrix, annot=True, fmt='.2f')
         wandb.log({"Test/Acc": acc, "conf-matrix_test": wandb.Image(plt)})
@@ -501,9 +511,9 @@ def main(args, model=None):
     # Transforms for Three-dimensional images (The DA was made offline)
     threedimensional_transfomrs = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
 
-    if args.train:
+    if args.train or (args.test and args.triplet):
 
-        if not args.nowandb:  # if nowandb flag was set, skip
+        if not args.nowandb and args.train:  # if nowandb flag was set, skip
             if args.wandb_resume:
                 print('Resuming WANDB run, this run will log into: ', args.wandb_resume)
                 wandb.init(project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
@@ -597,106 +607,107 @@ def main(args, model=None):
         dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True,
                                     num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
 
-        # Build model
-        # The embeddings should be returned if we are using Techer/Student or triplet loss
-        return_embeddings = args.embedding or args.triplet
+        if args.train:
+            # Build model
+            # The embeddings should be returned if we are using Techer/Student or triplet loss
+            return_embeddings = args.embedding or args.triplet
 
-        if args.model == 'resnet18':
-            model = Resnet18(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
-        elif args.model == 'vgg11':
-            model = Vgg11(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
-        elif args.model == 'LSTM':
-            model = LSTM(args.feature_model, args.num_classes, pretrained_path=args.feature_detector_path)
+            if args.model == 'resnet18':
+                model = Resnet18(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
+            elif args.model == 'vgg11':
+                model = Vgg11(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
+            elif args.model == 'LSTM':
+                model = LSTM(args.feature_model, args.num_classes, pretrained_path=args.feature_detector_path)
 
-        if args.resume:
-            if os.path.isfile(args.resume):
-                print("=> loading checkpoint '{}'".format(args.resume))
-                checkpoint = torch.load(args.resume, map_location='cpu')
-                args.start_epoch = checkpoint['epoch'] + 1
-                model.load_state_dict(checkpoint['model_state_dict'])
+            if args.resume:
+                if os.path.isfile(args.resume):
+                    print("=> loading checkpoint '{}'".format(args.resume))
+                    checkpoint = torch.load(args.resume, map_location='cpu')
+                    args.start_epoch = checkpoint['epoch'] + 1
+                    model.load_state_dict(checkpoint['model_state_dict'])
+                    if torch.cuda.is_available() and args.use_gpu:
+                        model = model.cuda()
+                    print("=> loaded checkpoint '{}' (epoch {}) (loss {})"
+                          .format(args.resume, checkpoint['epoch'], checkpoint['loss']))
+                else:
+                    print("=> no checkpoint found at '{}'".format(args.resume))
+            else:
                 if torch.cuda.is_available() and args.use_gpu:
                     model = model.cuda()
-                print("=> loaded checkpoint '{}' (epoch {}) (loss {})"
-                      .format(args.resume, checkpoint['epoch'], checkpoint['loss']))
-            else:
-                print("=> no checkpoint found at '{}'".format(args.resume))
-        else:
-            if torch.cuda.is_available() and args.use_gpu:
-                model = model.cuda()
 
-        # Build optimizer
-        if args.optimizer == 'rmsprop':
-            optimizer = torch.optim.RMSprop(model.parameters(), args.lr, momentum=args.momentum)
-            if args.resume:
-                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-                # Set new learning rate from command line
-                optimizer.param_groups[0]['lr'] = args.lr
-        elif args.optimizer == 'sgd':
-            optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum)
-            if args.resume:
-                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-                # Set new learning rate from command line
-                optimizer.param_groups[0]['lr'] = args.lr
-        elif args.optimizer == 'adam':
-            # optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=5e-4)
-            optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=args.adam_weight_decay)
-            if args.resume:
-                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-                # Set new learning rate from command line
-                optimizer.param_groups[0]['lr'] = args.lr
-        elif args.optimizer == 'ASGD':
-            optimizer = torch.optim.ASGD(model.parameters(), args.lr)
-            if args.resume:
-                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-                # Set new learning rate from command line
-                optimizer.param_groups[0]['lr'] = args.lr
-        elif args.optimizer == 'Adamax':
-            optimizer = torch.optim.Adamax(model.parameters(), args.lr)
-            if args.resume:
-                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-                # Set new learning rate from command line
-                optimizer.param_groups[0]['lr'] = args.lr
-        else:
-            print('not supported optimizer \n')
-            exit()
-
-        # Build scheduler
-        if args.scheduler:
-            if args.scheduler_type == 'MultiStepLR':
+            # Build optimizer
+            if args.optimizer == 'rmsprop':
+                optimizer = torch.optim.RMSprop(model.parameters(), args.lr, momentum=args.momentum)
                 if args.resume:
-                    param_epoch = checkpoint['epoch']
-                else:
-                    param_epoch = -1
-                print("Creating MultiStepLR optimizer with last_epoch: {}".format(param_epoch))
-                scheduler = MultiStepLR(optimizer, milestones=[5, 10, 15, 18, 20], gamma=0.5, last_epoch=param_epoch)
-            if args.scheduler_type == 'ReduceLROnPlateau':
-                print("Creating ReduceLROnPlateau optimizer")
-                scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01,
-                                              threshold_mode='rel', cooldown=1, min_lr=0, eps=1e-08, verbose=True,
-                                              last_epoch=param_epoch)
-            # Load Scheduler if exist
-            if args.resume and checkpoint['scheduler_state_dict'] is not None:
-                scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+                    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                    # Set new learning rate from command line
+                    optimizer.param_groups[0]['lr'] = args.lr
+            elif args.optimizer == 'sgd':
+                optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum)
+                if args.resume:
+                    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                    # Set new learning rate from command line
+                    optimizer.param_groups[0]['lr'] = args.lr
+            elif args.optimizer == 'adam':
+                # optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=5e-4)
+                optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=args.adam_weight_decay)
+                if args.resume:
+                    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                    # Set new learning rate from command line
+                    optimizer.param_groups[0]['lr'] = args.lr
+            elif args.optimizer == 'ASGD':
+                optimizer = torch.optim.ASGD(model.parameters(), args.lr)
+                if args.resume:
+                    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                    # Set new learning rate from command line
+                    optimizer.param_groups[0]['lr'] = args.lr
+            elif args.optimizer == 'Adamax':
+                optimizer = torch.optim.Adamax(model.parameters(), args.lr)
+                if args.resume:
+                    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                    # Set new learning rate from command line
+                    optimizer.param_groups[0]['lr'] = args.lr
+            else:
+                print('not supported optimizer \n')
+                exit()
 
-        else:
-            scheduler = None
+            # Build scheduler
+            if args.scheduler:
+                if args.scheduler_type == 'MultiStepLR':
+                    if args.resume:
+                        param_epoch = checkpoint['epoch']
+                    else:
+                        param_epoch = -1
+                    print("Creating MultiStepLR optimizer with last_epoch: {}".format(param_epoch))
+                    scheduler = MultiStepLR(optimizer, milestones=[5, 10, 15, 18, 20], gamma=0.5, last_epoch=param_epoch)
+                if args.scheduler_type == 'ReduceLROnPlateau':
+                    print("Creating ReduceLROnPlateau optimizer")
+                    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01,
+                                                  threshold_mode='rel', cooldown=1, min_lr=0, eps=1e-08, verbose=True,
+                                                  last_epoch=param_epoch)
+                # Load Scheduler if exist
+                if args.resume and checkpoint['scheduler_state_dict'] is not None:
+                    scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
 
-        ##########################################
-        #   _____  ____      _     ___  _   _    #
-        #  |_   _||  _ \    / \   |_ _|| \ | |   #
-        #    | |  | |_) |  / _ \   | | |  \| |   #
-        #    | |  |  _ <  / ___ \  | | | |\  |   #
-        #    |_|  |_| \_\/_/   \_\|___||_| \_|   #
-        ##########################################
-        if '360' not in args.dataloader:
-            train(args, model, optimizer, scheduler, dataloader_train, dataloader_val,
-                  os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
-        else:
-            train(args, model, optimizer, scheduler, dataloader_train, dataloader_val,
-                  valfolder=val_sequence_list[0], GLOBAL_EPOCH=GLOBAL_EPOCH)
+            else:
+                scheduler = None
 
-        if args.telegram:
-            send_telegram_message("Train finished")
+            ##########################################
+            #   _____  ____      _     ___  _   _    #
+            #  |_   _||  _ \    / \   |_ _|| \ | |   #
+            #    | |  | |_) |  / _ \   | | |  \| |   #
+            #    | |  |  _ <  / ___ \  | | | |\  |   #
+            #    |_|  |_| \_\/_/   \_\|___||_| \_|   #
+            ##########################################
+            if '360' not in args.dataloader:
+                train(args, model, optimizer, scheduler, dataloader_train, dataloader_val,
+                      os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
+            else:
+                train(args, model, optimizer, scheduler, dataloader_train, dataloader_val,
+                      valfolder=val_sequence_list[0], GLOBAL_EPOCH=GLOBAL_EPOCH)
+
+            if args.telegram:
+                send_telegram_message("Train finished")
 
     if args.test:
         if args.dataloader == 'Kitti360':  # Trained with RGB images or Homography
@@ -749,7 +760,10 @@ def main(args, model=None):
                        job_type="eval")
             wandb.config.update(args)
 
-        test(args, dataloader_test, save_embeddings=args.save_embeddings)
+        if args.triplet:
+            test(args, dataloader_test, dataloader_train=dataloader_train, dataloader_val=dataloader_val, save_embeddings=args.save_embeddings)
+        else:
+            test(args, dataloader_test, save_embeddings=args.save_embeddings)
 
     if args.telegram:
         send_telegram_message("Finish successfully")
@@ -818,6 +832,10 @@ if __name__ == '__main__':
                         choices=['pairwise', 'cosine', 'SNR'],
                         help='distance function selection')
     parser.add_argument('--p', type=float, default=2.0, help='p distance value')
+    parser.add_argument('--test_method', type=str, default='svm', choices=['svm', 'mahalanobis'],
+                        help='testing classification method')
+    parser.add_argument('--svm_mode', type=str, default='Linear', choices=['Linear', 'ovo'],
+                        help='svm classification method')
     parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
     parser.add_argument('--patience_start', type=int, default=2,
                         help='Starting epoch for patience of validation. Default, 50. ')

@@ -2,6 +2,7 @@ import datetime
 import json
 import linecache
 import os
+import pickle
 import random
 import sys
 from functools import reduce
@@ -11,8 +12,10 @@ from math import asin, atan2, cos, pi, sin
 from sklearn import svm
 
 import numpy as np
+import pandas as pd
 import requests
 import torch
+from sklearn.covariance import MinCovDet
 from sklearn.metrics import accuracy_score
 from torch import nn
 
@@ -428,6 +431,21 @@ def reset_wandb_env():
             del os.environ[k]
 
 
+def svm_generator(args, model, dataloader_train, dataloader_val):
+    svm_path = args.load_path.replace('.pth', 'svm.sav')
+    if os.path.isfile(svm_path):
+        print('SVM already trained in => {}'.format(svm_path))
+        classifier = pickle.load(open(svm_path, 'rb'))
+    else:
+        print('training SVM classifier\n')
+        print('svm model will be saved in : {}\n'.format(svm_path))
+        features, labels = embb_data(args, model, dataloader_train, dataloader_val)
+        classifier = svm_train(features, labels, mode=args.svm_mode)
+        pickle.dump(classifier, open(svm_path, 'wb'))
+
+    return classifier
+
+
 def svm_train(features, labels, mode='Linear'):
     assert features.shape[0] == labels.shape[
         0], 'The number of feature vectors {} should be same as number of labels  {}'.format(
@@ -443,14 +461,20 @@ def svm_train(features, labels, mode='Linear'):
     return classifier
 
 
-def svm_data(args, model, dataloader_train, dataloader_val, save=False):
+def embb_data(args, model, dataloader_train, dataloader_val, save=False):
     embeddingRecord = np.empty((0, 512), dtype=np.float32)
     labelRecord = np.array([], dtype=np.uint8)
     model.eval()
     with torch.no_grad():
+
         for sample in dataloader_train:
-            data = sample['data']
-            label = sample['label']
+            if args.embedding:
+                data = sample['data']
+                label = sample['label']
+
+            if args.triplet:
+                data = sample['anchor']
+                label = sample['label_anchor']
 
             if torch.cuda.is_available() and args.use_gpu:
                 data = data.cuda()
@@ -460,8 +484,13 @@ def svm_data(args, model, dataloader_train, dataloader_val, save=False):
             labelRecord = np.append(labelRecord, label.squeeze())
 
         for sample in dataloader_val:
-            data = sample['data']
-            label = sample['label']
+            if args.embedding:
+                data = sample['data']
+                label = sample['label']
+
+            if args.triplet:
+                data = sample['anchor']
+                label = sample['label_anchor']
 
             if torch.cuda.is_available() and args.use_gpu:
                 data = data.cuda()
@@ -481,7 +510,95 @@ def svm_data(args, model, dataloader_train, dataloader_val, save=False):
     return embeddingRecord, labelRecord
 
 
-def gt_validation(output, gt_list, criterion=None) -> object:
+def svm_testing(args, model, dataloader_test, classifier):
+    print('Start svm testing')
+
+    label_list = []
+    prediction_list = []
+
+    with torch.no_grad():
+        model.eval()
+
+        for sample in dataloader_test:
+            if args.embedding:
+                data = sample['data']
+                label = sample['label']
+
+            if args.triplet:
+                data = sample['anchor']
+                label = sample['label_anchor']
+
+            if torch.cuda.is_available() and args.use_gpu:
+                data = data.cuda()
+
+            output = model(data)  # --> (1 x 512)
+            dec = classifier.decision_function(output)
+            prediction = dec.shape[1]
+
+            label_list.append(label)
+            prediction_list.append(prediction)
+
+        conf_matrix = pd.crosstab(np.array(label_list), np.array(prediction_list), rownames=['Actual'],
+                                  colnames=['Predicted'],
+                                  normalize='index')
+        conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6], fill_value=0.0)
+        acc = accuracy_score(np.array(label_list), np.array(prediction_list))
+        print('Accuracy for test : %f\n' % acc)
+        return conf_matrix, acc
+
+
+def covmatrix_generator(args, model, dataloader_train, dataloader_val):
+    features, labels = embb_data(args, model, dataloader_train, dataloader_val)
+    clusters = {}
+    covariances = {}
+    for lbl in np.unique(labels):
+        clusters[lbl] = features[labels == lbl, :]
+        covariances[lbl] = MinCovDet(random_state=0).fit(clusters[lbl])
+
+    return covariances
+
+
+def mahalanovis_testing(args, model, dataloader_test, covariances):
+    print('Start mahalanobis testing')
+
+    label_list = []
+    prediction_list = []
+    distance_list = []
+
+    with torch.no_grad():
+        model.eval()
+
+        for sample in dataloader_test:
+            if args.embedding:
+                data = sample['data']
+                label = sample['label']
+
+            if args.triplet:
+                data = sample['anchor']
+                label = sample['label_anchor']
+
+            if torch.cuda.is_available() and args.use_gpu:
+                data = data.cuda()
+
+            output = model(data)  # --> (1 x 512)
+            for lbl in range(7):
+                dist = covariances[lbl].mahalanobis(output)
+                distance_list.append(dist.item())
+            prediction = np.argmin(np.array(distance_list))
+
+            label_list.append(label)
+            prediction_list.append(prediction)
+
+        conf_matrix = pd.crosstab(np.array(label_list), np.array(prediction_list), rownames=['Actual'],
+                                  colnames=['Predicted'],
+                                  normalize='index')
+        conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6], fill_value=0.0)
+        acc = accuracy_score(np.array(label_list), np.array(prediction_list))
+        print('Accuracy for test : %f\n' % acc)
+        return conf_matrix, acc
+
+
+def gt_validation(output, gt_list, criterion=None):
     l = []
     if criterion is None:
         criterion = nn.MSELoss()
