@@ -1046,9 +1046,9 @@ class triplet_BOO(fromGeneratedDataset, Dataset):
     """
 
     def __init__(self, folders, distance, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
-                 canonical=True, transform_osm=None, transform_bev=None, random_rate=1.0, loadlist=False, savelist=False,
+                 canonical=True, transform_osm=None, transform_bev=None, random_rate=1.0, loadlist=False,
+                 savelist=False,
                  decimateStep=1):
-
         fromGeneratedDataset.__init__(self, folders, distance, transform=transform_bev, rnd_width=rnd_width,
                                       rnd_angle=rnd_angle, rnd_spatial=rnd_spatial, noise=noise, canonical=canonical,
                                       addGeneratedOSM=False, decimateStep=decimateStep, savelist=savelist,
@@ -1098,7 +1098,6 @@ class triplet_BOO(fromGeneratedDataset, Dataset):
             sample['positive'] = self.transform_osm(sample['positive'])
             sample['negative'] = self.transform_osm(sample['negative'])
 
-
         # DEBUG -- send in telegram. Little HACK for the ANCHOR, get a sub-part of image ...
         # emptyspace = 255 * torch.ones([224, 30, 3], dtype=torch.uint8)
         # a = plt.figure()
@@ -1131,7 +1130,6 @@ class triplet_ROO(Kitti2011_RGB, Dataset):
     def __init__(self, folders, rnd_width=2.0, rnd_angle=0.4, rnd_spatial=9.0, noise=True,
                  canonical=False, transform_osm=None, transform_rgb=None, random_rate=1.0,
                  ):
-
         Kitti2011_RGB.__init__(self, folders, transform=transform_rgb)
 
         self.types = [0, 1, 2, 3, 4, 5, 6]
@@ -1364,3 +1362,68 @@ class fromAANETandDualBisenet360(Dataset):
                     debug_values.pop('save_out_colors')
 
         return bev_with_new_label
+
+
+class SequencesDataloader(Dataset):
+
+    def __init__(self, root, folders, transform=None):
+        self.transform = transform
+        sequences = {}
+        last_seq = 0
+        for folder in folders:
+            image_path = os.path.join(root, os.path.join(folder, 'image_02'))
+            filelist = glob.glob1(image_path, '*.png')
+            filelist.sort()
+            sequences, last_seq = self.__get_sequences(filelist, last_seq, sequences)
+
+        self.sequences = sequences
+
+    def __len__(self):
+        return len(self.sequences)
+
+    def __getitem__(self, idx):
+        sequence_list = self.sequences[idx]
+        img_list = []
+        previous_label = None
+        for path in sequence_list:
+            label = self.__get_label(path)
+            if (previous_label is not None) and (label != previous_label):
+                print('Error in file: {}\n'.format(path))
+                print('Sequence labels are not consistents')
+                exit(-1)
+            image = Image.open(path)
+            image = self.transform(image)
+            img_list.append(image)
+            previous_label = label
+
+        sample = {'sequence': img_list, 'label': previous_label}
+
+        return sample
+
+    @staticmethod
+    def __get_sequences(filelist, last_seq, seq_dict):
+        sq = last_seq
+        sequence = []
+        prev_framenumber = None
+        for file in filelist:
+            frame_number = int(os.path.splitext(file)[0])
+            if not (prev_framenumber is None or (frame_number == (prev_framenumber + 1))):
+                seq_dict[sq] = sequence
+                sequence.clear()
+                sq += 1
+
+            sequence.append(file)
+            prev_framenumber = frame_number
+
+        return seq_dict, sq
+
+    @staticmethod
+    def __get_label(path):
+        head, tail = os.path.split(path)
+        head, _ = os.path.split(head)
+        gt_path = os.path.join(head, 'frames_topology.txt')
+        filename, _ = os.path.splitext(tail)
+        gtdata = pd.read_csv(gt_path, sep=';', header=None, dtype=str)
+        label = int(gtdata.loc[gtdata[0] == filename][2])
+
+        return label
