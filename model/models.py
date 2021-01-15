@@ -73,39 +73,16 @@ class Vgg11(torch.nn.Module):
         return prediction
 
 
-class LSTM(Resnet18, Vgg11, torch.nn.Module):
+class LSTM(torch.nn.Module):
 
-    def __init__(self, features_model, num_classes, pretrained_path=None):
+    def __init__(self, num_classes):
         super().__init__()
-        if features_model == 'resnet18':
-            Resnet18.__init__(pretrained=True, embeddings=True, freeze=True)
-        if features_model == 'vgg11':
-            Vgg11.__init__(pretrained=True, embeddings=True, freeze=True)
-
-        if os.path.isfile(pretrained_path):
-            print("=> loading checkpoint '{}'".format(pretrained_path))
-            checkpoint = torch.load(pretrained_path, map_location='cpu')
-            if features_model == 'resnet18':
-                Resnet18.load_state_dict(checkpoint['model_state_dict'])
-            if features_model == 'vgg11':
-                Vgg11.load_state_dict(checkpoint['model_state_dict'])
-            print("=> loaded checkpoint '{}'".format(pretrained_path))
-
-        if features_model == 'resnet18':
-            Resnet18.eval()
-        if features_model == 'vgg11':
-            Vgg11.eval()
 
         self.lstm = torch.nn.LSTM(input_size=512, hidden_size=256, batch_first=True)
         self.fc = torch.nn.Linear(256, num_classes)
 
     def forward(self, data):
-        if self.features_model == 'resnet18':
-            features = Resnet18.forward(data)
-
-        if self.features_model == 'vgg11':
-            features = Vgg11.forward(data)
-        output, (hn, cn) = self.lstm(features)
+        output, (hn, cn) = self.lstm(data)
         prediction = self.fc(hn)
 
         return prediction

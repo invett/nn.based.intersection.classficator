@@ -22,10 +22,10 @@ from torch.utils.data import DataLoader
 from pytorch_metric_learning.distances import SNRDistance
 
 from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromGeneratedDataset, \
-    triplet_BOO, triplet_OBB, kitti360, Kitti2011_RGB, triplet_ROO, triplet_ROO_360
+    triplet_BOO, triplet_OBB, kitti360, Kitti2011_RGB, triplet_ROO, triplet_ROO_360, SequencesDataloader
 from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
-    student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanovis_testing
+    student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanovis_testing, lstm_network_pass
 from model.models import Resnet18, Vgg11, LSTM
 
 
@@ -53,25 +53,42 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     elif args.model == 'vgg11':
         model = Vgg11(pretrained=args.pretrained, embeddings=args.embedding, num_classes=args.num_classes)
     elif args.model == 'LSTM':
-        model = LSTM(args.feature_model, args.num_classes, pretrained_path=args.feature_detector_path)
+        lstm_model = LSTM(args.num_classes)
+        if args.feature_model == 'resnet18':
+            feature_extractor_model = Resnet18(pretrained=False, embeddings=True, num_classes=args.num_classes)
+        if args.feature_model == 'vgg11':
+            feature_extractor_model = Vgg11(pretrained=False, embeddings=True, num_classes=args.num_classes)
 
-    # load Saved Model
+        # load saved feature extractor model
+        if os.path.isfile(args.feature_detector_path):
+            print("=> loading checkpoint '{}'".format(args.feature_detector_path))
+            checkpoint = torch.load(args.feature_detector_path, map_location='cpu')
+            feature_extractor_model.load_state_dict(checkpoint['model_state_dict'])
+            print("=> loaded checkpoint '{}'".format(args.feature_detector_path))
+        else:
+            print("=> no checkpoint found at '{}'".format(args.feature_detector_path))
+
+    # load Saved Model (Only for Resnet and vgg)
     loadpath = args.load_path
     if os.path.isfile(loadpath):
         print("=> loading checkpoint '{}'".format(loadpath))
         checkpoint = torch.load(loadpath, map_location='cpu')
         model.load_state_dict(checkpoint['model_state_dict'])
-        if torch.cuda.is_available() and args.use_gpu:
-            model = model.cuda()
         print("=> loaded checkpoint '{}'".format(loadpath))
     else:
         print("=> no checkpoint found at '{}'".format(loadpath))
 
     if torch.cuda.is_available() and args.use_gpu:
-        model = model.cuda()
+        if args.model == 'LSTM':
+            lstm_model = lstm_model.cuda()
+            feature_extractor_model = feature_extractor_model.cuda()
+        else:
+            model = model.cuda()
 
     # Start testing
-    if args.triplet:
+    if args.model == 'LSTM':
+        pass
+    elif args.triplet:
         if args.test_method == 'svm':
             # Generates svm with the last train
             classifier = svm_generator(args, model, dataloader_train, dataloader_val)
@@ -177,7 +194,7 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
 
 
 def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, valfolder, GLOBAL_EPOCH,
-          kfold_index=None):
+          kfold_index=None, LSTM=None):
     """
 
     Do the training. The LOSS depends on the value of
@@ -288,6 +305,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                 class_weights = torch.FloatTensor(weights).cuda()
                 criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
             else:
+                # TODO Weights of the new dataset
                 weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
                 class_weights = torch.FloatTensor(weights).cuda()
                 criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
@@ -297,12 +315,19 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                 kwargs = {"alpha": 0.5, "gamma": 5.0, "reduction": 'mean'}
                 criterion = kornia.losses.FocalLoss(**kwargs)
             else:
-                criterion = torch.nn.CrossEntropyLoss()
+                criterion = torch.nn.CrossEntropyLoss()  # LSTM Criterion
 
-    model.train()
+    if args.model == 'LSTM':
+        model.eval()
+        LSTM.train()
+    else:
+        model.train()
 
     if not args.nowandb:  # if nowandb flag was set, skip
-        wandb.watch(model, log="all")
+        if args.model == 'LSTM':
+            wandb.watch(LSTM, log="all")
+        else:
+            wandb.watch(model, log="all")
 
     current_batch = 0
     patience = 0
@@ -319,8 +344,11 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         acc_record = 0.0
 
         for sample in dataloader_train:
-            acc, loss, _, _, _ = student_network_pass(args, sample, criterion, model, gt_list=gt_list,
-                                                      weights_param=weights)
+            if args.model == 'LSTM':
+                acc, loss= lstm_network_pass(args, sample, criterion, model, LSTM)
+            else:
+                acc, loss, _, _, _ = student_network_pass(args, sample, criterion, model, gt_list=gt_list,
+                                                          weights_param=weights)
 
             loss.backward()
 
@@ -461,7 +489,22 @@ def main(args, model=None):
     # create dataset and dataloader
     data_path = args.dataset
 
-    if '360' not in args.dataloader:
+    if args.dataloader == 'SequencesDataloader':
+        # TODO complete folder names
+
+        # All sequence folders
+        folders = np.array([os.path.join(data_path, folder) for folder in os.listdir(data_path) if
+                            os.path.isdir(os.path.join(data_path, folder))])
+
+        # Exclude test samples
+        folders = folders[folders != os.path.join(data_path, 'test folder')]
+        test_path = os.path.join(data_path, 'test folder')
+
+        # Exclude validation samples
+        train_path = folders[folders != os.path.join(data_path, 'val folder')]
+        val_path = os.path.join(data_path, 'val folder')
+
+    elif '360' not in args.dataloader:
         # All sequence folders
         folders = np.array([os.path.join(data_path, folder) for folder in os.listdir(data_path) if
                             os.path.isdir(os.path.join(data_path, folder))])
@@ -524,7 +567,8 @@ def main(args, model=None):
                            job_type="training", reinit=True)
                 wandb.config.update(args)
 
-        if '360' not in args.dataloader:  # The dataloaders that not use Kitti360 uses list-like inputs
+        # The dataloaders that not use Kitti360 uses list-like inputs
+        if '360' not in args.dataloader or args.dataloader != 'SequencesDataloader':
             train_path = np.array(train_path)
             val_path = np.array([val_path])
 
@@ -599,6 +643,13 @@ def main(args, model=None):
 
             train_dataset = Kitti2011_RGB(train_path, transform=rgb_image_train_transforms)
 
+        elif args.dataloader == 'SequencesDataloader':
+            # TODO Select corect transform
+            val_dataset = SequencesDataloader(val_path, transform=None)
+
+            train_dataset = SequencesDataloader(train_path, transform=None)
+
+
         else:
             raise Exception("Dataloader not found")
 
@@ -617,7 +668,20 @@ def main(args, model=None):
             elif args.model == 'vgg11':
                 model = Vgg11(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
             elif args.model == 'LSTM':
-                model = LSTM(args.feature_model, args.num_classes, pretrained_path=args.feature_detector_path)
+                lstm_model = LSTM(args.num_classes)
+                if args.feature_model == 'resnet18':
+                    feature_extractor_model = Resnet18(pretrained=False, embeddings=True, num_classes=args.num_classes)
+                if args.feature_model == 'vgg11':
+                    feature_extractor_model = Vgg11(pretrained=False, embeddings=True, num_classes=args.num_classes)
+
+                # load saved feature extractor model
+                if os.path.isfile(args.feature_detector_path):
+                    print("=> loading checkpoint '{}'".format(args.feature_detector_path))
+                    checkpoint = torch.load(args.feature_detector_path, map_location='cpu')
+                    feature_extractor_model.load_state_dict(checkpoint['model_state_dict'])
+                    print("=> loaded checkpoint '{}'".format(args.feature_detector_path))
+                else:
+                    print("=> no checkpoint found at '{}'".format(args.feature_detector_path))
 
             if args.resume:
                 if os.path.isfile(args.resume):
@@ -679,7 +743,8 @@ def main(args, model=None):
                     else:
                         param_epoch = -1
                     print("Creating MultiStepLR optimizer with last_epoch: {}".format(param_epoch))
-                    scheduler = MultiStepLR(optimizer, milestones=[5, 10, 15, 18, 20], gamma=0.5, last_epoch=param_epoch)
+                    scheduler = MultiStepLR(optimizer, milestones=[5, 10, 15, 18, 20], gamma=0.5,
+                                            last_epoch=param_epoch)
                 if args.scheduler_type == 'ReduceLROnPlateau':
                     print("Creating ReduceLROnPlateau optimizer")
                     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, threshold=0.01,
@@ -699,7 +764,10 @@ def main(args, model=None):
             #    | |  |  _ <  / ___ \  | | | |\  |   #
             #    |_|  |_| \_\/_/   \_\|___||_| \_|   #
             ##########################################
-            if '360' not in args.dataloader:
+            if args.model == 'LSTM':
+                train(args, feature_extractor_model, optimizer, scheduler, dataloader_train, dataloader_val,
+                      os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH, LSTM=lstm_model)
+            elif '360' not in args.dataloader:
                 train(args, model, optimizer, scheduler, dataloader_train, dataloader_val,
                       os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
             else:
@@ -761,7 +829,8 @@ def main(args, model=None):
             wandb.config.update(args)
 
         if args.triplet:
-            test(args, dataloader_test, dataloader_train=dataloader_train, dataloader_val=dataloader_val, save_embeddings=args.save_embeddings)
+            test(args, dataloader_test, dataloader_train=dataloader_train, dataloader_val=dataloader_val,
+                 save_embeddings=args.save_embeddings)
         else:
             test(args, dataloader_test, save_embeddings=args.save_embeddings)
 

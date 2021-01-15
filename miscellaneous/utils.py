@@ -18,6 +18,7 @@ import torch
 from sklearn.covariance import MinCovDet
 from sklearn.metrics import accuracy_score
 from torch import nn
+from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence
 
 
 def PrintException():
@@ -391,6 +392,35 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
         acc = accuracy_score(label, predict)
 
     return acc, loss, label, predict, embedding
+
+
+def lstm_network_pass(args, sample, criterion, model, LSTM):
+    feature_list = []
+    seq_list = []
+    batch = sample['sequence']  # --> Batch x Seq x W x H
+    label = sample['label']  # --> Batch x 1
+
+    with torch.no_grad():
+        for sequence in batch:
+            for img in sequence:
+                features = model(img)  # --> (1x512)
+                feature_list.append(features)
+            seq_tensor = torch.stack(feature_list, dim=1)  # --> (seq_len x 512)
+            seq_list.append(seq_tensor)
+        padded_batch = pad_sequence(seq_list, batch_first=True).size()
+        packed_padded_batch = pack_padded_sequence(padded_batch, batch_first=True)  # --> (Batch x Max_seq_len x 512)
+
+    result = LSTM(packed_padded_batch)
+
+    loss = criterion(result, label)
+
+    predict = torch.argmax(result, 1)
+    label = label.numpy()
+    predict = predict.cpu().numpy()
+
+    acc = accuracy_score(label, predict)
+
+    return acc, loss
 
 
 def init_function(worker_id, seed, epoch):
