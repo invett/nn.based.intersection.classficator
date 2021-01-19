@@ -1,7 +1,11 @@
 """
     TO ENABLE THE CREATION OF THE DATASET, ENABLE THE FOLLOWING LINE WITH SIMULATE=FALSE
     save_frames('/media/ballardini/4tb/KITTI-360/moved', simulate=False, mono=False)
+    NEW!!! Use SAVING_CALLS instead of editing the TRUE/FALSE if ... better, not best. a small step for a man...
+
+    Note: saving things is an ALTERNATIVE to editing the labels. So if this is TRUE, the program will ONLY save & exit
 """
+SAVING_CALLS = True
 
 import tkinter as tk
 from tkinter import simpledialog
@@ -15,8 +19,26 @@ import json
 import cv2
 import numpy as np
 
-# datasets: KITTI360 | ALCALA | OXFORD
-dataset = 'OXFORD'
+# datasets: KITTI360 | ALCALA | OXFORD | KITTI-ROAD
+dataset = 'KITTI-ROAD'
+
+if dataset == 'KITTI-ROAD':
+    base_folder = '/home/ballardini/Desktop/KITTI-ROAD/'
+    folders = ['2011_09_26_drive_0019_sync', '2011_09_26_drive_0020_sync', '2011_09_26_drive_0022_sync',
+               '2011_09_26_drive_0023_sync', '2011_09_26_drive_0035_sync', '2011_09_26_drive_0036_sync',
+               '2011_09_26_drive_0039_sync', '2011_09_26_drive_0046_sync', '2011_09_26_drive_0061_sync',
+               '2011_09_26_drive_0064_sync', '2011_09_26_drive_0079_sync', '2011_09_26_drive_0086_sync',
+               '2011_09_26_drive_0087_sync', '2011_09_30_drive_0018_sync', '2011_09_30_drive_0020_sync',
+               '2011_09_30_drive_0027_sync', '2011_09_30_drive_0028_sync', '2011_09_30_drive_0033_sync',
+               '2011_09_30_drive_0034_sync', '2011_10_03_drive_0027_sync', '2011_10_03_drive_0034_sync']
+    width = 1408
+    height = 376
+    position1 = (10, 30)
+    position2 = (950, 30)
+    position3 = (950, 60)
+    csv_filename = "kitti-road-crossings.csv"
+    pickle_filename = 'kitti-road-annotations.pickle'
+    resizeme = 0 #resizeme = 0 does not perform the resize
 
 if dataset == 'KITTI360':
     base_folder = '/media/ballardini/4tb/ALVARO/KITTI-360/'
@@ -188,6 +210,7 @@ def print_help():
     print("s                 -  statistics")
     print("h                 -  print this help")
     print("q                 -  skip/next sequence")
+    print("g                 -  goto specific frame")
     print("F1                -  enable frame skipping")
     print("F2                -  disable frame skipping")
     print("F12               -  exit")
@@ -215,6 +238,8 @@ def summary(annotations):
 
 
 for folder in folders:
+    if dataset == 'KITTI-ROAD':
+        path = os.path.join(base_folder, folder, 'image_02/data')
     if dataset == 'KITTI360':
         path = os.path.join(base_folder, 'data_2d_raw', folder, 'image_00/data_rect')
     if dataset == 'ALCALA':
@@ -236,9 +261,9 @@ else:
     with open(annotations_file, 'wb') as f:
         pickle.dump(annotations, f)
 
-# ENABLE THIS LINE TO MAKE THE DATASET
-if False:
-    save_frames('/media/ballardini/4tb/KITTI-360/moved', simulate=False, mono=False)
+# ENABLE THIS LINE TO CREATE THE DATASET, IE, CREATE A NEW FOLDER STRUCTURE WITH DATA
+if SAVING_CALLS:
+    # save_frames('/media/ballardini/4tb/KITTI-360/moved', simulate=False, mono=False)
     save_csv(annotations)
     exit(1)
 
@@ -283,7 +308,7 @@ for sequence_number, sequence in enumerate(files):
             img[v_pos:v_pos + img_type_0.shape[0], h_pos:h_pos + img_type_0.shape[1]] = img_type_6
 
         cv2.putText(img, str(annotations[sequence_number][file]), position1, font, fontScale, fontColor, lineType)
-        cv2.putText(img, str(file) + '/' + str(len(sequence)), position2, font, fontScale, fontColor, lineType)
+        cv2.putText(img, str(file) + '/' + str(len(sequence)-2), position2, font, fontScale, fontColor, lineType)
         cv2.putText(img, os.path.basename(sequence[file]), position3, font, fontScale, fontColor, lineType)
 
 
@@ -291,9 +316,10 @@ for sequence_number, sequence in enumerate(files):
 
         if skip:
             if annotations[sequence_number][file] == -1:
-                file = file + 1
-                cv2.waitKey(1)
-                continue
+                if file + 1 < len(sequence) - 1:
+                    cv2.waitKey(1)
+                    file = file + 1
+                    continue
         skip = False  # disable skipping once a valid frame is found
 
         k = cv2.waitKey(0)
@@ -364,6 +390,8 @@ for sequence_number, sequence in enumerate(files):
             #         break
 
         if k == 113:  # pressing q
+            cv2.waitKey(10)
+            cv2.destroyAllWindows()
             break
 
         if k == 201:  # pressing F12
