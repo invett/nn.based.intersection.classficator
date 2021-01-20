@@ -394,9 +394,10 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
     return acc, loss, label, predict, embedding
 
 
-def lstm_network_pass(args, sample, criterion, model, LSTM):
+def lstm_network_pass(args, sample, criterion, model, lstm):
     feature_list = []
     seq_list = []
+    len_list = []
     batch = sample['sequence']  # --> Batch x Seq x W x H
     label = sample['label']  # --> Batch x 1
 
@@ -407,10 +408,11 @@ def lstm_network_pass(args, sample, criterion, model, LSTM):
                 feature_list.append(features)
             seq_tensor = torch.stack(feature_list, dim=1)  # --> (seq_len x 512)
             seq_list.append(seq_tensor)
+            len_list.append(len(sequence))
         padded_batch = pad_sequence(seq_list, batch_first=True).size()
-        packed_padded_batch = pack_padded_sequence(padded_batch, batch_first=True)  # --> (Batch x Max_seq_len x 512)
+        packed_padded_batch = pack_padded_sequence(padded_batch, len_list, batch_first=True)  # --> (Batch x Max_seq_len x 512)
 
-    result = LSTM(packed_padded_batch)
+    result = lstm(packed_padded_batch)
 
     loss = criterion(result, label)
 

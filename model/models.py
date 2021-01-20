@@ -78,11 +78,12 @@ class LSTM(torch.nn.Module):
     def __init__(self, num_classes):
         super().__init__()
 
-        self.lstm = torch.nn.LSTM(input_size=512, hidden_size=256, batch_first=True)
+        self.lstm = torch.nn.LSTM(input_size=512, hidden_size=256, num_layers=2, batch_first=True)
         self.fc = torch.nn.Linear(256, num_classes)
 
     def forward(self, data):
-        output, (hn, cn) = self.lstm(data)
-        prediction = self.fc(hn)
+        output, (hn, _) = self.lstm(data) # --> hn shape (layers x batch x 256)
+        last_hidden = hn[-1]  # -->(batch, 256)
+        prediction = self.fc(last_hidden)
 
         return prediction
