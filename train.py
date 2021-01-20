@@ -153,14 +153,20 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
         tq.set_description('Validation... ')
 
         for sample in dataloader:
-            acc, loss, label, predict, embedding = student_network_pass(args, sample, criterion, model,
-                                                                        gt_list=gt_list, weights_param=weights,
-                                                                        return_embedding=save_embeddings)
+
+            if args.model == 'LSTM':
+                acc, loss, label, predict = lstm_network_pass(args, sample, criterion, model, LSTM)
+            else:
+                acc, loss, label, predict, embedding = student_network_pass(args, sample, criterion, model,
+                                                                            gt_list=gt_list, weights_param=weights,
+                                                                            return_embedding=save_embeddings)
+
             if embedding is not None:
                 all_embedding_matrix.append(embedding)
 
-            labelRecord = np.append(labelRecord, label)
-            predRecord = np.append(predRecord, predict)
+            if label is not None and predict is not None:
+                labelRecord = np.append(labelRecord, label)
+                predRecord = np.append(predRecord, predict)
 
             loss_record += loss.item()
             acc_record += acc
@@ -345,7 +351,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
 
         for sample in dataloader_train:
             if args.model == 'LSTM':
-                acc, loss= lstm_network_pass(args, sample, criterion, model, LSTM)
+                acc, loss, _, _ = lstm_network_pass(args, sample, criterion, model, LSTM)
             else:
                 acc, loss, _, _, _ = student_network_pass(args, sample, criterion, model, gt_list=gt_list,
                                                           weights_param=weights)

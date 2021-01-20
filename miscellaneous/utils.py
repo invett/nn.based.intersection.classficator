@@ -422,7 +422,7 @@ def lstm_network_pass(args, sample, criterion, model, lstm):
 
     acc = accuracy_score(label, predict)
 
-    return acc, loss
+    return acc, loss, label, predict
 
 
 def init_function(worker_id, seed, epoch):
