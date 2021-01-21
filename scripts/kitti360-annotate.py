@@ -4,8 +4,11 @@
     NEW!!! Use SAVING_CALLS instead of editing the TRUE/FALSE if ... better, not best. a small step for a man...
 
     Note: saving things is an ALTERNATIVE to editing the labels. So if this is TRUE, the program will ONLY save & exit
+
+    NOTE 2: after labelling, when you go through all the images, the CSV will be saved! No need to add this call, this
+            is needed only to recreate the dataset (or recreate the CSV from the pickle..)
 """
-SAVING_CALLS = True
+SAVING_CALLS = False
 
 import tkinter as tk
 from tkinter import simpledialog
@@ -21,6 +24,7 @@ import numpy as np
 
 # datasets: KITTI360 | ALCALA | OXFORD | KITTI-ROAD
 dataset = 'KITTI-ROAD'
+dataset = 'ALCALA'
 
 if dataset == 'KITTI-ROAD':
     base_folder = '/home/ballardini/Desktop/KITTI-ROAD/'
@@ -59,7 +63,8 @@ if dataset == 'ALCALA':
     # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
     # scale=800:-1 R2_video_0002_camera2_png/%010d.png
     base_folder = '/home/ballardini/Desktop/ALCALA/'
-    folders = ['R1_video_0002_camera1_png']
+    folders = ['R1_video_0002_camera1_png', 'R2_video_0002_camera2_png']
+    # folders = ['R1_video_0002_camera1_png']
     width = 800
     height = 500
     position1 = (10, 30)
@@ -116,6 +121,7 @@ img_type_3 = cv2.imread('../wiki/images/3.png')
 img_type_4 = cv2.imread('../wiki/images/4.png')
 img_type_5 = cv2.imread('../wiki/images/5.png')
 img_type_6 = cv2.imread('../wiki/images/6.png')
+img_type_all = cv2.imread('../wiki/images/all.png')
 
 scale_percent = 200  # percent of original size
 width = int(img_type_0.shape[1] * scale_percent / 100)
@@ -128,6 +134,12 @@ img_type_3 = cv2.resize(img_type_3, dim, interpolation=cv2.INTER_AREA)
 img_type_4 = cv2.resize(img_type_4, dim, interpolation=cv2.INTER_AREA)
 img_type_5 = cv2.resize(img_type_5, dim, interpolation=cv2.INTER_AREA)
 img_type_6 = cv2.resize(img_type_6, dim, interpolation=cv2.INTER_AREA)
+
+scale_percent = 50  # percent of original size
+width = int(img_type_all.shape[1] * scale_percent / 100)
+height = int(img_type_all.shape[0] * scale_percent / 100)
+dim = (width, height)
+img_type_all = cv2.resize(img_type_all, dim, interpolation=cv2.INTER_AREA)
 
 
 def hasNumbers(inputString):
@@ -202,8 +214,10 @@ def print_help():
     Returns: gives some help
 
     """
-    print("Right Arrow | F4  -  next frame")
-    print("Left Arrow  | F3  -  previous frame")
+    print("F1                -  enable frame skipping")
+    print("F2                -  disable frame skipping")
+    print("F3 | Left Arrow   -  previous frame")
+    print("F4 | Right Arrow  -  next frame")
     print("Up Arrow          -  +10 frames")
     print("Down Arrow        -  -10 frames")
     print("space             -  reset frame to unknown")
@@ -211,8 +225,6 @@ def print_help():
     print("h                 -  print this help")
     print("q                 -  skip/next sequence")
     print("g                 -  goto specific frame")
-    print("F1                -  enable frame skipping")
-    print("F2                -  disable frame skipping")
     print("F12               -  exit")
     print("0..6 numbers for 0..6 intersection type")
 
@@ -292,6 +304,10 @@ for sequence_number, sequence in enumerate(files):
 
         v_pos = int(img.shape[0] - img_type_0.shape[0] - 10)
         h_pos = int(img.shape[1] / 2 - img_type_0.shape[1] / 2)
+        v_pos_all = 80  # int(img_type_all.shape[0])
+        h_pos_all = int(img.shape[1] / 2 - img_type_all.shape[1] / 2)
+
+        img[v_pos_all:v_pos_all + img_type_all.shape[0], h_pos_all:h_pos_all + img_type_all.shape[1]] = img_type_all
         if annotations[sequence_number][file] == 0:
             img[v_pos:v_pos + img_type_0.shape[0], h_pos:h_pos + img_type_0.shape[1]] = img_type_0
         elif annotations[sequence_number][file] == 1:
@@ -317,13 +333,23 @@ for sequence_number, sequence in enumerate(files):
         if skip:
             if annotations[sequence_number][file] == -1:
                 if file + 1 < len(sequence) - 1:
-                    cv2.waitKey(1)
-                    file = file + 1
-                    continue
+                    k = cv2.waitKey(1)
+                    if k != 191:  # disable skip F2
+                        file = file + 1
+                        continue
         skip = False  # disable skipping once a valid frame is found
 
         k = cv2.waitKey(0)
         # print(k)
+
+        if k == 190:  # enable skip F1
+            if file + 1 < len(sequence) - 1:
+                file = file + 1
+            skip = True
+        if k == 191:  # disable skip F2
+            if file + 1 < len(sequence) - 1:
+                file = file + 1
+            skip = False
 
         if k == 48:  # 1 as 0
             annotations[sequence_number][file] = 0
@@ -348,11 +374,6 @@ for sequence_number, sequence in enumerate(files):
 
         if k == 104:  # print help
             print_help()
-
-        if k == 190:  # enable skip
-            skip = True
-        if k == 191:  # disable skip
-            skip = False
 
         if k == 115:  # show statistics
             summary(annotations)
