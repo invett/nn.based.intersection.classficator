@@ -14,13 +14,12 @@ import pandas as pd
 import seaborn as sn
 import torch
 import torchvision.transforms as transforms
-from torch.nn.functional import cosine_similarity
 import tqdm
-import wandb
+from torch.nn.functional import cosine_similarity
 from torch.optim.lr_scheduler import MultiStepLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
-from pytorch_metric_learning.distances import SNRDistance
 
+import wandb
 from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromGeneratedDataset, \
     triplet_BOO, triplet_OBB, kitti360, Kitti2011_RGB, triplet_ROO, triplet_ROO_360, SequencesDataloader
 from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
