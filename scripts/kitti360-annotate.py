@@ -63,8 +63,9 @@ if dataset == 'ALCALA':
     # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
     # scale=800:-1 R2_video_0002_camera2_png/%010d.png
     base_folder = '/home/ballardini/Desktop/ALCALA/'
-    folders = ['R1_video_0002_camera1_png', 'R2_video_0002_camera2_png']
+    # folders = ['R1_video_0002_camera1_png', 'R2_video_0002_camera2_png']
     # folders = ['R1_video_0002_camera1_png']
+    folders = ['R2_video_0002_camera1_png']
     width = 800
     height = 500
     position1 = (10, 30)
@@ -381,11 +382,13 @@ for sequence_number, sequence in enumerate(files):
         with open(annotations_file, 'wb') as f:
             pickle.dump(annotations, f)
 
+        # RIGHT or F4
         if (k == right or k == 193) and file + 1 < len(sequence) - 1:
             file = file + 1
         if k == up and file + 10 < len(sequence) - 1:
             file = file + 10
 
+        # LEFT or F3
         if (k == left or k == 192) and file > 0:
             file = file - 1
             skip = False
