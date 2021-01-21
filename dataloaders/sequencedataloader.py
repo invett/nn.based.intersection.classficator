@@ -1382,7 +1382,7 @@ class SequencesDataloader(Dataset):
             image_path = os.path.join(root, os.path.join(folder, 'image_02'))
             filelist = glob.glob1(image_path, '*.png')
             filelist.sort()
-            sequences, last_seq = self.__get_sequences(image_path,filelist, last_seq, sequences)
+            sequences, last_seq = self.__get_sequences(image_path, filelist, last_seq, sequences)
 
         self.sequences = sequences
 
@@ -1451,6 +1451,9 @@ class SequencesDataloader(Dataset):
             sequence.append(os.path.join(image_path, file))
             prev_framenumber = frame_number
 
+        print("SequencesDataloader, loaded folder: ", image_path)
+        print("Found", len(seq_dict), " sequences; for each sequence, the associated frames are: ")
+        print([len(v) for k, v in seq_dict.items()])
         return seq_dict, sq
 
     @staticmethod

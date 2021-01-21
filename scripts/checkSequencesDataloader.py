@@ -21,8 +21,11 @@ data_path = ['/media/ballardini/7D3AD71E1EACC626/ALVARO/Secuencias/2011_10_03_dr
 # folders = np.array([os.path.join(data_path, folder) for folder in os.listdir(data_path) if
 #                    os.path.isdir(os.path.join(data_path, folder))])
 
-dataset = SequencesDataloader(root='/media/ballardini/7D3AD71E1EACC626/ALVARO/Secuencias/',
-                              folders=['2011_10_03_drive_0027_sync'])
+#dataset = SequencesDataloader(root='/media/ballardini/7D3AD71E1EACC626/ALVARO/Secuencias/',
+#                              folders=['2011_10_03_drive_0027_sync'])
+
+dataset = SequencesDataloader(root='/home/ballardini/Desktop/ALCALA/',
+                              folders=['R2_video_0002_camera1_png'])
 
 loader = DataLoader(
     dataset,
