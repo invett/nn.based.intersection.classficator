@@ -148,13 +148,33 @@ def hasNumbers(inputString):
 
 
 def save_csv(annotations, filename=csv_filename):
+    """
+
+    Args:
+        annotations: input data
+        filename: where to save the CSV
+
+    Returns:
+
+    the generated CSV has the structure of the original CSV from the previous IRALAB KITTI annotations, i.e.:
+
+    framename ; distance-to-the-intersection ; label/class [0-6] ; in-crossing flag
+
+    NOTICE that distance-to-the-intersections *DOES NOT* have any sense here, so we put -1 to avoid using a specific
+    distance (that should be always positive).
+
+    """
     filename = os.path.join(base_folder, filename)
     with open(filename, 'w') as csv:
         for seq_ann, i in enumerate(annotations):
             for seq_file, j in enumerate(i):
                 if j > -1:
-                    out = files[seq_ann][seq_file] + ';' + str(j) + '\n'
-                    # print(files[seq_ann][seq_file], ";", j)
+                    # old behavior /home/ballardini/Desktop/ALCALA/R1_video_0002_camera1_png/0000000265.png;6
+                    # out = files[seq_ann][seq_file] + ';' + str(j) + '\n'
+
+                    # according with the documentation: '0000003374;-1;4;0'
+                    out = os.path.splitext(os.path.split(files[seq_ann][seq_file])[1])[0] + ';-1;' + str(j) + ';0\n'
+
                     # print(out)
                     csv.write(out)
     print("Annotations saved to ", filename)
@@ -224,9 +244,9 @@ def print_help():
     print("space             -  reset frame to unknown")
     print("s                 -  statistics")
     print("h                 -  print this help")
-    print("q                 -  skip/next sequence")
+    print("q                 -  skip/next sequence | the CSV will be generated/updated")
     print("g                 -  goto specific frame")
-    print("F12               -  exit")
+    print("F12               -  exit | the CSV will NOT be generated/updated")
     print("0..6 numbers for 0..6 intersection type")
 
 
@@ -248,6 +268,26 @@ def summary(annotations):
     print("Type 5: ", type_5)
     print("Type 6: ", type_6)
     print("Overall: ", type_0 + type_1 + type_2 + type_3 + type_4 + type_5 + type_6, "\n")
+
+    sequences = 0
+    current_sequence_frames = 0
+    sequences_frame_number = []
+    prev_frame_class = None
+    for frame_class in annotations[0]:
+        if current_sequence_frames == 0 and frame_class == -1:
+            continue
+        # check for sequence. if the current frame number is not the previous+1, then we have a new sequence.
+        if not (prev_frame_class is None or (frame_class == prev_frame_class)):
+            sequences_frame_number.append(current_sequence_frames)
+            prev_frame_class = None
+            current_sequence_frames = 0
+            sequences += 1
+            continue
+        current_sequence_frames = current_sequence_frames + 1
+        prev_frame_class = frame_class
+
+    print("Sequences: ", sequences)
+    print("The number of frames associated to each sequence is: ", sequences_frame_number)
 
 
 for folder in folders:
