@@ -23,8 +23,11 @@ import cv2
 import numpy as np
 
 # datasets: KITTI360 | ALCALA | OXFORD | KITTI-ROAD
-dataset = 'KITTI-ROAD'
-# dataset = 'ALCALA'
+# dataset = 'KITTI-ROAD'
+# dataset = 'KITTI360'
+dataset = 'ALCALA'
+dataset = 'AQP'
+
 
 if dataset == 'KITTI-ROAD':
     base_folder = '/home/ballardini/Desktop/KITTI-ROAD/'
@@ -64,17 +67,17 @@ if dataset == 'ALCALA':
     # scale=800:-1 R2_video_0002_camera2_png/%010d.png
     base_folder = '/home/ballardini/Desktop/ALCALA/'
 
-    folders = ['R2_video_0002_camera2_png']
-    csv_filename = "R2C2.csv"
-    pickle_filename = 'R2C2.pickle'
+    # folders = ['R2_video_0002_camera2_png']
+    # csv_filename = "R2C2.csv"
+    # pickle_filename = 'R2C2.pickle'
 
     # folders = ['R2_video_0002_camera1_png']  # 36608 reverse gear
     # csv_filename = "R2C1.csv"
     # pickle_filename = 'R2C1.pickle'
 
-    # folders = ['R1_video_0002_camera1_png']  # 8944 imgs
-    # csv_filename = "R1C1.csv"
-    # pickle_filename = 'R1C1.pickle'
+    folders = ['R1_video_0002_camera1_png']  # 8944 imgs
+    csv_filename = "R1C1.csv"
+    pickle_filename = 'R1C1.pickle'
 
     height = 500
     position1 = (10, 30)
@@ -98,6 +101,28 @@ if dataset == 'OXFORD':
     csv_filename = "oxford-crossings.csv"
     pickle_filename = 'oxford-annotations.pickle'
     resizeme = 800
+
+if dataset == 'AQP':
+    # images from raw files are 1920x1200 - resize as needed.
+    # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
+    # scale=800:-1 R2_video_0002_camera2_png/%010d.png
+    base_folder = '/home/ballardini/Desktop/AQP/'
+
+    folders = ['2014_0101_004025_115',
+               '2014_0101_034707_116', '2014_0101_221527_116', '2014_0102_102920_117', '2020_1101_144951_003',
+               '2020_1101_153807_018', '2020_1104_090905_021', '2020_1104_091505_023', '2020_1104_094943_028',
+               '2020_1104_133551_032', '2020_1104_133852_033', '2020_1104_135353_038', '2020_1104_141259_039',
+               '2020_1104_165659_057', '2020_1104_172359_066']
+
+    csv_filename = "aqp.csv"
+    pickle_filename = 'aqp.pickle'
+
+    height = 500
+    position1 = (10, 30)
+    position2 = (500, 30)
+    position3 = (500, 60)
+    resizeme = 0 #resizeme = 0 does not perform the resize
+    width = 800
 
 font = cv2.FONT_HERSHEY_SIMPLEX
 fontScale = 1
@@ -307,10 +332,18 @@ for folder in folders:
         path = os.path.join(base_folder, 'data_2d_raw', folder, 'image_00/data_rect')
     if dataset == 'ALCALA':
         path = os.path.join(base_folder, folder)
+    if dataset == 'AQP':
+        path = os.path.join(base_folder, folder, 'image_02')
     if dataset == 'OXFORD':
         path = os.path.join(base_folder, folder)
     # files.append(sorted([f for f in listdir(path) if isfile(join(path, f))]))
     files.append(sorted([path + '/' + f for f in listdir(path)]))
+
+# if for some reason some of the folders is empty, say no.
+for file_list_check in files:
+    if len(file_list_check) == 1:
+        print("The following folder has no images: ", os.path.split(file_list_check[0])[0])
+        exit(-1)
 
 annotations = []
 annotations_file = os.path.join(base_folder, pickle_filename)
