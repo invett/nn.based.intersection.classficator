@@ -24,7 +24,7 @@ import numpy as np
 
 # datasets: KITTI360 | ALCALA | OXFORD | KITTI-ROAD
 dataset = 'KITTI-ROAD'
-dataset = 'ALCALA'
+# dataset = 'ALCALA'
 
 if dataset == 'KITTI-ROAD':
     base_folder = '/home/ballardini/Desktop/KITTI-ROAD/'
@@ -63,17 +63,25 @@ if dataset == 'ALCALA':
     # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
     # scale=800:-1 R2_video_0002_camera2_png/%010d.png
     base_folder = '/home/ballardini/Desktop/ALCALA/'
-    # folders = ['R1_video_0002_camera1_png', 'R2_video_0002_camera2_png']
-    # folders = ['R1_video_0002_camera1_png']
-    folders = ['R2_video_0002_camera1_png']
-    width = 800
+
+    folders = ['R2_video_0002_camera2_png']
+    csv_filename = "R2C2.csv"
+    pickle_filename = 'R2C2.pickle'
+
+    # folders = ['R2_video_0002_camera1_png']  # 36608 reverse gear
+    # csv_filename = "R2C1.csv"
+    # pickle_filename = 'R2C1.pickle'
+
+    # folders = ['R1_video_0002_camera1_png']  # 8944 imgs
+    # csv_filename = "R1C1.csv"
+    # pickle_filename = 'R1C1.pickle'
+
     height = 500
     position1 = (10, 30)
     position2 = (500, 30)
     position3 = (500, 60)
-    csv_filename = "alcala-crossings.csv"
-    pickle_filename = 'alcala-annotations.pickle'
     resizeme = 0 #resizeme = 0 does not perform the resize
+    width = 800
 
 if dataset == 'OXFORD':
     # images from raw files are 1920x1200 - resize as needed.
@@ -270,21 +278,23 @@ def summary(annotations):
     print("Overall: ", type_0 + type_1 + type_2 + type_3 + type_4 + type_5 + type_6, "\n")
 
     sequences = 0
-    current_sequence_frames = 0
-    sequences_frame_number = []
-    prev_frame_class = None
-    for frame_class in annotations[0]:
-        if current_sequence_frames == 0 and frame_class == -1:
-            continue
-        # check for sequence. if the current frame number is not the previous+1, then we have a new sequence.
-        if not (prev_frame_class is None or (frame_class == prev_frame_class)):
-            sequences_frame_number.append(current_sequence_frames)
-            prev_frame_class = None
-            current_sequence_frames = 0
-            sequences += 1
-            continue
-        current_sequence_frames = current_sequence_frames + 1
-        prev_frame_class = frame_class
+    for i in range(len(annotations)):
+        current_sequence_frames = 0
+        sequences_frame_number = []
+        prev_frame_class = None
+
+        for frame_class in annotations[i]:
+            if current_sequence_frames == 0 and frame_class == -1:
+                continue
+            # check for sequence. if the current frame number is not the previous+1, then we have a new sequence.
+            if not (prev_frame_class is None or (frame_class == prev_frame_class)):
+                sequences_frame_number.append(current_sequence_frames)
+                prev_frame_class = None
+                current_sequence_frames = 0
+                sequences += 1
+                continue
+            current_sequence_frames = current_sequence_frames + 1
+            prev_frame_class = frame_class
 
     print("Sequences: ", sequences)
     print("The number of frames associated to each sequence is: ", sequences_frame_number)
