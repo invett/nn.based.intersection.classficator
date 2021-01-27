@@ -965,6 +965,7 @@ if __name__ == '__main__':
     parser.add_argument('--distance', type=float, default=20.0, help='Distance from the cross')
 
     parser.add_argument('--weighted', action='store_true', help='Weighted losses')
+    parser.add_argument('--nonzero', action='store_true', help='nonzero losses')
     parser.add_argument('--pretrained', type=bool, default=True, help='whether to use a pretrained net, or not')
     parser.add_argument('--scheduler', action='store_true', help='scheduling lr')
     parser.add_argument('--scheduler_type', type=str, default='MultiStepLR', choices=['MultiStepLR',
