@@ -947,6 +947,7 @@ if __name__ == '__main__':
     parser.add_argument('--lossfunction', type=str, default='MSE',
                         choices=['MSE', 'SmoothL1', 'L1', 'focal', 'triplet'],
                         help='lossfunction selection')
+    parser.add_argument('--metric', action='store_true', help='Metric learning losses')
     parser.add_argument('--distance_function', type=str, default='pairwise',
                         choices=['pairwise', 'cosine', 'SNR'],
                         help='distance function selection')
