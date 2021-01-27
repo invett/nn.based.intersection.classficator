@@ -15,9 +15,13 @@ import seaborn as sn
 import torch
 import torchvision.transforms as transforms
 import tqdm
+from pytorch_metric_learning.distances import SNRDistance, LpDistance, CosineSimilarity
+from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
 from torch.nn.functional import cosine_similarity
 from torch.optim.lr_scheduler import MultiStepLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
+
+from pytorch_metric_learning import losses, miners, reducers
 
 import wandb
 from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromGeneratedDataset, \
@@ -188,7 +192,7 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
                    delimiter='\t')
         np.savetxt(os.path.join(args.saveEmbeddingsPath, save_embeddings), labelRecord, delimiter='\t')
 
-    if not args.triplet:
+    if labelRecord.size != 0 and predRecord.size != 0:
         conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'],
                                   normalize='index')
         conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6], fill_value=0.0)
@@ -230,6 +234,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
     min_val_loss = np.inf
 
     if args.embedding:  # For Teacher/Student training
+        miner = None  # No need of miner
         # Build loss criterion
         if args.weighted:
             if args.dataloader == 'Kitti360':
@@ -262,6 +267,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
 
     elif args.triplet or args.lossfunction == 'triplet':
         gt_list = None  # No need of centroids
+        miner = None  # No need of miner
         # Build loss criterion
         if args.weighted:
             if args.dataloader == 'Kitti360':
@@ -283,6 +289,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                     margin=args.margin, reduction='none')
             else:
                 criterion = torch.nn.TripletMarginLoss(margin=args.margin, p=args.p, reduction='none')
+
         else:
             weights = None
             if args.distance_function == 'pairwise':
@@ -302,8 +309,46 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
             else:
                 criterion = torch.nn.TripletMarginLoss(margin=args.margin, p=args.p, reduction='mean')
 
+    elif args.metric:
+        # Accuracy calculator for metric learning
+        acc_metric = AccuracyCalculator(include=(),
+                                        exclude=(),
+                                        avg_of_avgs=False,
+                                        k=None,
+                                        label_comparison_fn=None)
+
+        if args.weighted:
+            if args.dataloader == 'Kitti360':
+                weights = [0.85, 0.86, 0.84, 0.85, 0.90, 0.84, 0.85]
+                class_weights = torch.FloatTensor(weights).cuda()
+            else:
+                # TODO Weights of the new dataset
+                weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
+                class_weights = torch.FloatTensor(weights).cuda()
+            reducer = reducers.ClassWeightedReducer(class_weights)
+        elif args.nonzero:
+            reducer = reducers.AvgNonZeroReducer()
+        else:
+            reducer = reducers.MeanReducer()
+
+        if args.distance_function == 'SNR':
+            criterion = losses.TripletMarginLoss(margin=0.05, swap=False, smooth_loss=False, triplets_per_anchor="all",
+                                                 distance=SNRDistance(), reducer=reducer)
+            miner = miners.TripletMarginMiner(margin=0.2, type_of_triplets="all", distance=SNRDistance())
+
+        elif args.distance_function == 'pairwise':
+            criterion = losses.TripletMarginLoss(margin=0.05, swap=False, smooth_loss=False, triplets_per_anchor="all",
+                                                 distance=LpDistance(p=args.p), reducer=reducer)
+            miner = miners.TripletMarginMiner(margin=0.2, type_of_triplets="all", distance=LpDistance(p=args.p))
+
+        elif args.distance_function == 'cosine':
+            criterion = losses.TripletMarginLoss(margin=0.05, swap=False, smooth_loss=False, triplets_per_anchor="all",
+                                                 distance=CosineSimilarity(), reducer=reducer)
+            miner = miners.TripletMarginMiner(margin=0.2, type_of_triplets="all", distance=CosineSimilarity())
+
     else:
         gt_list = None  # No need of centroids
+        miner = None  # No need of miner
         if args.weighted:
             if args.dataloader == 'Kitti360':
                 weights = [0.85, 0.86, 0.84, 0.85, 0.90, 0.84, 0.85]
@@ -353,7 +398,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                 acc, loss, _, _ = lstm_network_pass(args, sample, criterion, model, LSTM)
             else:
                 acc, loss, _, _, _ = student_network_pass(args, sample, criterion, model, gt_list=gt_list,
-                                                          weights_param=weights)
+                                                          weights_param=weights, miner=miner, acc_metric=acc_metric)
 
             loss.backward()
 
@@ -404,20 +449,20 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                 print("ReduceLROnPlateau step call")
                 scheduler.step(loss_val)
 
-            if not args.triplet:
+            if confusion_matrix is not None:
                 plt.figure(figsize=(10, 7))
                 title = str(socket.gethostname()) + '\nEpoch: ' + str(epoch) + '\n' + str(valfolder)
                 plt.title(title)
                 sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
 
-            if args.telegram and not args.triplet:
+            if args.telegram and confusion_matrix is not None:
                 send_telegram_picture(plt,
                                       "Epoch: " + str(epoch) +
                                       "\nLR: " + str(optimizer.param_groups[0]['lr']) +
                                       "\nacc_val: " + str(acc_val) +
                                       "\nloss_val: " + str(loss_val))
 
-            if not args.nowandb and not args.triplet:  # if nowandb flag was set, skip
+            if not args.nowandb and confusion_matrix is not None:  # if nowandb flag was set, skip
                 wandb.log({"Val/loss": loss_val,
                            "Val/Acc": acc_val,
                            "Train/lr": optimizer.param_groups[0]['lr'],

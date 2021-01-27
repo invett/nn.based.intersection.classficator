@@ -315,7 +315,8 @@ def teacher_network_pass(args, sample, model, criterion, gt_list=None):
         return acc, loss, label, predict
 
 
-def student_network_pass(args, sample, criterion, model, gt_list=None, weights_param=None, return_embedding=False):
+def student_network_pass(args, sample, criterion, model, gt_list=None, weights_param=None, return_embedding=False,
+                         miner=None, acc_metric=None):
     embedding = None
     label = None
     predict = None
@@ -370,6 +371,22 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
         loss = criterion(out_anchor, out_positive, out_negative)
         acc = acc_triplet_score(args, out_anchor, out_positive, out_negative)
 
+    elif args.metric:
+        data = sample['data']  # RGB images
+        label = sample['label']
+        if torch.cuda.is_available() and args.use_gpu:
+            data = data.cuda()
+            label = label.cuda()
+
+        embeddings = model(data)
+        hard_pairs = miner(embeddings, label)
+        loss = criterion(embeddings, label, hard_pairs)
+
+        # acc is not a value is a dict
+        acc_dict = acc_metric.get_accuracy(embeddings, embeddings, label, labelembeddings_come_from_same_source=True)
+        # acc = acc_dict['r_precision']
+        acc = acc_dict['mean_average_precision_at_r']
+
     else:
         data = sample['data']
         label = sample['label']
@@ -410,7 +427,8 @@ def lstm_network_pass(args, sample, criterion, model, lstm):
             seq_list.append(seq_tensor)
             len_list.append(len(sequence))
         padded_batch = pad_sequence(seq_list, batch_first=True).size()
-        packed_padded_batch = pack_padded_sequence(padded_batch, len_list, batch_first=True)  # --> (Batch x Max_seq_len x 512)
+        packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
+                                                   batch_first=True)  # --> (Batch x Max_seq_len x 512)
 
     result = lstm(packed_padded_batch)
 
