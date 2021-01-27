@@ -1366,7 +1366,7 @@ class fromAANETandDualBisenet360(Dataset):
 
 class SequencesDataloader(Dataset):
 
-    def __init__(self, root, folders, transform=None):
+    def __init__(self, root, folders, transform=None, suffixPath='image_02'):
         """
 
         Args:
@@ -1374,12 +1374,15 @@ class SequencesDataloader(Dataset):
             folders: list of folders
             transform (callable, optional): Optional transform to be applied
                 on a sample.
+
+            suffixPath: when adding the images using the list of folders, most of datasets have the images in common
+                        sub-folders (image_02). You can change this suffix with this parameter.
         """
         self.transform = transform
         sequences = {}
         last_seq = 0
         for folder in folders:
-            image_path = os.path.join(root, os.path.join(folder, 'image_02'))
+            image_path = os.path.join(root, os.path.join(folder, suffixPath))
             filelist = glob.glob1(image_path, '*.png')
             filelist.sort()
             sequences, last_seq = self.__get_sequences(image_path, filelist, last_seq, sequences)
