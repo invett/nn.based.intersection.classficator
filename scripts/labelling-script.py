@@ -25,8 +25,9 @@ import numpy as np
 # datasets: KITTI360 | ALCALA | OXFORD | KITTI-ROAD
 # dataset = 'KITTI-ROAD'
 # dataset = 'KITTI360'
-dataset = 'ALCALA'
-dataset = 'AQP'
+# dataset = 'ALCALA'
+# dataset = 'AQP'
+dataset = 'alcala-26.01.2021'
 
 
 if dataset == 'KITTI-ROAD':
@@ -84,6 +85,30 @@ if dataset == 'ALCALA':
     position2 = (500, 30)
     position3 = (500, 60)
     resizeme = 0 #resizeme = 0 does not perform the resize
+    width = 800
+
+if dataset == 'alcala-26.01.2021':
+    # images from raw files are 1920x1200 - resize as needed.
+    # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
+    # scale=800:-1 R2_video_0002_camera2_png/%010d.png
+    base_folder = '/home/ballardini/Desktop/alcala-26.01.2021/'
+
+    folders = ['161604AA', '161657AA', '161957AA', '162257AA', '162557AA', '162857AA', '163157AA', '163457AA',
+               '163757AA', '164057AA', '164357AA', '164657AA', '164957AA', '165257AA', '165557AA', '165857AA',
+               '170157AA', '170457AA', '170757AA', '171057AA', '171357AA', '171657AA', '171957AA', '172257AA',
+               '172557AA', '172857AA', '173158AA', '173457AA', '173757AA', '174057AA', '174357AA', '174657AA',
+               '174957AA', '175258AA', '175557AA', '175857AA', '180158AA', '180458AA', '180757AA', '181058AA',
+               '181358AA', '181658AA', '181958AA', '182258AA', '182558AA', '182858AA', '183158AA', '183458AA',
+               '183758AA', '184058AA', '184358AA', '184658AA']
+
+    csv_filename = "alcala-26.01.2021.csv"
+    pickle_filename = 'alcala-26.01.2021.pickle'
+
+    height = 500
+    position1 = (10, 30)
+    position2 = (500, 30)
+    position3 = (500, 60)
+    resizeme = 0  # resizeme = 0 does not perform the resize
     width = 800
 
 if dataset == 'OXFORD':
@@ -303,9 +328,9 @@ def summary(annotations):
     print("Overall: ", type_0 + type_1 + type_2 + type_3 + type_4 + type_5 + type_6, "\n")
 
     sequences = 0
+    sequences_frame_number = []
     for i in range(len(annotations)):
         current_sequence_frames = 0
-        sequences_frame_number = []
         prev_frame_class = None
 
         for frame_class in annotations[i]:
@@ -331,6 +356,8 @@ for folder in folders:
     if dataset == 'KITTI360':
         path = os.path.join(base_folder, 'data_2d_raw', folder, 'image_00/data_rect')
     if dataset == 'ALCALA':
+        path = os.path.join(base_folder, folder)
+    if dataset == 'alcala-26.01.2021':
         path = os.path.join(base_folder, folder)
     if dataset == 'AQP':
         path = os.path.join(base_folder, folder, 'image_02')
