@@ -618,7 +618,7 @@ def main(args, model=None):
                 wandb.config.update(args)
 
         # The dataloaders that not use Kitti360 uses list-like inputs
-        if '360' not in args.dataloader or args.dataloader != 'SequencesDataloader':
+        if '360' not in args.dataloader and args.dataloader != 'SequencesDataloader':
             train_path = np.array(train_path)
             val_path = np.array([val_path])
 
@@ -695,9 +695,9 @@ def main(args, model=None):
 
         elif args.dataloader == 'SequencesDataloader':
             # TODO Select corect transform
-            val_dataset = SequencesDataloader(val_path, transform=None)
+            val_dataset = SequencesDataloader(args.dataset, val_sequence_list, transform=None)
 
-            train_dataset = SequencesDataloader(train_path, transform=None)
+            train_dataset = SequencesDataloader(args.dataset, train_sequence_list, transform=None)
 
 
         else:
