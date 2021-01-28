@@ -15,13 +15,12 @@ import seaborn as sn
 import torch
 import torchvision.transforms as transforms
 import tqdm
+from pytorch_metric_learning import losses, miners, reducers
 from pytorch_metric_learning.distances import SNRDistance, LpDistance, CosineSimilarity
 from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
 from torch.nn.functional import cosine_similarity
 from torch.optim.lr_scheduler import MultiStepLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
-
-from pytorch_metric_learning import losses, miners, reducers
 
 import wandb
 from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromGeneratedDataset, \
@@ -310,12 +309,9 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                 criterion = torch.nn.TripletMarginLoss(margin=args.margin, p=args.p, reduction='mean')
 
     elif args.metric:
+        gt_list = None  # No need of centroids
         # Accuracy calculator for metric learning
-        acc_metric = AccuracyCalculator(include=(),
-                                        exclude=(),
-                                        avg_of_avgs=False,
-                                        k=None,
-                                        label_comparison_fn=None)
+        acc_metric = AccuracyCalculator()
 
         if args.weighted:
             if args.dataloader == 'Kitti360':
@@ -334,17 +330,26 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         if args.distance_function == 'SNR':
             criterion = losses.TripletMarginLoss(margin=0.05, swap=False, smooth_loss=False, triplets_per_anchor="all",
                                                  distance=SNRDistance(), reducer=reducer)
-            miner = miners.TripletMarginMiner(margin=0.2, type_of_triplets="all", distance=SNRDistance())
+            if args.miner:
+                miner = miners.TripletMarginMiner(margin=0.2, type_of_triplets="all", distance=SNRDistance())
+            else:
+                miner = None
 
         elif args.distance_function == 'pairwise':
             criterion = losses.TripletMarginLoss(margin=0.05, swap=False, smooth_loss=False, triplets_per_anchor="all",
                                                  distance=LpDistance(p=args.p), reducer=reducer)
-            miner = miners.TripletMarginMiner(margin=0.2, type_of_triplets="all", distance=LpDistance(p=args.p))
+            if args.miner:
+                miner = miners.TripletMarginMiner(margin=0.2, type_of_triplets="all", distance=LpDistance(p=args.p))
+            else:
+                miner = None
 
         elif args.distance_function == 'cosine':
             criterion = losses.TripletMarginLoss(margin=0.05, swap=False, smooth_loss=False, triplets_per_anchor="all",
                                                  distance=CosineSimilarity(), reducer=reducer)
-            miner = miners.TripletMarginMiner(margin=0.2, type_of_triplets="all", distance=CosineSimilarity())
+            if args.miner:
+                miner = miners.TripletMarginMiner(margin=0.2, type_of_triplets="all", distance=CosineSimilarity())
+            else:
+                miner = None
 
     else:
         gt_list = None  # No need of centroids
@@ -711,7 +716,7 @@ def main(args, model=None):
         if args.train:
             # Build model
             # The embeddings should be returned if we are using Techer/Student or triplet loss
-            return_embeddings = args.embedding or args.triplet
+            return_embeddings = args.embedding or args.triplet or args.metric
 
             if args.model == 'resnet18':
                 model = Resnet18(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
@@ -965,6 +970,7 @@ if __name__ == '__main__':
     parser.add_argument('--distance', type=float, default=20.0, help='Distance from the cross')
 
     parser.add_argument('--weighted', action='store_true', help='Weighted losses')
+    parser.add_argument('--miner', action='store_true', help='miner for metric learning')
     parser.add_argument('--nonzero', action='store_true', help='nonzero losses')
     parser.add_argument('--pretrained', type=bool, default=True, help='whether to use a pretrained net, or not')
     parser.add_argument('--scheduler', action='store_true', help='scheduling lr')
