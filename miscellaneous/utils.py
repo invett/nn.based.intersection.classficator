@@ -380,10 +380,10 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
 
         embeddings = model(data)
         if args.miner:
-            hard_pairs = miner(embeddings, label)  # El miner no funciona y no da ningun error
-            loss = criterion(embeddings, label, hard_pairs)
+            hard_pairs = miner(embeddings.squeeze(), label)  # El miner no funciona y no da ningun error
+            loss = criterion(embeddings.squeeze(), label, hard_pairs)
         else:
-            loss = criterion(embeddings, label)
+            loss = criterion(embeddings.squeeze(), label)
 
         # acc is not a value is a dict
         acc_dict = acc_metric.get_accuracy(embeddings, embeddings, label, label, labelembeddings_come_from_same_source=True)
