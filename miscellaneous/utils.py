@@ -379,18 +379,21 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
             label = label.cuda()
 
         embeddings = model(data)
-        embeddings = embeddings.squeeze()
-        if args.miner:
-            hard_pairs = miner(embeddings, label)  # El miner no funciona y no da ningun error
-            loss = criterion(embeddings, label, hard_pairs)
+        if miner is not None:
+            hard_pairs = miner(embeddings.squeeze(), label)  # El miner no funciona y no da ningun error
+            loss = criterion(embeddings.squeeze(), label, hard_pairs)
         else:
-            loss = criterion(embeddings, label)
+            loss = criterion(embeddings.squeeze(), label)
 
         # acc is not a value is a dict
-        acc_dict = acc_metric.get_accuracy(embeddings.cpu(), embeddings.cpu(), label.cpu(), label.cpu(),
-                                           embeddings_come_from_same_source=True)
+        # TODO Ask for the error
+        # acc_dict = acc_metric.get_accuracy(embeddings.squeeze().cpu(), embeddings.squeeze().cpu(), label.cpu(),
+        # label.cpu(),
+        # embeddings_come_from_same_source=True)
+
         # acc = acc_dict['r_precision']
-        acc = acc_dict['mean_average_precision_at_r']
+        # acc = acc_dict['mean_average_precision_at_r']
+        acc = 0.0
 
     else:
         data = sample['data']
