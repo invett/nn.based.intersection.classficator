@@ -387,11 +387,11 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
 
         # acc is not a value is a dict
         # TODO Ask for the error
-        # acc_dict = acc_metric.get_accuracy(embeddings.squeeze().cpu(), embeddings.squeeze().cpu(), label.cpu(),
-        # label.cpu(),
-        # embeddings_come_from_same_source=True)
+        #acc_dict = acc_metric.get_accuracy(embeddings.squeeze().cpu(), embeddings.squeeze().cpu(), label.cpu(),
+        #                                   label.cpu(),
+        #                                   embeddings_come_from_same_source=True)
 
-        # acc = acc_dict['r_precision']
+        #acc = acc_dict['r_precision']
         # acc = acc_dict['mean_average_precision_at_r']
         acc = 0.0
 
