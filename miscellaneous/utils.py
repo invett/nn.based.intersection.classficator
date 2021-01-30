@@ -380,7 +380,7 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
 
         embeddings = model(data)
         if miner is not None:
-            hard_pairs = miner(embeddings.squeeze(), label)  # El miner no funciona y no da ningun error
+            hard_pairs = miner(embeddings.squeeze(), label)
             loss = criterion(embeddings.squeeze(), label, hard_pairs)
         else:
             loss = criterion(embeddings.squeeze(), label)
