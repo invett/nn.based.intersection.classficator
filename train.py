@@ -113,13 +113,15 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
 
 
 def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
-               save_embeddings=None):
+               save_embeddings=None, miner=None, acc_metric=None):
     """
 
     This function is called both from actual 'validation' and during the 'test'.
     Save embeddings to disk in a similar way of teacher_train.py. Useful in testing
 
     Args:
+        miner:
+        acc_metric:
         args:
         model:
         criterion:
@@ -161,6 +163,7 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
             else:
                 acc, loss, label, predict, embedding = student_network_pass(args, sample, criterion, model,
                                                                             gt_list=gt_list, weights_param=weights,
+                                                                            miner=miner, acc_metric=acc_metric,
                                                                             return_embedding=save_embeddings)
 
             if embedding is not None:
@@ -448,7 +451,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
 
         if epoch % args.validation_step == 0:
             confusion_matrix, acc_val, loss_val = validation(args, model, criterion, dataloader_val, gt_list=gt_list,
-                                                             weights=weights)
+                                                             weights=weights, miner=miner, acc_metric=acc_metric)
 
             if args.scheduler_type == 'ReduceLROnPlateau':
                 print("ReduceLROnPlateau step call")
@@ -902,7 +905,7 @@ if __name__ == '__main__':
     #    2. https: // github.com / pytorch / pytorch / issues / 1355                  #
     # we don't know why but this is needed only in R5G2 machine (hostname NvidiaBrut) #
     ###################################################################################
-    if socket.gethostname() == "NvidiaBrut":
+    if socket.gethostname() == "NvidiaBrut": #or "af407119309b": ~this was a test for the docker container
         print("\nDetected NvidiaBrut - Applying patch\n")
         multiprocessing.set_start_method('spawn')
     else:
