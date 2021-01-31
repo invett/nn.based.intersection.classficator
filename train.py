@@ -331,26 +331,26 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
             reducer = reducers.MeanReducer()
 
         if args.distance_function == 'SNR':
-            criterion = losses.TripletMarginLoss(margin=0.1, swap=False, smooth_loss=False, triplets_per_anchor="all",
+            criterion = losses.TripletMarginLoss(margin=args.margin, swap=False, smooth_loss=False, triplets_per_anchor="all",
                                                  distance=SNRDistance(), reducer=reducer)
             if args.miner:
-                miner = miners.TripletMarginMiner(margin=0.2, type_of_triplets="all", distance=SNRDistance())
+                miner = miners.TripletMarginMiner(margin=args.margin*2.0, type_of_triplets="all", distance=SNRDistance())
             else:
                 miner = None
 
         elif args.distance_function == 'pairwise':
-            criterion = losses.TripletMarginLoss(margin=0.1, swap=False, smooth_loss=False, triplets_per_anchor="all",
+            criterion = losses.TripletMarginLoss(margin=args.margin, swap=False, smooth_loss=False, triplets_per_anchor="all",
                                                  distance=LpDistance(p=args.p), reducer=reducer)
             if args.miner:
-                miner = miners.TripletMarginMiner(margin=0.2, type_of_triplets="all", distance=LpDistance(p=args.p))
+                miner = miners.TripletMarginMiner(margin=args.margin*2.0, type_of_triplets="all", distance=LpDistance(p=args.p))
             else:
                 miner = None
 
         elif args.distance_function == 'cosine':
-            criterion = losses.TripletMarginLoss(margin=0.1, swap=False, smooth_loss=False, triplets_per_anchor="all",
+            criterion = losses.TripletMarginLoss(margin=args.margin, swap=False, smooth_loss=False, triplets_per_anchor="all",
                                                  distance=CosineSimilarity(), reducer=reducer)
             if args.miner:
-                miner = miners.TripletMarginMiner(margin=0.2, type_of_triplets="all", distance=CosineSimilarity())
+                miner = miners.TripletMarginMiner(margin=args.margin*2.0, type_of_triplets="all", distance=CosineSimilarity())
             else:
                 miner = None
 
