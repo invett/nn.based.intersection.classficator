@@ -29,17 +29,28 @@ class kitti360(Dataset):
                     root_dir (string): Directory with all the images.
                     transform (callable, optional): Optional transform to be applied
                         on a sample.
-                """
+
+
+        """
         self.transform = transform
 
         images = {}
         for root, dirs, files in os.walk(path, topdown=False):
             for name in files:
-                head, ext = os.path.splitext(name)
+                # name example: '2013_05_28_drive_0002_sync_0000018453.png'
+                head, ext = os.path.splitext(name)  # name example: '2013_05_28_drive_0002_sync_0000018453.png'
                 if (ext == '.png') and (root.split('/')[-1] == 'left'):
-                    sequence = '_'.join(name.split('_')[0:6])
+                    # sequence example: 2013_05_28_drive_0002_sync
+                    # sequence = '_'.join(name.split('_')[0:6])
+                    sequence = '_'.join(name.split('_')[0:1])
+
+                    # frame example:_0000018453.png
                     frame = name.split('_')[-1]
+
+                    # label example: 2 (from the folder name)
                     label = int(root.split('/')[-2])
+
+                    # this if appends or creates the first element of the list
                     if sequence in images:
                         images[sequence]['labels'].append(label)
                         images[sequence]['frames'].append(os.path.join(root, '_'.join([sequence, frame])))
