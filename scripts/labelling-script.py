@@ -268,9 +268,16 @@ def save_frames(where, simulate=True, mono=True):
                 for seq_file, j in enumerate(i):
                     if j > -1:
                         src = files[seq_ann][seq_file]
-                        src = src.replace("image_00", camera)
-                        dst_folder = os.path.join(where, str(j), leftright)
-                        file_prefix = [s for s in src.split('/') if "2013" in s][0]
+                        src = src.replace("image_00", camera)  # replace image_00; does nothing otherwise; here the origin png
+                        dst_folder = os.path.join(where, str(j), leftright)  # setup destination folder
+                        if dataset == 'KITTI360':
+                            # from
+                            # '/media/ballardini/4tb/ALVARO/KITTI-360/data_2d_raw/2013_05_28_drive_0000_sync/image_00/data_rect/0000000193.png'
+                            # extrats:
+                            # '2013_05_28_drive_0000_sync'
+                            file_prefix = [s for s in src.split('/') if "2013" in s][0]
+                        if dataset == 'alcala-26.01.2021':
+                            file_prefix = src.split('/')[5]
                         file_suffix = os.path.split(src)[1]
                         dst = os.path.join(dst_folder, file_prefix + '_' + file_suffix)
                         if src != dst:
@@ -386,7 +393,8 @@ else:
 
 # ENABLE THIS LINE TO CREATE THE DATASET, IE, CREATE A NEW FOLDER STRUCTURE WITH DATA
 if SAVING_CALLS:
-    # save_frames('/media/ballardini/4tb/KITTI-360/moved', simulate=False, mono=False)
+    #save_frames('/home/ballardini/Desktop/alcala-26.01.2021-kitti360like', simulate=False, mono=True)
+    #save_frames('/media/ballardini/4tb/KITTI-360/moved', simulate=False, mono=False)
     save_csv(annotations)
     exit(1)
 
