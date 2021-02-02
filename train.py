@@ -547,6 +547,7 @@ def main(args, model=None):
     # create dataset and dataloader
     data_path = args.dataset
 
+    # TODO: ALVARO! Esto es lo que queria editar un poco para que quede claro cuando se usa uno y el otro, a lo mejor no con if elif else pero simples if..
     if args.dataloader == 'SequencesDataloader':
         # TODO complete folder names
 
@@ -576,6 +577,7 @@ def main(args, model=None):
         val_path = os.path.join(data_path, '2011_10_03_drive_0034_sync')
 
     else:
+        # THIS ARE THE SECUENCIES FOR KITTI360
         train_sequence_list = ['2013_05_28_drive_0003_sync',
                                '2013_05_28_drive_0002_sync',
                                '2013_05_28_drive_0005_sync',
@@ -585,6 +587,8 @@ def main(args, model=None):
                                '2013_05_28_drive_0010_sync']
         val_sequence_list = ['2013_05_28_drive_0004_sync']
         test_sequence_list = ['2013_05_28_drive_0000_sync']
+
+        # TODO: alvaro, puedes poner lo que nos dijimos ayer? cuando se usa lo de aca arriba y cuando esto?
         kitti360_sequence_list = ['2013_05_28_drive_0003_sync',
                                   '2013_05_28_drive_0002_sync',
                                   '2013_05_28_drive_0005_sync',
