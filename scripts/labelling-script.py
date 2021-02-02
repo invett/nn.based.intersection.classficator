@@ -380,15 +380,6 @@ def summary(annotations):
             prev_frame_class = frame_class
             current_sequence_filenames.append(frame_filename)
 
-    #print("Type 0: ", type_0)
-    #print("Type 1: ", type_1)
-    #print("Type 2: ", type_2)
-    #print("Type 3: ", type_3)
-    #print("Type 4: ", type_4)
-    #print("Type 5: ", type_5)
-    #print("Type 6: ", type_6)
-    #print("Overall: ", type_0 + type_1 + type_2 + type_3 + type_4 + type_5 + type_6, "\n")
-
     print("Type0 seq/frames:", len(type_x_sequences[0]), "/", type_0, "\t-\t", [len(i) for i in type_x_sequences[0]])
     print("Type1 seq/frames:", len(type_x_sequences[1]), "/", type_1, "\t-\t", [len(i) for i in type_x_sequences[1]])
     print("Type2 seq/frames:", len(type_x_sequences[2]), "/", type_2, "\t-\t", [len(i) for i in type_x_sequences[2]])
@@ -399,11 +390,6 @@ def summary(annotations):
     print("Overall Sequences: ", sequences)
     print("The number of frames associated to each sequence is: ", sequences_frame_number)
     print("Sum of frames in seq ", sum(sequences_frame_number), '/', type_x_frames)
-
-    s = 0
-    for x in range(7):
-        s = s + sum([len(i) for i in type_x_sequences[x]])
-    print(s)
 
     train_list = []
     validation_list = []
@@ -419,7 +405,6 @@ def summary(annotations):
         # create a copy of the sequence_x list. Then shuffle, then split using np.split
         # in three parts 0.7 | 0.2 | 0.1 for train/validation/test
 
-        i = 1
         tosplit = type_x_sequences[i].copy()
         random.shuffle(tosplit)
         split_train_val_test = np.split(tosplit, [int(len(tosplit) * 0.7), int(len(tosplit) * 0.9)])
@@ -440,9 +425,19 @@ def summary(annotations):
             for filename in split_test:
                 test_list.append(filename)
 
-    print("Frames for Train/Val/Test: ", len(train_list),"/",len(validation_list),"/",len(test_list))
+    print("Frames for Train/Val/Test: ", len(train_list),"/",len(validation_list),"/",len(test_list), "\tTot: ",
+          len(train_list)+len(validation_list)+len(test_list))
 
-    
+    # save the lists using the base_folder as root
+    with open(os.path.join(base_folder, 'train_list.txt'), 'w') as f:
+        for item in train_list:
+            f.write("%s\n" % item)
+    with open(os.path.join(base_folder, 'validation_list.txt'), 'w') as f:
+        for item in validation_list:
+            f.write("%s\n" % item)
+    with open(os.path.join(base_folder, 'test_list.txt'), 'w') as f:
+        for item in test_list:
+            f.write("%s\n" % item)
 
 
 
