@@ -43,7 +43,8 @@ class alcala26012021(Dataset):
         with open(path_filename) as filename:
             Lines = filename.readlines()
             for line in Lines:
-                trainimages.append(os.path.join('../DualBiSeNet/', line.strip().split(';')[0]))
+                # trainimages.append(os.path.join('../DualBiSeNet/', line.strip().split(';')[0]))
+                trainimages.append(os.path.join(os.path.split(path_filename)[0], line.strip().split(';')[0]))
                 trainlabels.append(line.strip().split(';')[1])
 
         self.transform = transform

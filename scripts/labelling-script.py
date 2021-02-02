@@ -416,13 +416,16 @@ def summary(annotations):
 
         for split_train in split_train_val_test[0]:
             for filename in split_train:
-                train_list.append(filename + ';' + str(i))
+                towrite = os.path.relpath(filename, os.path.commonpath([base_folder, filename]))
+                train_list.append(towrite + ';' + str(i))
         for split_valid in split_train_val_test[1]:
             for filename in split_valid:
-                validation_list.append(filename + ';' + str(i))
+                towrite = os.path.relpath(filename, os.path.commonpath([base_folder, filename]))
+                validation_list.append(towrite + ';' + str(i))
         for split_test in split_train_val_test[2]:
             for filename in split_test:
-                test_list.append(filename + ';' + str(i))
+                towrite = os.path.relpath(filename, os.path.commonpath([base_folder, filename]))
+                test_list.append(towrite + ';' + str(i))
 
     print("Frames for Train/Val/Test: ", len(train_list), "/", len(validation_list), "/", len(test_list), "\tTot: ",
           len(train_list) + len(validation_list) + len(test_list))
