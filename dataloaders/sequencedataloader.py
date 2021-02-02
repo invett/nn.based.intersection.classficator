@@ -43,7 +43,7 @@ class alcala26012021(Dataset):
         with open(path_filename) as filename:
             Lines = filename.readlines()
             for line in Lines:
-                trainimages.append(line.strip().split(';')[0])
+                trainimages.append(os.path.join('../DualBiSeNet/', line.strip().split(';')[0]))
                 trainlabels.append(line.strip().split(';')[1])
 
         self.transform = transform
@@ -72,6 +72,7 @@ class alcala26012021(Dataset):
 
         return sample
 
+
 class kitti360(Dataset):
     def __init__(self, path, sequence_list, transform=None):
         """
@@ -96,7 +97,7 @@ class kitti360(Dataset):
                 if (ext == '.png') and (root.split('/')[-1] == 'left'):
                     # sequence example: 2013_05_28_drive_0002_sync
                     sequence = '_'.join(name.split('_')[0:6])  # kitti360-augusto
-                    #sequence = '_'.join(name.split('_')[0:1])  # alcala26.01.21
+                    # sequence = '_'.join(name.split('_')[0:1])  # alcala26.01.21
 
                     # frame example:_0000018453.png
                     frame = name.split('_')[-1]

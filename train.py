@@ -1003,7 +1003,9 @@ if __name__ == '__main__':
                                                                                        'triplet_ROO_360',
                                                                                        'triplet_3DOO_360',
                                                                                        'Kitti360',
-                                                                                       'Kitti360_3D'],
+                                                                                       'Kitti360_3D',
+                                                                                       'alcala26012021',
+                                                                                       'SequencesDataloader'],
                         help='One of the supported datasets')
 
     args = parser.parse_args()
