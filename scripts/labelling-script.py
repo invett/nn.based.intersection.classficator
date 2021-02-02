@@ -30,6 +30,8 @@ import random
 # dataset = 'AQP'
 dataset = 'alcala-26.01.2021'
 
+# definitions, will be specialized later .. but just to avoid warnings
+resizeme = 0
 
 if dataset == 'KITTI-ROAD':
     base_folder = '/home/ballardini/Desktop/KITTI-ROAD/'
@@ -47,7 +49,7 @@ if dataset == 'KITTI-ROAD':
     position3 = (950, 60)
     csv_filename = "kitti-road-crossings.csv"
     pickle_filename = 'kitti-road-annotations.pickle'
-    resizeme = 0 #resizeme = 0 does not perform the resize
+    resizeme = 0  # resizeme = 0 does not perform the resize
 
 if dataset == 'KITTI360':
     base_folder = '/media/ballardini/4tb/ALVARO/KITTI-360/'
@@ -61,7 +63,7 @@ if dataset == 'KITTI360':
     position3 = (1000, 60)
     csv_filename = "kitti360-crossings.csv"
     pickle_filename = 'kitti360-annotations.pickle'
-    resizeme = 0 #resizeme = 0 does not perform the resize
+    resizeme = 0  # resizeme = 0 does not perform the resize
 
 if dataset == 'ALCALA':
     # images from raw files are 1920x1200 - resize as needed.
@@ -85,7 +87,7 @@ if dataset == 'ALCALA':
     position1 = (10, 30)
     position2 = (500, 30)
     position3 = (500, 60)
-    resizeme = 0 #resizeme = 0 does not perform the resize
+    resizeme = 0  # resizeme = 0 does not perform the resize
     width = 800
 
 if dataset == 'alcala-26.01.2021':
@@ -134,11 +136,10 @@ if dataset == 'AQP':
     # scale=800:-1 R2_video_0002_camera2_png/%010d.png
     base_folder = '/home/ballardini/Desktop/AQP/'
 
-    folders = ['2014_0101_004025_115',
-               '2014_0101_034707_116', '2014_0101_221527_116', '2014_0102_102920_117', '2020_1101_144951_003',
-               '2020_1101_153807_018', '2020_1104_090905_021', '2020_1104_091505_023', '2020_1104_094943_028',
-               '2020_1104_133551_032', '2020_1104_133852_033', '2020_1104_135353_038', '2020_1104_141259_039',
-               '2020_1104_165659_057', '2020_1104_172359_066']
+    folders = ['2014_0101_004025_115', '2014_0101_034707_116', '2014_0101_221527_116', '2014_0102_102920_117',
+               '2020_1101_144951_003', '2020_1101_153807_018', '2020_1104_090905_021', '2020_1104_091505_023',
+               '2020_1104_094943_028', '2020_1104_133551_032', '2020_1104_133852_033', '2020_1104_135353_038',
+               '2020_1104_141259_039', '2020_1104_165659_057', '2020_1104_172359_066']
 
     csv_filename = "aqp.csv"
     pickle_filename = 'aqp.pickle'
@@ -147,7 +148,7 @@ if dataset == 'AQP':
     position1 = (10, 30)
     position2 = (500, 30)
     position3 = (500, 60)
-    resizeme = 0 #resizeme = 0 does not perform the resize
+    resizeme = 0  # resizeme = 0 does not perform the resize
     width = 800
 
 font = cv2.FONT_HERSHEY_SIMPLEX
@@ -269,7 +270,8 @@ def save_frames(where, simulate=True, mono=True):
                 for seq_file, j in enumerate(i):
                     if j > -1:
                         src = files[seq_ann][seq_file]
-                        src = src.replace("image_00", camera)  # replace image_00; does nothing otherwise; here the origin png
+                        src = src.replace("image_00",
+                                          camera)  # replace image_00; does nothing otherwise; here the origin png
                         dst_folder = os.path.join(where, str(j), leftright)  # setup destination folder
                         if dataset == 'KITTI360':
                             # from
@@ -409,24 +411,21 @@ def summary(annotations):
         random.shuffle(tosplit)
         split_train_val_test = np.split(tosplit, [int(len(tosplit) * 0.7), int(len(tosplit) * 0.9)])
 
-        a = sum([len(i) for i in tosplit])
-        b = sum([len(i) for i in split_train_val_test[0]]) + sum([len(i) for i in split_train_val_test[1]]) + sum(
-            [len(i) for i in split_train_val_test[2]])
-
-        # and append those lists for each of the train/val/test sets
+        # and append those lists for each of the train/val/test sets ; don't forget to add also the label at the end
+        # so the file will have namefile;label
 
         for split_train in split_train_val_test[0]:
             for filename in split_train:
-                train_list.append(filename)
+                train_list.append(filename + ';' + str(i))
         for split_valid in split_train_val_test[1]:
             for filename in split_valid:
-                validation_list.append(filename)
+                validation_list.append(filename + ';' + str(i))
         for split_test in split_train_val_test[2]:
             for filename in split_test:
-                test_list.append(filename)
+                test_list.append(filename + ';' + str(i))
 
-    print("Frames for Train/Val/Test: ", len(train_list),"/",len(validation_list),"/",len(test_list), "\tTot: ",
-          len(train_list)+len(validation_list)+len(test_list))
+    print("Frames for Train/Val/Test: ", len(train_list), "/", len(validation_list), "/", len(test_list), "\tTot: ",
+          len(train_list) + len(validation_list) + len(test_list))
 
     # save the lists using the base_folder as root
     with open(os.path.join(base_folder, 'train_list.txt'), 'w') as f:
@@ -440,9 +439,8 @@ def summary(annotations):
             f.write("%s\n" % item)
 
 
-
-
 for folder in folders:
+    path = ''
     if dataset == 'KITTI-ROAD':
         path = os.path.join(base_folder, folder, 'image_02/data')
     if dataset == 'KITTI360':
@@ -478,8 +476,8 @@ else:
 
 # ENABLE THIS LINE TO CREATE THE DATASET, IE, CREATE A NEW FOLDER STRUCTURE WITH DATA
 if SAVING_CALLS:
-    #save_frames('/home/ballardini/Desktop/alcala-26.01.2021-kitti360like', simulate=False, mono=True)
-    #save_frames('/media/ballardini/4tb/KITTI-360/moved', simulate=False, mono=False)
+    # save_frames('/home/ballardini/Desktop/alcala-26.01.2021-kitti360like', simulate=False, mono=True)
+    # save_frames('/media/ballardini/4tb/KITTI-360/moved', simulate=False, mono=False)
     save_csv(annotations)
     exit(1)
 
@@ -528,9 +526,8 @@ for sequence_number, sequence in enumerate(files):
             img[v_pos:v_pos + img_type_0.shape[0], h_pos:h_pos + img_type_0.shape[1]] = img_type_6
 
         cv2.putText(img, str(annotations[sequence_number][file]), position1, font, fontScale, fontColor, lineType)
-        cv2.putText(img, str(file) + '/' + str(len(sequence)-2), position2, font, fontScale, fontColor, lineType)
+        cv2.putText(img, str(file) + '/' + str(len(sequence) - 2), position2, font, fontScale, fontColor, lineType)
         cv2.putText(img, os.path.basename(sequence[file]), position3, font, fontScale, fontColor, lineType)
-
 
         cv2.imshow('image', img)
 
@@ -609,12 +606,7 @@ for sequence_number, sequence in enumerate(files):
                     continue
                 if 0 <= frame < len(sequence):
                     file = frame
-                    break
-            # while True:
-            #     frame = int(input("Insert GOTO frame: "))
-            #     if 0 <= frame < len(sequence):
-            #         file = frame
-            #         break
+                    break  # while True:  #     frame = int(input("Insert GOTO frame: "))  #     if 0 <= frame < len(sequence):  #         file = frame  #         break
 
         if k == 113:  # pressing q
             cv2.waitKey(10)
