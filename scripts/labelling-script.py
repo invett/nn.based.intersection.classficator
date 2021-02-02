@@ -341,27 +341,30 @@ def summary(annotations):
         for frame_class, frame_filename in zip(annotations[i], files[i]):
             if current_sequence_frames == 0 and frame_class == -1:
                 continue
+
             # check for sequence. if the current frame number is not the previous+1, then we have a new sequence.
-            if not (prev_frame_class is None or (frame_class == prev_frame_class)):
+            # we need to enter here also if we're analyzing the last frame, or we will lost ALL the frames in the last
+            # sequence of the folder
+            if not (prev_frame_class is None or (frame_class == prev_frame_class)) or (frame_filename == files[i][-1]):
+
+                # if we're in the last frame, we need to re-check if the last frame belongs to the sequence again
+                if frame_filename == files[i][-1]:
+                    if frame_class == prev_frame_class:
+                        current_sequence_frames = current_sequence_frames + 1
+                        current_sequence_filenames.append(frame_filename)
 
                 if prev_frame_class == 0:
                     type_x_sequences[0].append(current_sequence_filenames.copy())
-
                 if prev_frame_class == 1:
                     type_x_sequences[1].append(current_sequence_filenames.copy())
-
                 if prev_frame_class == 2:
                     type_x_sequences[2].append(current_sequence_filenames.copy())
-
                 if prev_frame_class == 3:
                     type_x_sequences[3].append(current_sequence_filenames.copy())
-
                 if prev_frame_class == 4:
                     type_x_sequences[4].append(current_sequence_filenames.copy())
-
                 if prev_frame_class == 5:
                     type_x_sequences[5].append(current_sequence_filenames.copy())
-
                 if prev_frame_class == 6:
                     type_x_sequences[6].append(current_sequence_filenames.copy())
 
