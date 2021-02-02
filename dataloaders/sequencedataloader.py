@@ -60,7 +60,7 @@ class alcala26012021(Dataset):
         imagepath = self.images[idx]
         image = Image.open(imagepath)
 
-        label = self.labels[idx]
+        label = int(self.labels[idx])
         neg_label = choice([i for i in range(0, 7) if i != label])
 
         sample = {'data': image,

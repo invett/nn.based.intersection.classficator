@@ -24,7 +24,7 @@ from torch.utils.data import DataLoader
 
 import wandb
 from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromGeneratedDataset, \
-    triplet_BOO, triplet_OBB, kitti360, Kitti2011_RGB, triplet_ROO, triplet_ROO_360, SequencesDataloader
+    triplet_BOO, triplet_OBB, kitti360, Kitti2011_RGB, triplet_ROO, triplet_ROO_360, SequencesDataloader, alcala26012021
 from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanovis_testing, lstm_network_pass
@@ -326,31 +326,39 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                 class_weights = torch.FloatTensor(weights).cuda()
             reducer = reducers.ClassWeightedReducer(class_weights)
         elif args.nonzero:
+            weights = None
             reducer = reducers.AvgNonZeroReducer()
         else:
+            weights = None
             reducer = reducers.MeanReducer()
 
         if args.distance_function == 'SNR':
-            criterion = losses.TripletMarginLoss(margin=args.margin, swap=False, smooth_loss=False, triplets_per_anchor="all",
+            criterion = losses.TripletMarginLoss(margin=args.margin, swap=False, smooth_loss=False,
+                                                 triplets_per_anchor="all",
                                                  distance=SNRDistance(), reducer=reducer)
             if args.miner:
-                miner = miners.TripletMarginMiner(margin=args.margin*2.0, type_of_triplets="all", distance=SNRDistance())
+                miner = miners.TripletMarginMiner(margin=args.margin * 2.0, type_of_triplets="all",
+                                                  distance=SNRDistance())
             else:
                 miner = None
 
         elif args.distance_function == 'pairwise':
-            criterion = losses.TripletMarginLoss(margin=args.margin, swap=False, smooth_loss=False, triplets_per_anchor="all",
+            criterion = losses.TripletMarginLoss(margin=args.margin, swap=False, smooth_loss=False,
+                                                 triplets_per_anchor="all",
                                                  distance=LpDistance(p=args.p), reducer=reducer)
             if args.miner:
-                miner = miners.TripletMarginMiner(margin=args.margin*2.0, type_of_triplets="all", distance=LpDistance(p=args.p))
+                miner = miners.TripletMarginMiner(margin=args.margin * 2.0, type_of_triplets="all",
+                                                  distance=LpDistance(p=args.p))
             else:
                 miner = None
 
         elif args.distance_function == 'cosine':
-            criterion = losses.TripletMarginLoss(margin=args.margin, swap=False, smooth_loss=False, triplets_per_anchor="all",
+            criterion = losses.TripletMarginLoss(margin=args.margin, swap=False, smooth_loss=False,
+                                                 triplets_per_anchor="all",
                                                  distance=CosineSimilarity(), reducer=reducer)
             if args.miner:
-                miner = miners.TripletMarginMiner(margin=args.margin*2.0, type_of_triplets="all", distance=CosineSimilarity())
+                miner = miners.TripletMarginMiner(margin=args.margin * 2.0, type_of_triplets="all",
+                                                  distance=CosineSimilarity())
             else:
                 miner = None
 
@@ -711,6 +719,13 @@ def main(args, model=None):
 
             train_dataset = SequencesDataloader(args.dataset, train_sequence_list, transform=None)
 
+        elif args.dataloader == 'alcala26012021':
+            val_dataset = alcala26012021(os.path.join(args.dataset, 'validation_list.txt'),
+                                         transform=rgb_image_test_transforms)
+
+            train_dataset = alcala26012021(os.path.join(args.dataset, 'train_list.txt'),
+                                           transform=rgb_image_train_transforms)
+
 
         else:
             raise Exception("Dataloader not found")
@@ -909,7 +924,7 @@ if __name__ == '__main__':
     #    2. https: // github.com / pytorch / pytorch / issues / 1355                  #
     # we don't know why but this is needed only in R5G2 machine (hostname NvidiaBrut) #
     ###################################################################################
-    if socket.gethostname() == "NvidiaBrut": #or "af407119309b": ~this was a test for the docker container
+    if socket.gethostname() == "NvidiaBrut":  # or "af407119309b": ~this was a test for the docker container
         print("\nDetected NvidiaBrut - Applying patch\n")
         multiprocessing.set_start_method('spawn')
     else:
