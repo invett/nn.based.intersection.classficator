@@ -21,6 +21,7 @@ import json
 
 import cv2
 import numpy as np
+import random
 
 # datasets: KITTI360 | ALCALA | OXFORD | KITTI-ROAD
 # dataset = 'KITTI-ROAD'
@@ -324,15 +325,9 @@ def summary(annotations):
     type_4 = sum(sum(i == 4 for i in j) for j in annotations)
     type_5 = sum(sum(i == 5 for i in j) for j in annotations)
     type_6 = sum(sum(i == 6 for i in j) for j in annotations)
+    type_x_frames = type_0 + type_1 + type_2 + type_3 + type_4 + type_5 + type_6
 
-    print("Type 0: ", type_0)
-    print("Type 1: ", type_1)
-    print("Type 2: ", type_2)
-    print("Type 3: ", type_3)
-    print("Type 4: ", type_4)
-    print("Type 5: ", type_5)
-    print("Type 6: ", type_6)
-    print("Overall: ", type_0 + type_1 + type_2 + type_3 + type_4 + type_5 + type_6, "\n")
+    type_x_sequences = [[], [], [], [], [], [], []]
 
     sequences = 0
     sequences_frame_number = []
@@ -340,21 +335,113 @@ def summary(annotations):
         current_sequence_frames = 0
         prev_frame_class = None
 
-        for frame_class in annotations[i]:
+        current_sequence_filenames = []
+
+        # iterate both annotations and filename lists together, contains labels and frame-names
+        for frame_class, frame_filename in zip(annotations[i], files[i]):
             if current_sequence_frames == 0 and frame_class == -1:
                 continue
             # check for sequence. if the current frame number is not the previous+1, then we have a new sequence.
             if not (prev_frame_class is None or (frame_class == prev_frame_class)):
+
+                if prev_frame_class == 0:
+                    type_x_sequences[0].append(current_sequence_filenames.copy())
+
+                if prev_frame_class == 1:
+                    type_x_sequences[1].append(current_sequence_filenames.copy())
+
+                if prev_frame_class == 2:
+                    type_x_sequences[2].append(current_sequence_filenames.copy())
+
+                if prev_frame_class == 3:
+                    type_x_sequences[3].append(current_sequence_filenames.copy())
+
+                if prev_frame_class == 4:
+                    type_x_sequences[4].append(current_sequence_filenames.copy())
+
+                if prev_frame_class == 5:
+                    type_x_sequences[5].append(current_sequence_filenames.copy())
+
+                if prev_frame_class == 6:
+                    type_x_sequences[6].append(current_sequence_filenames.copy())
+
+                if len(current_sequence_filenames) != current_sequence_frames:
+                    print("Error")
                 sequences_frame_number.append(current_sequence_frames)
                 prev_frame_class = None
                 current_sequence_frames = 0
                 sequences += 1
+                current_sequence_filenames = []
                 continue
             current_sequence_frames = current_sequence_frames + 1
             prev_frame_class = frame_class
+            current_sequence_filenames.append(frame_filename)
 
-    print("Sequences: ", sequences)
+    #print("Type 0: ", type_0)
+    #print("Type 1: ", type_1)
+    #print("Type 2: ", type_2)
+    #print("Type 3: ", type_3)
+    #print("Type 4: ", type_4)
+    #print("Type 5: ", type_5)
+    #print("Type 6: ", type_6)
+    #print("Overall: ", type_0 + type_1 + type_2 + type_3 + type_4 + type_5 + type_6, "\n")
+
+    print("Type0 seq/frames:", len(type_x_sequences[0]), "/", type_0, "\t-\t", [len(i) for i in type_x_sequences[0]])
+    print("Type1 seq/frames:", len(type_x_sequences[1]), "/", type_1, "\t-\t", [len(i) for i in type_x_sequences[1]])
+    print("Type2 seq/frames:", len(type_x_sequences[2]), "/", type_2, "\t-\t", [len(i) for i in type_x_sequences[2]])
+    print("Type3 seq/frames:", len(type_x_sequences[3]), "/", type_3, "\t-\t", [len(i) for i in type_x_sequences[3]])
+    print("Type4 seq/frames:", len(type_x_sequences[4]), "/", type_4, "\t-\t", [len(i) for i in type_x_sequences[4]])
+    print("Type5 seq/frames:", len(type_x_sequences[5]), "/", type_5, "\t-\t", [len(i) for i in type_x_sequences[5]])
+    print("Type6 seq/frames:", len(type_x_sequences[6]), "/", type_6, "\t-\t", [len(i) for i in type_x_sequences[6]])
+    print("Overall Sequences: ", sequences)
     print("The number of frames associated to each sequence is: ", sequences_frame_number)
+    print("Sum of frames in seq ", sum(sequences_frame_number), '/', type_x_frames)
+
+    s = 0
+    for x in range(7):
+        s = s + sum([len(i) for i in type_x_sequences[x]])
+    print(s)
+
+    train_list = []
+    validation_list = []
+    test_list = []
+
+    for i in range(7):
+        # split_train_val_test = list(range(len(type_x_sequences[i])))
+        # random.shuffle(split_train_val_test)
+        # a = split_train_val_test[:int(len(split_train_val_test) * 0.8)]
+        # a = split_train_val_test[:int(len(split_train_val_test) * 0.8)]
+        # a = split_train_val_test[:int(len(split_train_val_test) * 0.8)]
+
+        # create a copy of the sequence_x list. Then shuffle, then split using np.split
+        # in three parts 0.7 | 0.2 | 0.1 for train/validation/test
+
+        i = 1
+        tosplit = type_x_sequences[i].copy()
+        random.shuffle(tosplit)
+        split_train_val_test = np.split(tosplit, [int(len(tosplit) * 0.7), int(len(tosplit) * 0.9)])
+
+        a = sum([len(i) for i in tosplit])
+        b = sum([len(i) for i in split_train_val_test[0]]) + sum([len(i) for i in split_train_val_test[1]]) + sum(
+            [len(i) for i in split_train_val_test[2]])
+
+        # and append those lists for each of the train/val/test sets
+
+        for split_train in split_train_val_test[0]:
+            for filename in split_train:
+                train_list.append(filename)
+        for split_valid in split_train_val_test[1]:
+            for filename in split_valid:
+                validation_list.append(filename)
+        for split_test in split_train_val_test[2]:
+            for filename in split_test:
+                test_list.append(filename)
+
+    print("Frames for Train/Val/Test: ", len(train_list),"/",len(validation_list),"/",len(test_list))
+
+    
+
+
 
 
 for folder in folders:
