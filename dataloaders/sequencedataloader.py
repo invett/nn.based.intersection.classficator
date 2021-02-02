@@ -18,6 +18,48 @@ from scripts.OSM_generator import Crossing, test_crossing_pose
 from random import choice
 
 
+class alcala26012021(Dataset):
+    def __init__(self, path, sequence_list, transform=None):
+        """
+
+                THIS IS THE DATALOADER USES the split files generated with labelling-script.py
+
+                Args:
+                    root_dir (string): Directory with all the images.
+                    transform (callable, optional): Optional transform to be applied
+                        on a sample.
+
+
+        """
+        self.transform = transform
+
+        trainimages = []
+        trainlabels = []
+
+        self.images = trainimages
+        self.labels = trainlabels
+
+    def __len__(self):
+
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        # Select file subset
+        imagepath = self.images[idx]
+        image = Image.open(imagepath)
+
+        label = self.labels[idx]
+        neg_label = choice([i for i in range(0, 7) if i != label])
+
+        sample = {'data': image,
+                  'label': label,
+                  'neg_label': neg_label}
+
+        if self.transform:
+            sample['data'] = self.transform(sample['data'])
+
+        return sample
+
 class kitti360(Dataset):
     def __init__(self, path, sequence_list, transform=None):
         """
@@ -41,8 +83,8 @@ class kitti360(Dataset):
                 head, ext = os.path.splitext(name)  # name example: '2013_05_28_drive_0002_sync_0000018453.png'
                 if (ext == '.png') and (root.split('/')[-1] == 'left'):
                     # sequence example: 2013_05_28_drive_0002_sync
-                    # sequence = '_'.join(name.split('_')[0:6])
-                    sequence = '_'.join(name.split('_')[0:1])
+                    sequence = '_'.join(name.split('_')[0:6])  # kitti360-augusto
+                    #sequence = '_'.join(name.split('_')[0:1])  # alcala26.01.21
 
                     # frame example:_0000018453.png
                     frame = name.split('_')[-1]
@@ -60,6 +102,17 @@ class kitti360(Dataset):
 
         trainimages = []
         trainlabels = []
+
+        # images should contain a dictionary with
+        # 2013_05_28_drive_0003_sync = {dict: 2} {'labels': [..., ...], 'frames': ['../DualBiseNet/kitti/5/left/.png']
+        # 2013_05_28_drive_0002_sync = {dict: 2} {'labels': [..., ...], 'frames': ['../DualBiseNet/kitti/5/left/.png']
+        # 2013_05_28_drive_0005_sync = {dict: 2} {'labels': [..., ...], 'frames': ['../DualBiseNet/kitti/5/left/.png']
+        # 2013_05_28_drive_0006_sync = {dict: 2} {'labels': [..., ...], 'frames': ['../DualBiseNet/kitti/5/left/.png']
+        # 2013_05_28_drive_0007_sync = {dict: 2} {'labels': [..., ...], 'frames': ['../DualBiseNet/kitti/5/left/.png']
+        # 2013_05_28_drive_0009_sync = {dict: 2} {'labels': [..., ...], 'frames': ['../DualBiseNet/kitti/5/left/.png']
+        # 2013_05_28_drive_0010_sync = {dict: 2} {'labels': [..., ...], 'frames': ['../DualBiseNet/kitti/5/left/.png']
+        # 2013_05_28_drive_0004_sync = {dict: 2} {'labels': [..., ...], 'frames': ['../DualBiseNet/kitti/5/left/.png']
+        # 2013_05_28_drive_0000_sync = {dict: 2} {'labels': [..., ...], 'frames': ['../DualBiseNet/kitti/5/left/.png']
         for sequence, samples in images.items():
             if sequence in sequence_list:
                 for k, list in samples.items():
