@@ -19,10 +19,12 @@ from random import choice
 
 
 class alcala26012021(Dataset):
-    def __init__(self, path, sequence_list, transform=None):
+    def __init__(self, path_filename=None, transform=None):
         """
 
                 THIS IS THE DATALOADER USES the split files generated with labelling-script.py
+
+                USED TO TRAIN THE FRAME-BASED CLASSIFICATOR!
 
                 Args:
                     root_dir (string): Directory with all the images.
@@ -31,10 +33,20 @@ class alcala26012021(Dataset):
 
 
         """
-        self.transform = transform
 
         trainimages = []
         trainlabels = []
+
+        if not os.path.isfile(path_filename):
+            print('Class: ' + __class__.__name__, " - file doesn't exist - ", path_filename)
+
+        with open(path_filename) as filename:
+            Lines = filename.readlines()
+            for line in Lines:
+                trainimages.append(line.strip().split(';')[0])
+                trainlabels.append(line.strip().split(';')[1])
+
+        self.transform = transform
 
         self.images = trainimages
         self.labels = trainlabels
