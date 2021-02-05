@@ -8,7 +8,7 @@ import time
 import torchvision.transforms as transforms
 from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror, GenerateNewDataset, \
     WriteDebugInfoOnNewDataset, GenerateWarping
-from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromAANETandDualBisenet360
+from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromAANETandDualBisenet360, alcala26012021
 import matplotlib.pyplot as plt
 from miscellaneous.utils import send_telegram_message, send_telegram_picture
 
@@ -21,15 +21,18 @@ from miscellaneous.utils import send_telegram_message, send_telegram_picture
 
 def main(args):
 
-    folders = np.array([os.path.join(args.rootfolder, folder) for folder in sorted(os.listdir(args.rootfolder)) if
-                        os.path.isdir(os.path.join(args.rootfolder, folder))])
-
     # folders = [folders[1]]
 
     # execute = 'warping'
     # execute = 'standard'
     # execute = 'kitti360'
-    execute = 'kitti360-warping'
+    # execute = 'kitti360-warping'
+    execute = 'alcala26012021'
+
+    # alcala26122012 does not walk os paths! it directly uses a .txt file!
+    if not execute == 'alcala26012021':
+        folders = np.array([os.path.join(args.rootfolder, folder) for folder in sorted(os.listdir(args.rootfolder)) if
+                            os.path.isdir(os.path.join(args.rootfolder, folder))])
 
     if execute == 'kitti360-warping':
         '''
@@ -77,7 +80,7 @@ def main(args):
         dataset = fromAANETandDualBisenet(folders, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=1.0,
                                                                                                  random_Ry_degrees=1.0,
                                                                                                  random_Rz_degrees=1.0,
-                                                                                                 random_Tx_meters=5.0,
+                                                                                                 random_Tx_meters=2.5,
                                                                                                  random_Ty_meters=1.0,
                                                                                                  random_Tz_meters=0.1,
                                                                                                  warpdataset='kitti'),
@@ -86,6 +89,21 @@ def main(args):
                                                                                  WriteDebugInfoOnNewDataset(),
                                                                                  GenerateNewDataset(args.savefolder)]),
                                           distance=args.distance_from_intersection)
+
+    if execute == 'alcala26012021':
+        dataset = alcala26012021(path_filename=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
+                                                                                                 random_Ry_degrees=0.5,
+                                                                                                 random_Rz_degrees=0.5,
+                                                                                                 random_Tx_meters=2.0,
+                                                                                                 random_Ty_meters=1.0,
+                                                                                                 random_Tz_meters=0.1,
+                                                                                                 warpdataset='alcala26012021'),
+                                                                                 #Mirror(),
+                                                                                 Rescale((224, 224)),
+                                                                                 WriteDebugInfoOnNewDataset(),
+                                                                                 GenerateNewDataset(args.savefolder)]), usePIL=False)
+
+
 
     if execute == 'standard':
         dataset = fromAANETandDualBisenet(folders, transform=transforms.Compose([#Normalize(),
@@ -110,7 +128,18 @@ def main(args):
     # num_workers starts from 0
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=args.workers)
 
-    for index in range(args.augmentation+1):
+    # for i in range(10):
+    #     sample = dataloader.dataset.__getitem__(2030)
+    #     data = sample['data']
+    #     label = sample['label']
+    #     # a = plt.figure()
+    #     # plt.imshow(sample['data'] / 255.0)
+    #     # send_telegram_picture(a, '')
+    #     # plt.close('all')
+    #
+    # exit(1)
+
+    for index in range(args.augmentation + 1):
         print("Generating run {} ... ".format(index))
         if args.telegram:
             send_telegram_message("Generating run {} ... ".format(index))
@@ -163,8 +192,12 @@ if __name__ == '__main__':
 
     # parser.add_argument('--rootfolder', default="/home/malvaro/Documentos/DualBiSeNet/data_raw", type=str, help='Root folder for all datasets')
     # parser.add_argument('--savefolder', default="/home/malvaro/Documentos/DualBiSeNet/data_raw_bev", type=str, help='Where to save the new data')
-    parser.add_argument('--rootfolder', default="/media/augusto/500GBHECTOR/augusto/kitti360-augusto", type=str, help='Root folder for all datasets')
-    parser.add_argument('--savefolder', default="/media/augusto/500GBHECTOR/augusto/kitti360-augusto-augmented-warped", type=str, help='Where to save the new data')
+    # parser.add_argument('--rootfolder', default="/media/augusto/500GBHECTOR/augusto/kitti360-augusto", type=str, help='Root folder for all datasets')
+    # parser.add_argument('--savefolder', default="/media/augusto/500GBHECTOR/augusto/kitti360-augusto-augmented-warped", type=str, help='Where to save the new data')
+
+    parser.add_argument('--rootfolder', default="/home/ballardini/Desktop/alcala-26.01.2021_selected/all.txt", type=str, help='Root folder for all datasets')
+    parser.add_argument('--savefolder', default="/home/ballardini/Desktop/alcala-26.01.2021_selected_augmented_warped", type=str, help='Where to save the new data')
+
     parser.add_argument('--augmentation', type=int, default=50, help='How many files generate for each of the BEVs')
     parser.add_argument('--workers', type=int, default=0, help='How many workers for the dataloader')
     parser.add_argument('--telegram', action='store_true', help='Send info through Telegram')
@@ -190,24 +223,24 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    if args.telegram:
-        send_telegram_message("Executing generate.bev.dataset.py")
+    # if args.telegram:
+    #     send_telegram_message("Executing generate.bev.dataset.py")
 
     try:
         tic = time.time()
         main(args)
         toc = time.time()
-        if args.telegram:
-            send_telegram_message("Generation of dataset ended correctly after " +
-                                  str(time.strftime("%H:%M:%S", time.gmtime(toc - tic))))
+        # if args.telegram:
+        #     send_telegram_message("Generation of dataset ended correctly after " +
+        #                           str(time.strftime("%H:%M:%S", time.gmtime(toc - tic))))
 
     except (KeyboardInterrupt, SystemExit):
         print("Shutdown requested")
-        if args.telegram:
-            send_telegram_message("Shutdown requested")
+        # if args.telegram:
+        #     send_telegram_message("Shutdown requested")
         raise
     except:
         e = sys.exc_info()
         print(e)
-        if args.telegram:
-            send_telegram_message("Error generating the dataset" + str(e))
+        # if args.telegram:
+        #     send_telegram_message("Error generating the dataset" + str(e))

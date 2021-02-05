@@ -19,7 +19,7 @@ from random import choice
 
 
 class alcala26012021(Dataset):
-    def __init__(self, path_filename=None, transform=None):
+    def __init__(self, path_filename=None, transform=None, usePIL=True):
         """
 
                 THIS IS THE DATALOADER USES the split files generated with labelling-script.py
@@ -27,9 +27,11 @@ class alcala26012021(Dataset):
                 USED TO TRAIN THE FRAME-BASED CLASSIFICATOR!
 
                 Args:
-                    root_dir (string): Directory with all the images.
+                    path_filename (string): filename with all the files that you want to use; this dataloader uses a file
+                    with all the images, does not walk a os folder!
                     transform (callable, optional): Optional transform to be applied
                         on a sample.
+                    usePIL: default True, but if not, return numpy-arrays!
 
 
         """
@@ -37,6 +39,7 @@ class alcala26012021(Dataset):
         trainimages = []
         trainlabels = []
 
+        # Check the file containing all the images! This dataloader does not work walking a folder!
         if not os.path.isfile(path_filename):
             print('Class: ' + __class__.__name__, " - file doesn't exist - ", path_filename)
 
@@ -51,6 +54,7 @@ class alcala26012021(Dataset):
 
         self.images = trainimages
         self.labels = trainlabels
+        self.usePIL = usePIL
 
     def __len__(self):
 
@@ -61,15 +65,50 @@ class alcala26012021(Dataset):
         imagepath = self.images[idx]
         image = Image.open(imagepath)
 
+        print(imagepath)
+
         label = int(self.labels[idx])
         neg_label = choice([i for i in range(0, 7) if i != label])
 
-        sample = {'data': image,
+        if not self.usePIL:
+            image = np.asarray(image)
+
+        sample = {'image_02': image,
                   'label': label,
                   'neg_label': neg_label}
 
+        transformed = []
         if self.transform:
-            sample['data'] = self.transform(sample['data'])
+            transformed = self.transform(sample)
+
+        # save the image if needed, ie, we have the path inserted with the "fake-transform".
+        if "path" in transformed:
+            print("Saving image in ", transformed['path'])
+
+            dataset_path = os.path.join(transformed['path'], imagepath.split('/')[-2])
+            if not os.path.isdir(dataset_path):
+                os.mkdir(dataset_path)
+            base_file_star = os.path.splitext(os.path.split(imagepath)[1])[0]
+            current_filelist = glob.glob1(dataset_path, base_file_star + '*')
+            last_number = len([x for x in current_filelist if "json" not in x])
+            final_filename = base_file_star + '.' + str(last_number + 1).zfill(3) + '.png'
+            bev_path_filename = os.path.join(dataset_path, final_filename)
+
+            wheretowrite = os.path.join(transformed['path'],'output.txt')
+            towrite = os.path.join(os.path.split(dataset_path)[1], final_filename) + ';' + str(
+                transformed['label']) + '\n'
+            with open(wheretowrite, 'a') as file_object:
+                file_object.write(towrite)
+
+            # path must already exist!
+            if not os.path.exists(dataset_path):
+                os.makedirs(dataset_path)
+            flag = cv2.imwrite(bev_path_filename, transformed['data'])
+            assert flag, "can't write file"
+
+        sample = {'data': transformed['data'],
+                  'label': label,
+                  'neg_label': neg_label}
 
         return sample
 
