@@ -386,12 +386,9 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
             loss = criterion(embeddings.squeeze(), label)
 
         # acc is not a value is a dict
-        acc_dict = acc_metric.get_accuracy(embeddings.squeeze().detach().cpu().numpy(),
+        acc = acc_metric.get_accuracy(embeddings.squeeze().detach().cpu().numpy(),
                                            embeddings.squeeze().detach().cpu().numpy(), label.cpu().numpy(),
                                            label.cpu().numpy(), embeddings_come_from_same_source=True)
-
-        acc = acc_dict['r_precision']
-        # acc = acc_dict['mean_average_precision_at_r']
 
     else:
         data = sample['data']

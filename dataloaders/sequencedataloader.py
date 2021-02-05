@@ -13,9 +13,10 @@ from numpy import load
 from torch.utils.data import Dataset
 
 from miscellaneous.utils import write_ply
-from scripts.OSM_generator import Crossing, test_crossing_pose
 
 from random import choice
+
+from scripts.OSM_generator import test_crossing_pose, Crossing
 
 
 class alcala26012021(Dataset):

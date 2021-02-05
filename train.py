@@ -4,8 +4,10 @@ import os
 import socket  # to get the machine name
 import time
 import warnings
+from collections import Counter
 from datetime import datetime
 from functools import partial
+from statistics import mean
 
 import kornia
 import matplotlib.pyplot as plt
@@ -174,7 +176,11 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
                 predRecord = np.append(predRecord, predict)
 
             loss_record += loss.item()
-            acc_record += acc
+
+            if args.metric:
+                acc_record = dict(Counter(acc_record) + Counter(acc))
+            else:
+                acc_record += acc
 
             tq.update(args.batch_size)
             tq.set_postfix(loss='%.6f' % loss)
@@ -185,8 +191,14 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
     loss_val_mean = loss_record / len(dataloader)
     print('loss for test/validation : %f' % loss_val_mean)
 
-    acc = acc_record / len(dataloader)
-    print('Accuracy for test/validation : %f\n' % acc)
+    if args.metric:
+        acc = mean(acc_record[k] for k in acc_record) / len(dataloader)
+        print('Accuracy for test/validation : %f\n' % acc)
+        acc_record = {k: v / len(dataloader) for k, v in acc_record.items()}
+        acc = acc_record
+    else:
+        acc = acc_record / len(dataloader)
+        print('Accuracy for test/validation : %f\n' % acc)
 
     if save_embeddings:
         all_embedding_matrix = np.asarray(all_embedding_matrix)
@@ -318,7 +330,8 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
     elif args.metric:
         gt_list = None  # No need of centroids
         # Accuracy calculator for metric learning
-        acc_metric = AccuracyCalculator(include=('mean_average_precision_at_r', 'r_precision'))
+        acc_metric = AccuracyCalculator()
+        # Accuracy metrics for metric learning
 
         if args.weighted:
             if args.dataloader == 'Kitti360':
@@ -416,7 +429,10 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         tq = tqdm.tqdm(total=len(dataloader_train) * args.batch_size)
         tq.set_description('epoch %d, lr %.e' % (epoch, lr))
         loss_record = 0.0
-        acc_record = 0.0
+        if args.metic:
+            acc_record = {}
+        else:
+            acc_record = 0.0
 
         for sample in dataloader_train:
             if args.model == 'LSTM':
@@ -434,7 +450,12 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
             tq.set_postfix(loss='%.6f' % loss)
 
             loss_record += loss.item()
-            acc_record += acc
+
+            if args.metric:
+                acc_record = dict(Counter(acc_record) + Counter(acc))
+                acc = mean(acc[k] for k in acc)
+            else:
+                acc_record += acc
 
             if not args.nowandb:  # if nowandb flag was set, skip
                 wandb.log({"batch_training_accuracy": acc,
@@ -457,14 +478,31 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         print('...')
         print('loss for train : {:.4f} - Total elements: {:2d}'.format(loss_train_mean, len(dataloader_train)))
 
-        acc_train = acc_record / len(dataloader_train)
-        print('acc for train : %f' % acc_train)
+        if args.metric:
+            acc_train = mean(acc_record[k] for k in acc_record)
+            acc_train = acc_train / len(dataloader_train)
+            print('acc for train : %f' % acc_train)
 
-        if not args.nowandb:  # if nowandb flag was set, skip
-            wandb.log({"Train/loss": loss_train_mean,
-                       "Train/acc": acc_train,
-                       "Train/lr": optimizer.param_groups[0]['lr'],
-                       "Completed epoch": epoch})
+            if not args.nowandb:  # if nowandb flag was set, skip
+                wandb.log({"Train/loss": loss_train_mean,
+                           "Train/AMI": acc_record['AMI'] / len(dataloader_train),
+                           "Train/NMI": acc_record['NMI'] / len(dataloader_train),
+                           "Train/MAP": acc_record['mean_average_precision'] / len(dataloader_train),
+                           "Train/MAPR": acc_record['mean_average_precision_at_r'] / len(dataloader_train),
+                           "Train/PA1": acc_record['precision_at_1'] / len(dataloader_train),
+                           "Train/Rp": acc_record['r_precision'] / len(dataloader_train),
+                           "Train/lr": optimizer.param_groups[0]['lr'],
+                           "Completed epoch": epoch})
+
+        else:
+            acc_train = acc_record / len(dataloader_train)
+            print('acc for train : %f' % acc_train)
+
+            if not args.nowandb:  # if nowandb flag was set, skip
+                wandb.log({"Train/loss": loss_train_mean,
+                           "Train/acc": acc_train,
+                           "Train/lr": optimizer.param_groups[0]['lr'],
+                           "Completed epoch": epoch})
 
         if epoch % args.validation_step == 0:
             confusion_matrix, acc_val, loss_val = validation(args, model, criterion, dataloader_val, gt_list=gt_list,
@@ -490,14 +528,22 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
             if not args.nowandb and confusion_matrix is not None:  # if nowandb flag was set, skip
                 wandb.log({"Val/loss": loss_val,
                            "Val/Acc": acc_val,
-                           "Train/lr": optimizer.param_groups[0]['lr'],
                            "Completed epoch": epoch,
                            "conf-matrix_{}_{}".format(valfolder, epoch): wandb.Image(plt)})
 
-            elif not args.nowandb and (args.triplet or args.metric):
+            elif not args.nowandb and args.triplet:
                 wandb.log({"Val/loss": loss_val,
                            "Val/Acc": acc_val,
-                           "Train/lr": optimizer.param_groups[0]['lr'],
+                           "Completed epoch": epoch})
+
+            elif not args.nowandb and args.metric:
+                wandb.log({"Val/loss": loss_val,
+                           "Val/AMI": acc_val['AMI'],
+                           "Val/NMI": acc_val['NMI'],
+                           "Val/MAP": acc_val['mean_average_precision'],
+                           "Val/MAPR": acc_val['mean_average_precision_at_r'],
+                           "Val/PA1": acc_val['precision_at_1'],
+                           "Val/Rp": acc_val['r_precision'],
                            "Completed epoch": epoch})
 
             if (max_val_acc < acc_val) or (min_val_loss > loss_val):
