@@ -390,8 +390,8 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
                                            embeddings.squeeze().detach().cpu().numpy(), label.cpu().numpy(),
                                            label.cpu().numpy(), embeddings_come_from_same_source=True)
 
-        # acc = acc_dict['r_precision']
-        acc = acc_dict['mean_average_precision_at_r']
+        acc = acc_dict['r_precision']
+        # acc = acc_dict['mean_average_precision_at_r']
 
     else:
         data = sample['data']

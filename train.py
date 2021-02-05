@@ -318,7 +318,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
     elif args.metric:
         gt_list = None  # No need of centroids
         # Accuracy calculator for metric learning
-        acc_metric = AccuracyCalculator(include=('mean_average_precision_at_r',))
+        acc_metric = AccuracyCalculator(include=('mean_average_precision_at_r', 'r_precision'))
 
         if args.weighted:
             if args.dataloader == 'Kitti360':
