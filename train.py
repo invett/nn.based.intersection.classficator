@@ -241,6 +241,8 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         if args.weighted:
             if args.dataloader == 'Kitti360':
                 weights = [0.85, 0.86, 0.84, 0.85, 0.90, 0.84, 0.85]
+            elif args.dataloader == 'alcala26012021':
+                weights = [0.76, 0.96, 0.93, 0.89, 0.79, 0.90, 0.73]
             else:
                 weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
 
@@ -274,6 +276,8 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         if args.weighted:
             if args.dataloader == 'Kitti360':
                 weights = [0.85, 0.86, 0.84, 0.85, 0.90, 0.84, 0.85]
+            elif args.dataloader == 'alcala26012021':
+                weights = [0.76, 0.96, 0.93, 0.89, 0.79, 0.90, 0.73]
             else:
                 weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
 
@@ -314,14 +318,16 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
     elif args.metric:
         gt_list = None  # No need of centroids
         # Accuracy calculator for metric learning
-        acc_metric = AccuracyCalculator(include=('mean_average_precision_at_r',))
+        acc_metric = AccuracyCalculator(include=('mean_average_precision_at_r', 'r_precision'))
 
         if args.weighted:
             if args.dataloader == 'Kitti360':
                 weights = [0.85, 0.86, 0.84, 0.85, 0.90, 0.84, 0.85]
                 class_weights = torch.FloatTensor(weights).cuda()
+            elif args.dataloader == 'alcala26012021':
+                weights = [0.76, 0.96, 0.93, 0.89, 0.79, 0.90, 0.73]
+                class_weights = torch.FloatTensor(weights).cuda()
             else:
-                # TODO Weights of the new dataset
                 weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
                 class_weights = torch.FloatTensor(weights).cuda()
             reducer = reducers.ClassWeightedReducer(class_weights)
@@ -370,8 +376,11 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                 weights = [0.85, 0.86, 0.84, 0.85, 0.90, 0.84, 0.85]
                 class_weights = torch.FloatTensor(weights).cuda()
                 criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
+            elif args.dataloader == 'alcala26012021':
+                weights = [0.76, 0.96, 0.93, 0.89, 0.79, 0.90, 0.73]
+                class_weights = torch.FloatTensor(weights).cuda()
+                criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
             else:
-                # TODO Weights of the new dataset
                 weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
                 class_weights = torch.FloatTensor(weights).cuda()
                 criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
