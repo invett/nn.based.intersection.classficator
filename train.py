@@ -144,7 +144,10 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
     print('\n>>>>>>>>>>>>>>>>>> START VALIDATION <<<<<<<<<<<<<<<<<<')
 
     loss_record = 0.0
-    acc_record = 0.0
+    if args.metric:
+        acc_record = {}
+    else:
+        acc_record = 0.0
     labelRecord = np.array([], dtype=np.uint8)
     predRecord = np.array([], dtype=np.uint8)
 
