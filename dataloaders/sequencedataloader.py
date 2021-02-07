@@ -74,10 +74,14 @@ class alcala26012021(Dataset):
         if not self.usePIL:
             image = np.asarray(image)
 
+        if self.transform:
+            image = self.transform(image)
+
         sample = {'image_02': image,
                   'label': label,
                   'neg_label': neg_label}
 
+        '''
         transformed = []
         if self.transform:
             transformed = self.transform(sample)
@@ -110,7 +114,7 @@ class alcala26012021(Dataset):
         sample = {'data': transformed['data'],
                   'label': label,
                   'neg_label': neg_label}
-
+        '''
         return sample
 
 
