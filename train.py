@@ -429,7 +429,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         tq = tqdm.tqdm(total=len(dataloader_train) * args.batch_size)
         tq.set_description('epoch %d, lr %.e' % (epoch, lr))
         loss_record = 0.0
-        if args.metic:
+        if args.metric:
             acc_record = {}
         else:
             acc_record = 0.0
