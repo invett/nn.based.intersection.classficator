@@ -75,11 +75,12 @@ class alcala26012021(Dataset):
         if self.transform:
             image = self.transform(image)
 
+        '''
         sample = {'image_02': image,
                   'label': label,
                   'neg_label': neg_label}
 
-        '''
+
         transformed = []
         if self.transform:
             transformed = self.transform(sample)
@@ -108,11 +109,11 @@ class alcala26012021(Dataset):
                 os.makedirs(dataset_path)
             flag = cv2.imwrite(bev_path_filename, transformed['data'])
             assert flag, "can't write file"
-
-        sample = {'data': transformed['data'],
+        '''
+        sample = {'data': image,
                   'label': label,
                   'neg_label': neg_label}
-        '''
+
         return sample
 
 
