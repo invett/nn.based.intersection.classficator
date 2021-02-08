@@ -1071,6 +1071,9 @@ if __name__ == '__main__':
     parser.add_argument('--centroids_path', type=str, help='Insert centroids teacher path (for student training)')
     parser.add_argument('--student_path', type=str, help='Insert student path (for student testing)')
     parser.add_argument('--margin', type=float, default=1., help='margin in triplet and embedding')
+    parser.add_argument('--feature_model ', type=str, help='Feature extractor for lstm model')
+    parser.add_argument('--feature_detector_path', type=str, help='Path to the feature extractor trained model')
+
 
     # different data loaders, use one from choices; a description is provided in the documentation of each dataloader
     parser.add_argument('--dataloader', type=str, default='generatedDataset', choices=['fromAANETandDualBisenet',
