@@ -115,7 +115,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
 
 
 def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
-               save_embeddings=None, miner=None, acc_metric=None):
+               save_embeddings=None, miner=None, acc_metric=None, LSTM=None):
     """
 
     This function is called both from actual 'validation' and during the 'test'.
@@ -164,6 +164,7 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
         for sample in dataloader:
 
             if args.model == 'LSTM':
+                LSTM.eval()
                 acc, loss, label, predict = lstm_network_pass(args, sample, criterion, model, LSTM)
             else:
                 acc, loss, label, predict, embedding = student_network_pass(args, sample, criterion, model,
@@ -508,8 +509,12 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                            "Completed epoch": epoch})
 
         if epoch % args.validation_step == 0:
-            confusion_matrix, acc_val, loss_val = validation(args, model, criterion, dataloader_val, gt_list=gt_list,
-                                                             weights=weights, miner=miner, acc_metric=acc_metric)
+            if args.model == 'LSTM':
+                confusion_matrix, acc_val, loss_val = validation(args, model, criterion, dataloader_val, LSTM=LSTM)
+            else:
+                confusion_matrix, acc_val, loss_val = validation(args, model, criterion, dataloader_val,
+                                                                 gt_list=gt_list,
+                                                                 weights=weights, miner=miner, acc_metric=acc_metric)
 
             if args.scheduler_type == 'ReduceLROnPlateau':
                 print("ReduceLROnPlateau step call")
