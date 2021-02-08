@@ -1487,6 +1487,26 @@ class fromAANETandDualBisenet360(Dataset):
 
 
 class SequencesDataloader(Dataset):
+    """
+    This dataloader is used to load sequences of the ALCALA dataset **ONLY**
+
+    The Alcala dataset was recorded in 2019, and consists of three folders
+    with data from 2 cameras, front/back. Was recorded when Daniele was here
+    as visiting student; most of the dataset is "urban" in downtown Alcala.
+
+    (base) ballardini@ballardini-T14:~/Desktop/ALCALA$ tree -d
+    .
+    ├── R1_video_0002_camera1_png
+    ├── R2_video_0002_camera1_png
+    │ └── image_02
+    └── R2_video_0002_camera2_png
+
+    there's one script "checkSequenceDataloader.py" we used to test this class, basically
+
+    dataset = SequencesDataloader(root='/home/ballardini/Desktop/ALCALA/',
+                              folders=['R2_video_0002_camera1_png'])
+
+    """
 
     def __init__(self, root, folders, transform=None):
         """
