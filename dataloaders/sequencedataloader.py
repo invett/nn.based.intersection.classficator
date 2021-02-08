@@ -1541,6 +1541,9 @@ class SequencesDataloader(Dataset):
 
         sample = {'sequence': img_list, 'label': previous_label}
 
+        if self.transform: #No se si esto funciona!
+            sample['sequence'] = self.transform(sample['sequence'])
+
         return sample
 
     @staticmethod
