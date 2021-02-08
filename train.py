@@ -635,6 +635,30 @@ def main(args, model=None):
         train_path = folders[folders != os.path.join(data_path, 'val folder')]
         val_path = os.path.join(data_path, 'val folder')
 
+        # ALCALA
+        # TODO Alvaro, estas son las carpetas de train/validation/test que estan para el dataset
+        # ballardini@a69554b5a149:~/DualBiSeNet/alcala-26.01.2021_selected/train
+        # ballardini@a69554b5a149:~/DualBiSeNet/alcala-26.01.2021_selected/validation
+        # ballardini@a69554b5a149:~/DualBiSeNet/alcala-26.01.2021_selected/test
+
+        # train = ['161604AA', '161957AA', '162557AA', '163157AA', '163757AA', '164357AA', '164957AA', '165557AA',
+        #          '170157AA', '170757AA', '171357AA', '171957AA', '172557AA', '173158AA', '173757AA', '174357AA',
+        #          '174957AA', '175557AA', '181058AA', '181958AA', '182558AA', '183158AA', '183758AA', '184358AA',
+        #          '161657AA', '162257AA', '162857AA', '163457AA', '164057AA', '164657AA', '165257AA', '165857AA',
+        #          '170457AA', '171057AA', '171657AA', '172257AA', '172857AA', '173457AA', '174057AA', '174657AA',
+        #          '175258AA', '180757AA', '181658AA', '182258AA', '182858AA', '183458AA', '184058AA']
+        #
+        # validation = ['161657AA', '162257AA', '162857AA', '163457AA', '164057AA', '164657AA', '165557AA', '170757AA',
+        #               '171357AA', '171957AA', '172557AA', '173457AA', '174057AA', '174657AA', '181358AA', '182558AA',
+        #               '183458AA', '184058AA', '161957AA', '162557AA', '163157AA', '163757AA', '164357AA', '165257AA',
+        #               '170157AA', '171057AA', '171657AA', '172257AA', '173158AA', '173757AA', '174357AA', '174957AA',
+        #               '182258AA', '183158AA', '183758AA', '184358AA']
+        #
+        # test = ['161657AA', '163157AA', '163757AA', '164357AA', '164957AA', '165557AA', '170157AA', '171957AA',
+        #         '172857AA', '173457AA', '174057AA', '174657AA', '181058AA', '182258AA', '183458AA', '184058AA',
+        #         '162557AA', '163457AA', '164057AA', '164657AA', '165257AA', '165857AA', '171657AA', '172557AA',
+        #         '173158AA', '173757AA', '174357AA', '174957AA', '181658AA', '183158AA', '183758AA', '184358AA']
+
     elif '360' not in args.dataloader:
         # All sequence folders
         folders = np.array([os.path.join(data_path, folder) for folder in os.listdir(data_path) if
@@ -779,9 +803,9 @@ def main(args, model=None):
 
         elif args.dataloader == 'SequencesDataloader':
             # TODO Select corect transform
-            val_dataset = SequencesDataloader(args.dataset, val_sequence_list, transform=None)
+            val_dataset = SequencesDataloader(root=args.dataset, folders=val_sequence_list, transform=None)
 
-            train_dataset = SequencesDataloader(args.dataset, train_sequence_list, transform=None)
+            train_dataset = SequencesDataloader(root=args.dataset, folders=train_sequence_list, transform=None)
 
         elif args.dataloader == 'alcala26012021':
             val_dataset = alcala26012021(os.path.join(args.dataset, 'validation_list.txt'),

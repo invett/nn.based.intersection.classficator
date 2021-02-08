@@ -387,8 +387,16 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
 
         # acc is not a value is a dict
         acc = acc_metric.get_accuracy(embeddings.squeeze().detach().cpu().numpy(),
-                                           embeddings.squeeze().detach().cpu().numpy(), label.cpu().numpy(),
-                                           label.cpu().numpy(), embeddings_come_from_same_source=True)
+                                      embeddings.squeeze().detach().cpu().numpy(), label.cpu().numpy(),
+                                      label.cpu().numpy(), embeddings_come_from_same_source=True)
+
+        # TODO : no se puede hacer algo asi?
+        # conf_matrix = pd.crosstab(np.array(label_list),
+        #                           np.array(prediction_list),
+        #                           rownames=['Actual'],
+        #                           colnames=['Predicted'],
+        #                           normalize='index')
+        # conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6], fill_value=0.0)
 
     else:
         data = sample['data']
