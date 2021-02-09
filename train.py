@@ -26,7 +26,8 @@ from torch.utils.data import DataLoader
 
 import wandb
 from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromGeneratedDataset, \
-    triplet_BOO, triplet_OBB, kitti360, Kitti2011_RGB, triplet_ROO, triplet_ROO_360, SequencesDataloader, alcala26012021
+    triplet_BOO, triplet_OBB, kitti360, Kitti2011_RGB, triplet_ROO, triplet_ROO_360, \
+    alcala26012021, Sequences_alcala26012021_Dataloader
 from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanovis_testing, lstm_network_pass
@@ -620,27 +621,13 @@ def main(args, model=None):
     data_path = args.dataset
 
     # TODO: ALVARO! Esto es lo que queria editar un poco para que quede claro cuando se usa uno y el otro, a lo mejor no con if elif else pero simples if..
-    if args.dataloader == 'SequencesDataloader':
+    if args.dataloader == 'lstmDataloader':
 
         # ALCALA
+        val_path = os.path.join(args.dataset, 'validation_list.txt')
+        train_path = os.path.join(args.dataset, 'train_list.txt')
+        test_path = os.path.join(args.dataset, 'test_list.txt')
 
-        train_sequence_list = ['161604AA', '161957AA', '162557AA', '163157AA', '163757AA', '164357AA', '164957AA', '165557AA',
-                  '170157AA', '170757AA', '171357AA', '171957AA', '172557AA', '173158AA', '173757AA', '174357AA',
-                  '174957AA', '175557AA', '181058AA', '181958AA', '182558AA', '183158AA', '183758AA', '184358AA',
-                  '161657AA', '162257AA', '162857AA', '163457AA', '164057AA', '164657AA', '165257AA', '165857AA',
-                  '170457AA', '171057AA', '171657AA', '172257AA', '172857AA', '173457AA', '174057AA', '174657AA',
-                  '175258AA', '180757AA', '181658AA', '182258AA', '182858AA', '183458AA', '184058AA']
-
-        val_sequence_list = ['161657AA', '162257AA', '162857AA', '163457AA', '164057AA', '164657AA', '165557AA', '170757AA',
-                       '171357AA', '171957AA', '172557AA', '173457AA', '174057AA', '174657AA', '181358AA', '182558AA',
-                       '183458AA', '184058AA', '161957AA', '162557AA', '163157AA', '163757AA', '164357AA', '165257AA',
-                       '170157AA', '171057AA', '171657AA', '172257AA', '173158AA', '173757AA', '174357AA', '174957AA',
-                       '182258AA', '183158AA', '183758AA', '184358AA']
-
-        test_sequence_list = ['161657AA', '163157AA', '163757AA', '164357AA', '164957AA', '165557AA', '170157AA', '171957AA',
-                 '172857AA', '173457AA', '174057AA', '174657AA', '181058AA', '182258AA', '183458AA', '184058AA',
-                 '162557AA', '163457AA', '164057AA', '164657AA', '165257AA', '165857AA', '171657AA', '172557AA',
-                 '173158AA', '173757AA', '174357AA', '174957AA', '181658AA', '183158AA', '183758AA', '184358AA']
 
     elif '360' not in args.dataloader:
         # All sequence folders
@@ -709,7 +696,7 @@ def main(args, model=None):
                 wandb.config.update(args)
 
         # The dataloaders that not use Kitti360 uses list-like inputs
-        if '360' not in args.dataloader and args.dataloader != 'SequencesDataloader':
+        if '360' not in args.dataloader and args.dataloader != 'lstmDataloader':
             train_path = np.array(train_path)
             val_path = np.array([val_path])
 
@@ -784,17 +771,16 @@ def main(args, model=None):
 
             train_dataset = Kitti2011_RGB(train_path, transform=rgb_image_train_transforms)
 
-        elif args.dataloader == 'SequencesDataloader':
-            val_dataset = SequencesDataloader(root=args.dataset, folders=val_sequence_list, transform=rgb_image_train_transforms)
-
-            train_dataset = SequencesDataloader(root=args.dataset, folders=train_sequence_list, transform=rgb_image_train_transforms)
+        elif args.dataloader == 'lstmDataloader':
+            val_dataset = Sequences_alcala26012021_Dataloader(os.path.join(args.dataset, 'validation_list.txt'),
+                                                              transform=rgb_image_train_transforms)
+            train_dataset = Sequences_alcala26012021_Dataloader(os.path.join(args.dataset, 'train_list.txt'),
+                                                                transform=rgb_image_train_transforms)
 
         elif args.dataloader == 'alcala26012021':
-            val_dataset = alcala26012021(os.path.join(args.dataset, 'validation_list.txt'),
-                                         transform=rgb_image_test_transforms)
+            val_dataset = alcala26012021(val_path, transform=rgb_image_test_transforms)
 
-            train_dataset = alcala26012021(os.path.join(args.dataset, 'train_list.txt'),
-                                           transform=rgb_image_train_transforms)
+            train_dataset = alcala26012021(train_path, transform=rgb_image_train_transforms)
 
 
         else:
@@ -1092,7 +1078,7 @@ if __name__ == '__main__':
                                                                                        'Kitti360',
                                                                                        'Kitti360_3D',
                                                                                        'alcala26012021',
-                                                                                       'SequencesDataloader'],
+                                                                                       'lstmDataloader'],
                         help='One of the supported datasets')
 
     args = parser.parse_args()
