@@ -422,23 +422,17 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
     return acc, loss, label, predict, embedding
 
 
-def lstm_network_pass(args, sample, criterion, model, lstm):
-    feature_list = []
+def lstm_network_pass(batch, criterion, model, lstm):
     seq_list = []
     len_list = []
-    batch = sample  #['sequence']  # --> Batch x Seq x W x H
-    label = torch.tensor([int(i['label']) for i in batch]).cuda()  # sample  #['label']  # --> Batch x 1
+    label = torch.tensor([int(i['label']) for i in batch]).cuda()  # Unpack label values
 
     with torch.no_grad():
         for sequence in batch:
             seq_tensor = model(torch.stack(sequence['sequence']).cuda())
-            # for img in sequence['sequence']:
-            #     features = model(img)  # --> (1x512)
-            #     feature_list.append(features)
-            # seq_tensor = torch.stack(feature_list, dim=1)  # --> (seq_len x 512)
             seq_list.append(seq_tensor.squeeze())
             len_list.append(len(sequence))
-        padded_batch = pad_sequence(seq_list, batch_first=True)  #.size()
+        padded_batch = pad_sequence(seq_list, batch_first=True)
         packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
                                                    batch_first=True)  # --> (Batch x Max_seq_len x 512)
 
