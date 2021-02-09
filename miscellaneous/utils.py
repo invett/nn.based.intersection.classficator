@@ -426,12 +426,12 @@ def lstm_network_pass(args, sample, criterion, model, lstm):
     feature_list = []
     seq_list = []
     len_list = []
-    batch = sample['sequence']  # --> Batch x Seq x W x H
-    label = sample['label']  # --> Batch x 1
+    batch = sample  #['sequence']  # --> Batch x Seq x W x H
+    label = sample  #['label']  # --> Batch x 1
 
     with torch.no_grad():
         for sequence in batch:
-            for img in sequence:
+            for img in sequence['sequence']:
                 features = model(img)  # --> (1x512)
                 feature_list.append(features)
             seq_tensor = torch.stack(feature_list, dim=1)  # --> (seq_len x 512)

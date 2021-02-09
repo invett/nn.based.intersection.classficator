@@ -786,10 +786,13 @@ def main(args, model=None):
         else:
             raise Exception("Dataloader not found")
 
+        # TODO: not sure if this need to remain or is only for the LSTM.
+        # error: each element in list of batch should be of equal size
+        # solution found here: https://github.com/pytorch/vision/issues/2624
         dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                                      num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
+                                      num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True, collate_fn=lambda x: x)
         dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True,
-                                    num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
+                                    num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True, collate_fn=lambda x: x)
 
         if args.train:
             # Build model

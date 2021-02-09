@@ -1548,6 +1548,9 @@ class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
             label, an "exit" will be called.
 
         """
+
+        print('Class: ' + __class__.__name__ + " -- getitem: " + str(idx))
+
         sequence_list = self.sequences[idx]
         img_list = []
 
