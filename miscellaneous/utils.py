@@ -427,17 +427,18 @@ def lstm_network_pass(args, sample, criterion, model, lstm):
     seq_list = []
     len_list = []
     batch = sample  #['sequence']  # --> Batch x Seq x W x H
-    label = sample  #['label']  # --> Batch x 1
+    label = torch.tensor([int(i['label']) for i in batch]).cuda()  # sample  #['label']  # --> Batch x 1
 
     with torch.no_grad():
         for sequence in batch:
-            for img in sequence['sequence']:
-                features = model(img)  # --> (1x512)
-                feature_list.append(features)
-            seq_tensor = torch.stack(feature_list, dim=1)  # --> (seq_len x 512)
-            seq_list.append(seq_tensor)
+            seq_tensor = model(torch.stack(sequence['sequence']).cuda())
+            # for img in sequence['sequence']:
+            #     features = model(img)  # --> (1x512)
+            #     feature_list.append(features)
+            # seq_tensor = torch.stack(feature_list, dim=1)  # --> (seq_len x 512)
+            seq_list.append(seq_tensor.squeeze())
             len_list.append(len(sequence))
-        padded_batch = pad_sequence(seq_list, batch_first=True).size()
+        padded_batch = pad_sequence(seq_list, batch_first=True)  #.size()
         packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
                                                    batch_first=True)  # --> (Batch x Max_seq_len x 512)
 
@@ -446,7 +447,7 @@ def lstm_network_pass(args, sample, criterion, model, lstm):
     loss = criterion(result, label)
 
     predict = torch.argmax(result, 1)
-    label = label.numpy()
+    label = label.cpu().numpy()
     predict = predict.cpu().numpy()
 
     acc = accuracy_score(label, predict)

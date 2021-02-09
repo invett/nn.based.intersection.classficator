@@ -164,6 +164,8 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
 
         for sample in dataloader:
 
+            embedding = None
+
             if args.model == 'LSTM':
                 LSTM.eval()
                 acc, loss, label, predict = lstm_network_pass(args, sample, criterion, model, LSTM)
