@@ -801,7 +801,7 @@ def main(args, model=None):
             elif args.model == 'vgg11':
                 model = Vgg11(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
             elif args.model == 'LSTM':
-                lstm_model = LSTM(args.num_classes)
+                model = LSTM(args.num_classes)
                 if args.feature_model == 'resnet18':
                     feature_extractor_model = Resnet18(pretrained=False, embeddings=True, num_classes=args.num_classes)
                 if args.feature_model == 'vgg11':
@@ -815,6 +815,9 @@ def main(args, model=None):
                     print("=> loaded checkpoint '{}'".format(args.feature_detector_path))
                 else:
                     print("=> no checkpoint found at '{}'".format(args.feature_detector_path))
+
+                if torch.cuda.is_available() and args.use_gpu:
+                    feature_extractor_model = feature_extractor_model.cuda()
 
             if args.resume:
                 if os.path.isfile(args.resume):
@@ -899,7 +902,7 @@ def main(args, model=None):
             ##########################################
             if args.model == 'LSTM':
                 train(args, feature_extractor_model, optimizer, scheduler, dataloader_train, dataloader_val,
-                      os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH, LSTM=lstm_model)
+                      os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH, LSTM=model)
             elif '360' not in args.dataloader:
                 train(args, model, optimizer, scheduler, dataloader_train, dataloader_val,
                       os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH)
