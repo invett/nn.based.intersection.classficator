@@ -1623,6 +1623,7 @@ class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
         return seq_dict, sq
 
     @staticmethod
+    # TODO unused function here
     def __get_label(self, path):
         head, tail = os.path.split(path)
         head, _ = os.path.split(head)

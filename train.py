@@ -621,12 +621,12 @@ def main(args, model=None):
     data_path = args.dataset
 
     # TODO: ALVARO! Esto es lo que queria editar un poco para que quede claro cuando se usa uno y el otro, a lo mejor no con if elif else pero simples if..
-    if args.dataloader == 'lstmDataloader':
+    if args.dataloader == 'lstmDataloader_alcala26012021':
 
         # ALCALA
-        val_path = os.path.join(args.dataset, 'validation_list.txt')
-        train_path = os.path.join(args.dataset, 'train_list.txt')
-        test_path = os.path.join(args.dataset, 'test_list.txt')
+        val_path = os.path.join(args.dataset, 'validation/validation_list.txt')
+        train_path = os.path.join(args.dataset, 'train/train_list.txt')
+        test_path = os.path.join(args.dataset, 'test/test_list.txt')
 
 
     elif '360' not in args.dataloader:
@@ -696,7 +696,7 @@ def main(args, model=None):
                 wandb.config.update(args)
 
         # The dataloaders that not use Kitti360 uses list-like inputs
-        if '360' not in args.dataloader and args.dataloader != 'lstmDataloader':
+        if '360' not in args.dataloader and args.dataloader != 'lstmDataloader_alcala26012021':
             train_path = np.array(train_path)
             val_path = np.array([val_path])
 
@@ -771,7 +771,7 @@ def main(args, model=None):
 
             train_dataset = Kitti2011_RGB(train_path, transform=rgb_image_train_transforms)
 
-        elif args.dataloader == 'lstmDataloader':
+        elif args.dataloader == 'lstmDataloader_alcala26012021':
             val_dataset = Sequences_alcala26012021_Dataloader(os.path.join(args.dataset, 'validation_list.txt'),
                                                               transform=rgb_image_train_transforms)
             train_dataset = Sequences_alcala26012021_Dataloader(os.path.join(args.dataset, 'train_list.txt'),
@@ -1063,22 +1063,14 @@ if __name__ == '__main__':
     parser.add_argument('--centroids_path', type=str, help='Insert centroids teacher path (for student training)')
     parser.add_argument('--student_path', type=str, help='Insert student path (for student testing)')
     parser.add_argument('--margin', type=float, default=1., help='margin in triplet and embedding')
-    parser.add_argument('--feature_model ', type=str, help='Feature extractor for lstm model')
+    parser.add_argument('--feature_model', type=str, help='Feature extractor for lstm model')
     parser.add_argument('--feature_detector_path', type=str, help='Path to the feature extractor trained model')
 
     # different data loaders, use one from choices; a description is provided in the documentation of each dataloader
-    parser.add_argument('--dataloader', type=str, default='generatedDataset', choices=['fromAANETandDualBisenet',
-                                                                                       'generatedDataset',
-                                                                                       'Kitti2011_RGB',
-                                                                                       'triplet_OBB',
-                                                                                       'triplet_BOO',
-                                                                                       'triplet_ROO',
-                                                                                       'triplet_ROO_360',
-                                                                                       'triplet_3DOO_360',
-                                                                                       'Kitti360',
-                                                                                       'Kitti360_3D',
-                                                                                       'alcala26012021',
-                                                                                       'lstmDataloader'],
+    parser.add_argument('--dataloader', type=str, default='generatedDataset',
+                        choices=['fromAANETandDualBisenet', 'generatedDataset', 'Kitti2011_RGB', 'triplet_OBB',
+                                 'triplet_BOO', 'triplet_ROO', 'triplet_ROO_360', 'triplet_3DOO_360', 'Kitti360',
+                                 'Kitti360_3D', 'alcala26012021', 'lstmDataloader_alcala26012021'],
                         help='One of the supported datasets')
 
     args = parser.parse_args()
