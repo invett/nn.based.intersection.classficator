@@ -11,7 +11,7 @@
 import os
 import numpy as np
 
-from dataloaders.sequencedataloader import SequencesDataloader, alcala26012021
+from dataloaders.sequencedataloader import SequencesDataloader, alcala26012021, Sequences_alcala26012021_Dataloader
 from torch.utils.data import DataLoader
 
 data_path = '/home/ballardini/Desktop/ALCALA/R1_video_0002_camera1_png/'
@@ -26,9 +26,12 @@ data_path = '/home/ballardini/Desktop/alcala-26.01.2021/'
 #                              folders=['2011_10_03_drive_0027_sync'])
 
 # dataset = SequencesDataloader(root='/home/ballardini/Desktop/ALCALA/',
-#                               folders=['R2_video_0002_camera1_png'])
+#                              folders=['R2_video_0002_camera1_png'])
 
-dataset = alcala26012021(path_filename='/home/ballardini/Desktop/alcala-26.01.2021/train_list.txt')
+# dataset = alcala26012021(path_filename='/home/ballardini/Desktop/alcala-26.01.2021/train_list.txt')
+
+dataset = Sequences_alcala26012021_Dataloader(path_filename='/home/ballardini/Desktop/alcala-26.01.2021/train_list.txt',
+                                              usePIL=False)
 
 loader = DataLoader(
     dataset,
