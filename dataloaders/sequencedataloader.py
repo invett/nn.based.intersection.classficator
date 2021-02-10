@@ -19,8 +19,20 @@ from random import choice
 from scripts.OSM_generator import test_crossing_pose, Crossing
 
 
-class alcala26012021(Dataset):
-    def __init__(self, path_filename=None, transform=None, usePIL=True):
+class AbstractSequence:
+    """
+    This "abstract" class is used to include/inherance in all future "sequences" dataloaders
+    """
+
+    def __init__(self, isSequence=False):
+        self.isSequence = False
+
+    def getIsSequence(self):
+        return self.isSequence
+
+
+class alcala26012021(AbstractSequence, Dataset):
+    def __init__(self, path_filename=None, transform=None, usePIL=True, isSequence=False):
         """
 
                 THIS IS THE DATALOADER USES the split files generated with labelling-script.py
@@ -36,6 +48,8 @@ class alcala26012021(Dataset):
 
 
         """
+
+        super().__init__(isSequence=isSequence)
 
         trainimages = []
         trainlabels = []
@@ -1504,7 +1518,7 @@ class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
 
     """
 
-    def __init__(self, path_filename=None, transform=None, usePIL=True):
+    def __init__(self, path_filename=None, transform=None, usePIL=True, isSequence=True):
         """
 
                 THIS IS THE DATALOADER USES the split files generated with labelling-script.py
@@ -1524,7 +1538,7 @@ class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
         # self.labels = trainlabels
         # self.usePIL = usePIL
         # Sequences_alcala26012021_Dataloader.__init__(self, path_filename, transform, usePIL)
-        super().__init__(path_filename, transform, usePIL)
+        super().__init__(path_filename, transform, usePIL, isSequence=isSequence)
 
         # TODO: GIGI CONTINUA DA QUI PIRLUN!
         sequences = {}
@@ -1638,7 +1652,7 @@ class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
         return label
 
 
-class SequencesDataloader(Dataset):
+class SequencesDataloader(AbstractSequence, Dataset):
     """
     This dataloader is used to load sequences of the ALCALA dataset **ONLY**
 
@@ -1660,7 +1674,7 @@ class SequencesDataloader(Dataset):
 
     """
 
-    def __init__(self, root, folders, transform=None):
+    def __init__(self, root, folders, transform=None, isSequence=True):
         """
 
         Args:
@@ -1669,6 +1683,8 @@ class SequencesDataloader(Dataset):
             transform (callable, optional): Optional transform to be applied
                 on a sample.
         """
+        super().__init__(isSequence=isSequence)
+
         self.transform = transform
         sequences = {}
         last_seq = 0

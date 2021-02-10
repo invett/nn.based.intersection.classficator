@@ -420,11 +420,11 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         elif args.distance_function == 'cosine':
             criterion = losses.TripletMarginLoss(margin=args.margin, swap=False, smooth_loss=False,
                                                  triplets_per_anchor="all",
-                                                 distance=CosineSimilarity(normalize_embeddings=args.normalize),
+                                                 distance=CosineSimilarity(),
                                                  reducer=reducer)
             if args.miner:
                 miner = miners.TripletMarginMiner(margin=args.margin * 2.0, type_of_triplets="all",
-                                                  distance=CosineSimilarity(normalize_embeddings=args.normalize))
+                                                  distance=CosineSimilarity())
             else:
                 miner = None
 
@@ -853,12 +853,21 @@ def main(args, model=None):
         # TODO: not sure if this need to remain or is only for the LSTM.
         # error: each element in list of batch should be of equal size
         # solution found here: https://github.com/pytorch/vision/issues/2624
-        dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                                      num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True,
-                                      collate_fn=lambda x: x)
-        dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True,
+        if train_dataset.getIsSequence():
+            dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
+                                          num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True,
+                                          collate_fn=lambda x: x)
+        else:
+            dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
+                                          num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
+
+        if val_dataset.getIsSequence():
+                dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True,
                                     num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True,
                                     collate_fn=lambda x: x)
+        else:
+            dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True,
+                                        num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
 
         if args.train:
             # Build model
