@@ -626,6 +626,7 @@ def main(args, model=None):
     # torch.multiprocessing.set_sharing_strategy('file_system')
     #
     # a faster workaround is to change the ulimits in linux, per shell based
+    # https://stackoverflow.com/questions/16526783/python-subprocess-too-many-open-files
     #
     # check the limits   > ulimit -a
     #         core file size          (blocks, -c) 0
