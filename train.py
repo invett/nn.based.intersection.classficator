@@ -66,7 +66,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
             feature_extractor_model = Vgg11(pretrained=False, embeddings=True, num_classes=args.num_classes)
 
         # load saved feature extractor model
-        if os.path.isfile(args.feature_detector_path):
+        if args.feature_detector_path is not None and os.path.isfile(args.feature_detector_path):
             print("=> loading checkpoint '{}'".format(args.feature_detector_path))
             checkpoint = torch.load(args.feature_detector_path, map_location='cpu')
             feature_extractor_model.load_state_dict(checkpoint['model_state_dict'])
@@ -857,7 +857,7 @@ def main(args, model=None):
                     feature_extractor_model = Vgg11(pretrained=True, embeddings=True, num_classes=args.num_classes)
 
                 # load saved feature extractor model
-                if os.path.isfile(args.feature_detector_path):
+                if args.feature_detector_path is not None and os.path.isfile(args.feature_detector_path):
                     print("=> loading checkpoint '{}'".format(args.feature_detector_path))
                     checkpoint = torch.load(args.feature_detector_path, map_location='cpu')
                     feature_extractor_model.load_state_dict(checkpoint['model_state_dict'])
