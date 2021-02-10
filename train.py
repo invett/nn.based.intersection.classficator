@@ -31,7 +31,7 @@ from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromGenerate
 from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanovis_testing, lstm_network_pass, \
-    get_all_embeddings
+    get_all_embeddings, str2bool
 from model.models import Resnet18, Vgg11, LSTM
 
 
@@ -1044,9 +1044,9 @@ if __name__ == '__main__':
     ###########################################
 
     parser.add_argument('--seed', type=int, default=0, help='Starting seed, for reproducibility. Default is ZERO!')
-    parser.add_argument('--train', type=bool, default=True, help='Train/Validate the model')
-    parser.add_argument('--test', type=bool, default=False, help='Test the model')
-    parser.add_argument('--oposite', action='store_true', help='Test the model with the oposite dataset')
+    parser.add_argument('--train', type=str2bool, nargs='?', const=True, default=False, help='Train/Validate the model')
+    parser.add_argument('--test', type=str2bool, nargs='?', const=True, default=False, help='Test the model')
+    parser.add_argument('--oposite', type=str2bool, nargs='?', const=True, default=False, help='Test the model with the oposite dataset')
     parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
     parser.add_argument('--start_epoch', type=int, default=0, help='Number of epochs to train for')
     parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
@@ -1062,7 +1062,7 @@ if __name__ == '__main__':
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     parser.add_argument('--wandb_resume', type=str, default=None, help='the id of the wandb-resume, e.g. jhc0gvhb')
 
-    parser.add_argument('--telegram', type=bool, default=False, help='Send info through Telegram')
+    parser.add_argument('--telegram', type=str2bool, nargs='?', const=True, default=False, help='Send info through Telegram')
     parser.add_argument('--dataset', type=str, help='path to the dataset you are using.')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
     parser.add_argument('--model', type=str, default="resnet18",
@@ -1074,13 +1074,13 @@ if __name__ == '__main__':
 
     parser.add_argument('--num_classes', type=int, default=7, help='num of object classes')
     parser.add_argument('--cuda', type=str, default='0', help='GPU is used for training')
-    parser.add_argument('--use_gpu', type=bool, default=True, help='whether to user gpu for training')
+    parser.add_argument('--use_gpu', type=str2bool, nargs='?', const=True, default=True, help='whether to user gpu for training')
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
     parser.add_argument('--adam_weight_decay', type=float, default=5e-4, help='adam_weight_decay')
     parser.add_argument('--lossfunction', type=str, default='MSE',
                         choices=['MSE', 'SmoothL1', 'L1', 'focal', 'triplet'],
                         help='lossfunction selection')
-    parser.add_argument('--metric', action='store_true', help='Metric learning losses')
+    parser.add_argument('--metric', type=str2bool, nargs='?', const=True, default=False, help='Metric learning losses')
     parser.add_argument('--distance_function', type=str, default='pairwise',
                         choices=['pairwise', 'cosine', 'SNR'],
                         help='distance function selection')
@@ -1097,24 +1097,24 @@ if __name__ == '__main__':
                                                                 'decimation')
     parser.add_argument('--distance', type=float, default=20.0, help='Distance from the cross')
 
-    parser.add_argument('--weighted', type=bool, default=True, help='Weighted losses')
-    parser.add_argument('--miner', type=bool, default=True, help='miner for metric learning')
-    parser.add_argument('--nonzero', type=bool, default=False, help='nonzero losses')
-    parser.add_argument('--pretrained', type=bool, default=True, help='whether to use a pretrained net, or not')
-    parser.add_argument('--scheduler', action='store_true', help='scheduling lr')
+    parser.add_argument('--weighted', type=str2bool, nargs='?', const=True, default=False, help='Weighted losses')
+    parser.add_argument('--miner', type=str2bool, nargs='?', const=True, default=False, help='miner for metric learning')
+    parser.add_argument('--nonzero', type=str2bool, nargs='?', const=True, default=False, help='nonzero losses')
+    parser.add_argument('--pretrained', type=str2bool, nargs='?', const=True, default=False, help='whether to use a pretrained net, or not')
+    parser.add_argument('--scheduler', type=str2bool, nargs='?', const=True, default=False, help='scheduling lr')
     parser.add_argument('--scheduler_type', type=str, default='MultiStepLR', choices=['MultiStepLR',
                                                                                       'ReduceLROnPlateau'])
 
     parser.add_argument('--lstm_dropout', type=float, default=0.0, help='Lstm dropout between layers')
     parser.add_argument('--fc_dropout', type=float, default=0.0, help='fc dropout between layers')
-    parser.add_argument('--normalize', type=bool, default=True, help='normalize embeddings in metric learning')
+    parser.add_argument('--normalize', type=str2bool, nargs='?', const=True, default=False, help='normalize embeddings in metric learning')
 
     parser.add_argument('--resume', type=str, default=None,
                         help='path to checkpoint model; consider check wandb_resume')
 
     # to enable the STUDENT training, set --embedding and provide the teacher path
-    parser.add_argument('--embedding', action='store_true', help='Use embedding matching')
-    parser.add_argument('--triplet', action='store_true', help='Use embedding matching')
+    parser.add_argument('--embedding', type=str2bool, nargs='?', const=True, default=False, help='Use embedding matching')
+    parser.add_argument('--triplet', type=str2bool, nargs='?', const=True, default=False, help='Use embedding matching')
     parser.add_argument('--centroids_path', type=str, help='Insert centroids teacher path (for student training)')
     parser.add_argument('--student_path', type=str, help='Insert student path (for student testing)')
     parser.add_argument('--margin', type=float, default=1., help='margin in triplet and embedding')
@@ -1152,6 +1152,7 @@ if __name__ == '__main__':
     if args.weighted and args.nonzero:
         print("weighted and nonzero reducers selected")
         print("both reduction methods are not compatible")
+        exit(-1)
 
     # Ensure there's a _ at the end of the prefix
     if args.save_prefix != '':
