@@ -239,8 +239,7 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
     return conf_matrix, acc, loss_val_mean
 
 
-def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, valfolder, GLOBAL_EPOCH,
-          kfold_index=None, LSTM=None):
+def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, valfolder, GLOBAL_EPOCH, LSTM=None):
     """
 
     Do the training. The LOSS depends on the value of
@@ -259,7 +258,6 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         valfolder:
         GLOBAL_EPOCH:
         gtmodel:
-        kfold_index: this index is used to store indexed wandb per-batch metrics
 
     Returns:
 
@@ -484,8 +482,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                 wandb.log({"batch_training_accuracy": acc,
                            "batch_training_loss": loss.item(),
                            "batch_current_batch": current_batch,
-                           "batch_current_epoch": epoch,
-                           "batch_kfold_index": kfold_index})
+                           "batch_current_epoch": epoch})
 
                 current_batch += 1
 
@@ -850,9 +847,9 @@ def main(args, model=None):
             elif args.model == 'LSTM':
                 model = LSTM(args.num_classes)
                 if args.feature_model == 'resnet18':
-                    feature_extractor_model = Resnet18(pretrained=False, embeddings=True, num_classes=args.num_classes)
+                    feature_extractor_model = Resnet18(pretrained=True, embeddings=True, num_classes=args.num_classes)
                 if args.feature_model == 'vgg11':
-                    feature_extractor_model = Vgg11(pretrained=False, embeddings=True, num_classes=args.num_classes)
+                    feature_extractor_model = Vgg11(pretrained=True, embeddings=True, num_classes=args.num_classes)
 
                 # load saved feature extractor model
                 if os.path.isfile(args.feature_detector_path):
@@ -862,6 +859,7 @@ def main(args, model=None):
                     print("=> loaded checkpoint '{}'".format(args.feature_detector_path))
                 else:
                     print("=> no checkpoint found at '{}'".format(args.feature_detector_path))
+                    print("=> training with ImageNet weights")
 
                 if torch.cuda.is_available() and args.use_gpu:
                     feature_extractor_model = feature_extractor_model.cuda()

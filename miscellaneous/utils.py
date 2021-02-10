@@ -433,9 +433,10 @@ def lstm_network_pass(batch, criterion, model, lstm):
             seq_tensor = model(torch.stack(sequence['sequence']).cuda())
             seq_list.append(seq_tensor.squeeze())
             len_list.append(len(sequence))
-        padded_batch = pad_sequence(seq_list, batch_first=True)
-        packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
-                                                   batch_first=True)  # --> (Batch x Max_seq_len x 512)
+
+    padded_batch = pad_sequence(seq_list, batch_first=True)
+    packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
+                                               batch_first=True)  # --> (Batch x Max_seq_len x 512)
 
     result = lstm(packed_padded_batch)
 
