@@ -1,4 +1,5 @@
 import argparse
+import argparse
 import multiprocessing
 import os
 import socket  # to get the machine name
@@ -31,9 +32,31 @@ from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromGenerate
 from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanovis_testing, lstm_network_pass, \
-    get_all_embeddings, str2bool
+    get_all_embeddings
 from model.models import Resnet18, Vgg11, LSTM
 
+
+
+def str2bool(v):
+    """
+    Parsing boolean values with argparse
+    https://stackoverflow.com/questions/15008758/parsing-boolean-values-with-argparse
+
+    Args:
+        v:
+
+    Returns:
+
+    """
+
+    if isinstance(v, bool):
+       return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save_embeddings=None):
     print('start Test!')
