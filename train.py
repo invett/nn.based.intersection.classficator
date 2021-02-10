@@ -358,7 +358,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
             if args.dataloader == 'Kitti360':
                 weights = [0.85, 0.86, 0.84, 0.85, 0.90, 0.84, 0.85]
                 class_weights = torch.FloatTensor(weights).cuda()
-            elif args.dataloader == 'alcala26012021':
+            elif args.dataloader == 'alcala26012021' or args.dataloader == 'lstmDataloader_alcala26012021':
                 weights = [0.76, 0.96, 0.93, 0.89, 0.79, 0.90, 0.73]
                 class_weights = torch.FloatTensor(weights).cuda()
             else:
