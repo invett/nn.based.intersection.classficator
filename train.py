@@ -621,6 +621,33 @@ def main(args, model=None):
 
     init_fn = partial(init_function, seed=seed, epoch=GLOBAL_EPOCH)
 
+    # workaround for "TOO MANY OPEN FILES"
+    # https://stackoverflow.com/questions/48250053/pytorchs-dataloader-too-many-open-files-error-when-no-files-should-be-open
+    # torch.multiprocessing.set_sharing_strategy('file_system')
+    #
+    # a faster workaround is to change the ulimits in linux, per shell based
+    #
+    # check the limits   > ulimit -a
+    #         core file size          (blocks, -c) 0
+    #         data seg size           (kbytes, -d) unlimited
+    #         scheduling priority             (-e) 0
+    #         file size               (blocks, -f) unlimited
+    #         pending signals                 (-i) 124997
+    #         max locked memory       (kbytes, -l) 65536
+    #         max memory size         (kbytes, -m) unlimited
+    #         open files                      (-n) 1024             <<<<<<< this is the issue
+    #         pipe size            (512 bytes, -p) 8
+    #         POSIX message queues     (bytes, -q) 819200
+    #         real-time priority              (-r) 0
+    #         stack size              (kbytes, -s) 8192
+    #         cpu time               (seconds, -t) unlimited
+    #         max user processes              (-u) 124997
+    #         virtual memory          (kbytes, -v) unlimited
+    #         file locks                      (-x) unlimited
+    #
+    # change the limits  > ulimit -Sn 10000
+    #
+
     # create dataset and dataloader
     data_path = args.dataset
 
