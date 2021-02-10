@@ -115,7 +115,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
             classifier = svm_generator(args, model, features=embeddings, labels=labels)
             confusion_matrix, acc = svm_testing(args, model, dataloader_test, classifier)
         elif args.test_method == 'mahalanovis':
-            covariances = covmatrix_generator(args, model, dataloader_train, dataloader_val)
+            covariances = covmatrix_generator(args, model, features=embeddings, labels=labels)
             confusion_matrix, acc = mahalanovis_testing(args, model, dataloader_test, covariances)
         else:
             print("=> no test methof found")
