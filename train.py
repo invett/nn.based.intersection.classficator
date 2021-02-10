@@ -118,7 +118,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
             covariances = covmatrix_generator(args, model, features=embeddings, labels=labels)
             confusion_matrix, acc = mahalanovis_testing(args, model, dataloader_test, covariances)
         else:
-            print("=> no test methof found")
+            print("=> no test method found")
             exit(-1)
 
     else:
