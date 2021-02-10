@@ -1047,8 +1047,8 @@ if __name__ == '__main__':
     ###########################################
 
     parser.add_argument('--seed', type=int, default=0, help='Starting seed, for reproducibility. Default is ZERO!')
-    parser.add_argument('--train', action='store_true', help='Train/Validate the model')
-    parser.add_argument('--test', action='store_true', help='Test the model')
+    parser.add_argument('--train', type=bool, default=True, help='Train/Validate the model')
+    parser.add_argument('--test', type=bool, default=False, help='Test the model')
     parser.add_argument('--oposite', action='store_true', help='Test the model with the oposite dataset')
     parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
     parser.add_argument('--start_epoch', type=int, default=0, help='Number of epochs to train for')
@@ -1065,7 +1065,7 @@ if __name__ == '__main__':
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     parser.add_argument('--wandb_resume', type=str, default=None, help='the id of the wandb-resume, e.g. jhc0gvhb')
 
-    parser.add_argument('--telegram', action='store_true', help='Send info through Telegram')
+    parser.add_argument('--telegram', type=bool, default=False, help='Send info through Telegram')
     parser.add_argument('--dataset', type=str, help='path to the dataset you are using.')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
     parser.add_argument('--model', type=str, default="resnet18",
@@ -1093,16 +1093,16 @@ if __name__ == '__main__':
     parser.add_argument('--svm_mode', type=str, default='Linear', choices=['Linear', 'ovo'],
                         help='svm classification method')
     parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
-    parser.add_argument('--patience_start', type=int, default=2,
+    parser.add_argument('--patience_start', type=int, default=50,
                         help='Starting epoch for patience of validation. Default, 50. ')
 
     parser.add_argument('--decimate', type=int, default=1, help='How much of the points will remain after '
                                                                 'decimation')
     parser.add_argument('--distance', type=float, default=20.0, help='Distance from the cross')
 
-    parser.add_argument('--weighted', action='store_true', help='Weighted losses')
-    parser.add_argument('--miner', action='store_true', help='miner for metric learning')
-    parser.add_argument('--nonzero', action='store_true', help='nonzero losses')
+    parser.add_argument('--weighted', type=bool, default=True, help='Weighted losses')
+    parser.add_argument('--miner', type=bool, default=True, help='miner for metric learning')
+    parser.add_argument('--nonzero', type=bool, default=False, help='nonzero losses')
     parser.add_argument('--pretrained', type=bool, default=True, help='whether to use a pretrained net, or not')
     parser.add_argument('--scheduler', action='store_true', help='scheduling lr')
     parser.add_argument('--scheduler_type', type=str, default='MultiStepLR', choices=['MultiStepLR',
@@ -1110,7 +1110,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--lstm_dropout', type=float, default=0.0, help='Lstm dropout between layers')
     parser.add_argument('--fc_dropout', type=float, default=0.0, help='fc dropout between layers')
-    parser.add_argument('--normalize', action='store_true', help='normalize embeddings in metric learning')
+    parser.add_argument('--normalize', type=bool, default=True, help='normalize embeddings in metric learning')
 
     parser.add_argument('--resume', type=str, default=None,
                         help='path to checkpoint model; consider check wandb_resume')
