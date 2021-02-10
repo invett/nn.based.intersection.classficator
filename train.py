@@ -30,7 +30,8 @@ from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromGenerate
     alcala26012021, Sequences_alcala26012021_Dataloader
 from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
-    student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanovis_testing, lstm_network_pass
+    student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanovis_testing, lstm_network_pass, \
+    get_all_embeddings
 from model.models import Resnet18, Vgg11, LSTM
 
 
@@ -58,7 +59,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     elif args.model == 'vgg11':
         model = Vgg11(pretrained=args.pretrained, embeddings=args.embedding, num_classes=args.num_classes)
     elif args.model == 'LSTM':
-        lstm_model = LSTM(args.num_classes)
+        model = LSTM(args.num_classes)
         if args.feature_model == 'resnet18':
             feature_extractor_model = Resnet18(pretrained=False, embeddings=True, num_classes=args.num_classes)
         if args.feature_model == 'vgg11':
@@ -85,7 +86,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
 
     if torch.cuda.is_available() and args.use_gpu:
         if args.model == 'LSTM':
-            lstm_model = lstm_model.cuda()
+            model = model.cuda()
             feature_extractor_model = feature_extractor_model.cuda()
         else:
             model = model.cuda()
@@ -96,7 +97,22 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     elif args.triplet:
         if args.test_method == 'svm':
             # Generates svm with the last train
-            classifier = svm_generator(args, model, dataloader_train, dataloader_val)
+            classifier = svm_generator(args, model, dataloader_train=dataloader_train, dataloader_val=dataloader_val)
+            confusion_matrix, acc = svm_testing(args, model, dataloader_test, classifier)
+        elif args.test_method == 'mahalanovis':
+            covariances = covmatrix_generator(args, model, dataloader_train, dataloader_val)
+            confusion_matrix, acc = mahalanovis_testing(args, model, dataloader_test, covariances)
+        else:
+            print("=> no test methof found")
+            exit(-1)
+    elif args.metric:
+        train_embeddings, train_labels = get_all_embeddings(dataloader_train, model)
+        val_embeddings, val_labels = get_all_embeddings(dataloader_val, model)
+        embeddings = np.stack((np.squeeze(train_embeddings), np.squeeze(val_embeddings)))
+        labels = np.stack((np.squeeze(train_labels), np.squeeze(val_labels)))
+        if args.test_method == 'svm':
+            # Generates svm with the last train
+            classifier = svm_generator(args, model, features=embeddings, labels=labels)
             confusion_matrix, acc = svm_testing(args, model, dataloader_test, classifier)
         elif args.test_method == 'mahalanovis':
             covariances = covmatrix_generator(args, model, dataloader_train, dataloader_val)
@@ -337,7 +353,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
     elif args.metric:
         gt_list = None  # No need of centroids
         # Accuracy calculator for metric learning
-        acc_metric = AccuracyCalculator()
+        acc_metric = AccuracyCalculator(exclude=('AMI', 'NMI'))
         # Accuracy metrics for metric learning
 
         if args.weighted:
@@ -492,8 +508,6 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
 
             if not args.nowandb:  # if nowandb flag was set, skip
                 wandb.log({"Train/loss": loss_train_mean,
-                           "Train/AMI": acc_record['AMI'] / len(dataloader_train),
-                           "Train/NMI": acc_record['NMI'] / len(dataloader_train),
                            "Train/MAP": acc_record['mean_average_precision'] / len(dataloader_train),
                            "Train/MAPR": acc_record['mean_average_precision_at_r'] / len(dataloader_train),
                            "Train/PA1": acc_record['precision_at_1'] / len(dataloader_train),
@@ -551,8 +565,6 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
 
             elif not args.nowandb and args.metric:
                 wandb.log({"Val/loss": loss_val,
-                           "Val/AMI": acc_val['AMI'],
-                           "Val/NMI": acc_val['NMI'],
                            "Val/MAP": acc_val['mean_average_precision'],
                            "Val/MAPR": acc_val['mean_average_precision_at_r'],
                            "Val/PA1": acc_val['precision_at_1'],

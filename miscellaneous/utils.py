@@ -9,6 +9,7 @@ from functools import reduce
 from io import BytesIO
 from math import asin, atan2, cos, pi, sin
 
+from pytorch_metric_learning import testers
 from sklearn import svm
 
 import numpy as np
@@ -487,7 +488,7 @@ def reset_wandb_env():
             del os.environ[k]
 
 
-def svm_generator(args, model, dataloader_train, dataloader_val):
+def svm_generator(args, model, dataloader_train=None, dataloader_val=None, features=None, labels=None):
     svm_path = args.load_path.replace('.pth', 'svm.sav')
     if os.path.isfile(svm_path):
         print('SVM already trained in => {}'.format(svm_path))
@@ -495,7 +496,10 @@ def svm_generator(args, model, dataloader_train, dataloader_val):
     else:
         print('training SVM classifier\n')
         print('svm model will be saved in : {}\n'.format(svm_path))
-        features, labels = embb_data(args, model, dataloader_train, dataloader_val)
+        if dataloader_train is not None and dataloader_val is not None:
+            features, labels = embb_data(args, model, dataloader_train, dataloader_val)
+        elif features is not None and labels is not None:
+            print('Training embeddings already obtained\n')
         classifier = svm_train(features, labels, mode=args.svm_mode)
         pickle.dump(classifier, open(svm_path, 'wb'))
 
@@ -603,8 +607,11 @@ def svm_testing(args, model, dataloader_test, classifier):
         return conf_matrix, acc
 
 
-def covmatrix_generator(args, model, dataloader_train, dataloader_val):
-    features, labels = embb_data(args, model, dataloader_train, dataloader_val)
+def covmatrix_generator(args, model, dataloader_train=None, dataloader_val=None, features=None, labels=None):
+    if dataloader_train is not None and dataloader_val is not None:
+        features, labels = embb_data(args, model, dataloader_train, dataloader_val)
+    elif features is not None and labels is not None:
+        print('Training embeddings already obtained\n')
     clusters = {}
     covariances = {}
     for lbl in np.unique(labels):
@@ -652,6 +659,11 @@ def mahalanovis_testing(args, model, dataloader_test, covariances):
         acc = accuracy_score(np.array(label_list), np.array(prediction_list))
         print('Accuracy for test : %f\n' % acc)
         return conf_matrix, acc
+
+
+def get_all_embeddings(dataset, model):
+    tester = testers.BaseTester()
+    return tester.get_all_embeddings(dataset, model)
 
 
 def gt_validation(output, gt_list, criterion=None):
