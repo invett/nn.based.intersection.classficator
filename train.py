@@ -375,30 +375,33 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         if args.distance_function == 'SNR':
             criterion = losses.TripletMarginLoss(margin=args.margin, swap=False, smooth_loss=False,
                                                  triplets_per_anchor="all",
-                                                 distance=SNRDistance(), reducer=reducer)
+                                                 distance=SNRDistance(normalize_embeddings=args.normalize),
+                                                 reducer=reducer)
             if args.miner:
                 miner = miners.TripletMarginMiner(margin=args.margin * 2.0, type_of_triplets="all",
-                                                  distance=SNRDistance())
+                                                  distance=SNRDistance(normalize_embeddings=args.normalize))
             else:
                 miner = None
 
         elif args.distance_function == 'pairwise':
             criterion = losses.TripletMarginLoss(margin=args.margin, swap=False, smooth_loss=False,
                                                  triplets_per_anchor="all",
-                                                 distance=LpDistance(p=args.p), reducer=reducer)
+                                                 distance=LpDistance(p=args.p, normalize_embeddings=args.normalize),
+                                                 reducer=reducer)
             if args.miner:
                 miner = miners.TripletMarginMiner(margin=args.margin * 2.0, type_of_triplets="all",
-                                                  distance=LpDistance(p=args.p))
+                                                  distance=LpDistance(p=args.p, normalize_embeddings=args.normalize))
             else:
                 miner = None
 
         elif args.distance_function == 'cosine':
             criterion = losses.TripletMarginLoss(margin=args.margin, swap=False, smooth_loss=False,
                                                  triplets_per_anchor="all",
-                                                 distance=CosineSimilarity(), reducer=reducer)
+                                                 distance=CosineSimilarity(normalize_embeddings=args.normalize),
+                                                 reducer=reducer)
             if args.miner:
                 miner = miners.TripletMarginMiner(margin=args.margin * 2.0, type_of_triplets="all",
-                                                  distance=CosineSimilarity())
+                                                  distance=CosineSimilarity(normalize_embeddings=args.normalize))
             else:
                 miner = None
 
@@ -831,9 +834,11 @@ def main(args, model=None):
         # error: each element in list of batch should be of equal size
         # solution found here: https://github.com/pytorch/vision/issues/2624
         dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                                      num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True, collate_fn=lambda x: x)
+                                      num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True,
+                                      collate_fn=lambda x: x)
         dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True,
-                                    num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True, collate_fn=lambda x: x)
+                                    num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True,
+                                    collate_fn=lambda x: x)
 
         if args.train:
             # Build model
@@ -1105,6 +1110,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--lstm_dropout', type=float, default=0.0, help='Lstm dropout between layers')
     parser.add_argument('--fc_dropout', type=float, default=0.0, help='fc dropout between layers')
+    parser.add_argument('--normalize', action='store_true', help='normalize embeddings in metric learning')
 
     parser.add_argument('--resume', type=str, default=None,
                         help='path to checkpoint model; consider check wandb_resume')
