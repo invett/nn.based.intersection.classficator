@@ -59,7 +59,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     elif args.model == 'vgg11':
         model = Vgg11(pretrained=args.pretrained, embeddings=args.embedding, num_classes=args.num_classes)
     elif args.model == 'LSTM':
-        model = LSTM(args.num_classes)
+        model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout)
         if args.feature_model == 'resnet18':
             feature_extractor_model = Resnet18(pretrained=False, embeddings=True, num_classes=args.num_classes)
         if args.feature_model == 'vgg11':
@@ -845,7 +845,7 @@ def main(args, model=None):
             elif args.model == 'vgg11':
                 model = Vgg11(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
             elif args.model == 'LSTM':
-                model = LSTM(args.num_classes)
+                model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout)
                 if args.feature_model == 'resnet18':
                     feature_extractor_model = Resnet18(pretrained=True, embeddings=True, num_classes=args.num_classes)
                 if args.feature_model == 'vgg11':
@@ -1102,6 +1102,10 @@ if __name__ == '__main__':
     parser.add_argument('--scheduler', action='store_true', help='scheduling lr')
     parser.add_argument('--scheduler_type', type=str, default='MultiStepLR', choices=['MultiStepLR',
                                                                                       'ReduceLROnPlateau'])
+
+    parser.add_argument('--lstm_dropout', type=float, default=0.0, help='Lstm dropout between layers')
+    parser.add_argument('--fc_dropout', type=float, default=0.0, help='fc dropout between layers')
+
     parser.add_argument('--resume', type=str, default=None,
                         help='path to checkpoint model; consider check wandb_resume')
 

@@ -75,12 +75,12 @@ class Vgg11(torch.nn.Module):
 
 class LSTM(torch.nn.Module):
 
-    def __init__(self, num_classes):
+    def __init__(self, num_classes, lstm_dropout, fc_dropout):
         super().__init__()
 
-        self.lstm = torch.nn.LSTM(input_size=512, hidden_size=256, num_layers=2, batch_first=True, dropout=0.25)
+        self.lstm = torch.nn.LSTM(input_size=512, hidden_size=256, num_layers=2, batch_first=True, dropout=lstm_dropout)
         self.fc = torch.nn.Linear(256, num_classes)
-        self.drop = torch.nn.Dropout(p=0.2)
+        self.drop = torch.nn.Dropout(p=fc_dropout)
 
     def forward(self, data):
         output, (hn, _) = self.lstm(data)  # --> hn shape (layers x batch x 256)
