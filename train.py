@@ -1152,6 +1152,10 @@ if __name__ == '__main__':
             print("checkpoint file does not exist: ", args.resume, "\n\n")
             exit(-1)
 
+    if args.weighted and args.nonzero:
+        print("weighted and nonzero reducers selected")
+        print("both reduction methods are not compatible")
+
     # Ensure there's a _ at the end of the prefix
     if args.save_prefix != '':
         if args.save_prefix[-1] != '_':
