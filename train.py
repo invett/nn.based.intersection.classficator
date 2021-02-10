@@ -665,13 +665,12 @@ def main(args, model=None):
     data_path = args.dataset
 
     # TODO: ALVARO! Esto es lo que queria editar un poco para que quede claro cuando se usa uno y el otro, a lo mejor no con if elif else pero simples if..
-    if args.dataloader == 'lstmDataloader_alcala26012021':
+    if args.dataloader == 'lstmDataloader_alcala26012021' or args.dataloader == 'alcala26012021':
 
         # ALCALA
         val_path = os.path.join(args.dataset, 'validation/validation_list.txt')
         train_path = os.path.join(args.dataset, 'train/train_list.txt')
         test_path = os.path.join(args.dataset, 'test/test_list.txt')
-
 
     elif '360' not in args.dataloader:
         # All sequence folders
@@ -698,7 +697,7 @@ def main(args, model=None):
         val_sequence_list = ['2013_05_28_drive_0004_sync']
         test_sequence_list = ['2013_05_28_drive_0000_sync']
 
-        # TODO: alvaro, puedes poner lo que nos dijimos ayer? cuando se usa lo de aca arriba y cuando esto?
+        # This are the sequences for testing a train with kitt2011 with kitti360
         kitti360_sequence_list = ['2013_05_28_drive_0003_sync',
                                   '2013_05_28_drive_0002_sync',
                                   '2013_05_28_drive_0005_sync',
@@ -740,7 +739,7 @@ def main(args, model=None):
                 wandb.config.update(args)
 
         # The dataloaders that not use Kitti360 uses list-like inputs
-        if '360' not in args.dataloader and args.dataloader != 'lstmDataloader_alcala26012021':
+        if '360' not in args.dataloader and (args.dataloader != 'lstmDataloader_alcala26012021' and args.dataloader != 'alcala26012021'):
             train_path = np.array(train_path)
             val_path = np.array([val_path])
 
@@ -816,10 +815,8 @@ def main(args, model=None):
             train_dataset = Kitti2011_RGB(train_path, transform=rgb_image_train_transforms)
 
         elif args.dataloader == 'lstmDataloader_alcala26012021':
-            val_dataset = Sequences_alcala26012021_Dataloader(os.path.join(args.dataset, 'validation_list.txt'),
-                                                              transform=rgb_image_train_transforms)
-            train_dataset = Sequences_alcala26012021_Dataloader(os.path.join(args.dataset, 'train_list.txt'),
-                                                                transform=rgb_image_train_transforms)
+            val_dataset = Sequences_alcala26012021_Dataloader(val_path, transform=rgb_image_train_transforms)
+            train_dataset = Sequences_alcala26012021_Dataloader(train_path, transform=rgb_image_train_transforms)
 
         elif args.dataloader == 'alcala26012021':
             val_dataset = alcala26012021(val_path, transform=rgb_image_test_transforms)
