@@ -1173,7 +1173,7 @@ if __name__ == '__main__':
                         help='Use embedding matching')
     parser.add_argument('--triplet', type=str2bool, nargs='?', const=True, default=False, help='Use embedding matching')
     parser.add_argument('--centroids_path', type=str, help='Insert centroids teacher path (for student training)')
-    parser.add_argument('--student_path', type=str, help='Insert student path (for student testing)')
+    parser.add_argument('--load_path', type=str, help='Insert path to the testing pth (for network testing)')
     parser.add_argument('--margin', type=float, default=1., help='margin in triplet and embedding')
     parser.add_argument('--feature_model', type=str, help='Feature extractor for lstm model')
     parser.add_argument('--feature_detector_path', type=str, help='Path to the feature extractor trained model')
@@ -1196,9 +1196,9 @@ if __name__ == '__main__':
               "Ex: --dataset=../DualBiSeNet/data_raw")
         exit(-1)
 
-    if args.student_path:
-        if not os.path.exists(args.student_path):
-            print("Load file does not exist: ", args.student_path, "\n\n")
+    if args.load_path:
+        if not os.path.exists(args.load_path):
+            print("Load file does not exist: ", args.load_path, "\n\n")
             exit(-1)
 
     if args.resume:
