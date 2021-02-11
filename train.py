@@ -659,7 +659,7 @@ def main(args, model=None):
 
     # workaround for "TOO MANY OPEN FILES"
     # https://stackoverflow.com/questions/48250053/pytorchs-dataloader-too-many-open-files-error-when-no-files-should-be-open
-    # torch.multiprocessing.set_sharing_strategy('file_system')
+    torch.multiprocessing.set_sharing_strategy('file_system')
     #
     # a faster workaround is to change the ulimits in linux, per shell based
     # https://stackoverflow.com/questions/16526783/python-subprocess-too-many-open-files
