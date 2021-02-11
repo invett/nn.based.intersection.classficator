@@ -1045,7 +1045,7 @@ def main(args, model=None):
             test_dataset = alcala26012021(test_path, transform=rgb_image_test_transforms)
 
         if test_dataset.getIsSequence():
-            dataloader_val = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
+            dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
                                         num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=False,
                                         collate_fn=lambda x: x)
         else:
