@@ -97,7 +97,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
         else:
             print("=> no checkpoint found at '{}'".format(args.feature_detector_path))
 
-    # load Saved Model (Only for Resnet and vgg)
+    # load Saved Model
     loadpath = args.load_path
     if os.path.isfile(loadpath):
         print("=> loading checkpoint '{}'".format(loadpath))
@@ -116,7 +116,8 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
 
     # Start testing
     if args.model == 'LSTM':
-        pass
+        confusion_matrix, acc_val, loss_val = validation(args, feature_extractor_model, criterion, dataloader_test,
+                                                         LSTM=model)
     elif args.triplet:
         if args.test_method == 'svm':
             # Generates svm with the last train
@@ -863,9 +864,9 @@ def main(args, model=None):
                                           num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
 
         if val_dataset.getIsSequence():
-                dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True,
-                                    num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True,
-                                    collate_fn=lambda x: x)
+            dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True,
+                                        num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True,
+                                        collate_fn=lambda x: x)
         else:
             dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True,
                                         num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
@@ -1036,8 +1037,19 @@ def main(args, model=None):
             test_dataset = triplet_BOO([test_path], args.distance, canonical=True,
                                        transform_osm=osmTransforms, transform_bev=threedimensional_transfomrs)
 
-        dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
-                                     num_workers=args.num_workers, worker_init_fn=init_fn)
+        elif args.dataloader == 'lstmDataloader_alcala26012021':
+            test_dataset = Sequences_alcala26012021_Dataloader(test_path, transform=rgb_image_test_transforms)
+
+        elif args.dataloader == 'alcala26012021':
+            test_dataset = alcala26012021(test_path, transform=rgb_image_test_transforms)
+
+        if test_dataset.getIsSequence():
+            dataloader_val = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
+                                        num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=False,
+                                        collate_fn=lambda x: x)
+        else:
+            dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
+                                         num_workers=args.num_workers, worker_init_fn=init_fn)
 
         if not args.nowandb:  # if nowandb flag was set, skip
             wandb.init(project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
@@ -1047,6 +1059,10 @@ def main(args, model=None):
         if args.triplet:
             test(args, dataloader_test, dataloader_train=dataloader_train, dataloader_val=dataloader_val,
                  save_embeddings=args.save_embeddings)
+        elif args.metric:
+            test(args, dataloader_test, dataloader_train=dataloader_train, dataloader_val=dataloader_val)
+        elif args.model == 'LSTM':
+            test(args, dataloader_test)
         else:
             test(args, dataloader_test, save_embeddings=args.save_embeddings)
 
