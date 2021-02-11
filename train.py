@@ -611,27 +611,49 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                     loadpath = os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
                                                                                              args.model,
                                                                                              epoch))
-                    print('Saving model: ', loadpath)
-                    torch.save({
-                        'epoch': epoch,
-                        'model_state_dict': model.state_dict(),
-                        'optimizer_state_dict': optimizer.state_dict(),
-                        'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
-                        'loss': loss,
-                    }, os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
-                                                                                     args.model, epoch)))
+                    if args.model == 'LSTM':
+                        print('Saving model: ', loadpath)
+                        torch.save({
+                            'epoch': epoch,
+                            'model_state_dict': LSTM.state_dict(),
+                            'optimizer_state_dict': optimizer.state_dict(),
+                            'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
+                            'loss': loss,
+                        }, os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
+                                                                                         args.model, epoch)))
+                    else:
+                        print('Saving model: ', loadpath)
+                        torch.save({
+                            'epoch': epoch,
+                            'model_state_dict': model.state_dict(),
+                            'optimizer_state_dict': optimizer.state_dict(),
+                            'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
+                            'loss': loss,
+                        }, os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
+                                                                                         args.model, epoch)))
                 else:
                     loadpath = os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
                                                                                              wandb.run.id, epoch))
-                    print('Saving model: ', os.path.join(loadpath))
-                    torch.save({
-                        'epoch': epoch,
-                        'model_state_dict': model.state_dict(),
-                        'optimizer_state_dict': optimizer.state_dict(),
-                        'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
-                        'loss': loss,
-                    }, os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
-                                                                                     wandb.run.id, epoch)))
+                    if args.model == 'LSTM':
+                        print('Saving model: ', os.path.join(loadpath))
+                        torch.save({
+                            'epoch': epoch,
+                            'model_state_dict': LSTM.state_dict(),
+                            'optimizer_state_dict': optimizer.state_dict(),
+                            'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
+                            'loss': loss,
+                        }, os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
+                                                                                         wandb.run.id, epoch)))
+                    else:
+                        print('Saving model: ', os.path.join(loadpath))
+                        torch.save({
+                            'epoch': epoch,
+                            'model_state_dict': model.state_dict(),
+                            'optimizer_state_dict': optimizer.state_dict(),
+                            'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
+                            'loss': loss,
+                        }, os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
+                                                                                         wandb.run.id, epoch)))
 
             elif epoch < args.patience_start:
                 patience = 0
