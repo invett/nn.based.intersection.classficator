@@ -59,7 +59,7 @@ def str2bool(v):
 
 
 def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save_embeddings=None):
-    print('start Test!')
+    print('\n<<<<<<<<<<<<<<<<<< START TESTING >>>>>>>>>>>>>>>>>>')
 
     if args.embedding:
         criterion = torch.nn.MSELoss(reduction='mean')
@@ -123,10 +123,10 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
         if args.test_method == 'svm':
             # Generates svm with the last train
             classifier = svm_generator(args, model, dataloader_train=dataloader_train, dataloader_val=dataloader_val)
-            confusion_matrix, acc = svm_testing(args, model, dataloader_test, classifier)
+            confusion_matrix, acc_val = svm_testing(args, model, dataloader_test, classifier)
         elif args.test_method == 'mahalanovis':
             covariances = covmatrix_generator(args, model, dataloader_train, dataloader_val)
-            confusion_matrix, acc = mahalanovis_testing(args, model, dataloader_test, covariances)
+            confusion_matrix, acc_val = mahalanovis_testing(args, model, dataloader_test, covariances)
         else:
             print("=> no test methof found")
             exit(-1)
@@ -138,22 +138,31 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
         if args.test_method == 'svm':
             # Generates svm with the last train
             classifier = svm_generator(args, model, features=embeddings, labels=labels)
-            confusion_matrix, acc = svm_testing(args, model, dataloader_test, classifier)
+            confusion_matrix, acc_val = svm_testing(args, model, dataloader_test, classifier)
         elif args.test_method == 'mahalanovis':
             covariances = covmatrix_generator(args, model, features=embeddings, labels=labels)
-            confusion_matrix, acc = mahalanovis_testing(args, model, dataloader_test, covariances)
+            confusion_matrix, acc_val = mahalanovis_testing(args, model, dataloader_test, covariances)
         else:
             print("=> no test method found")
             exit(-1)
 
     else:
-        confusion_matrix, acc, _ = validation(args, model, criterion, dataloader_test, gt_list=gt_list,
-                                              save_embeddings=save_embeddings)
+        confusion_matrix, acc_val, _ = validation(args, model, criterion, dataloader_test, gt_list=gt_list,
+                                                  save_embeddings=save_embeddings)
 
-    if not args.nowandb:  # if nowandb flag was set, skip
+    if confusion_matrix is not None:
+        plt.figure(figsize=(10, 7))
+        title = str(socket.gethostname()) + '\nVALIDATION '
+        plt.title(title)
+        sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
+
+    if args.telegram and confusion_matrix is not None:
+        send_telegram_picture(plt, "VALIDATION" + "\nacc_val: " + str(acc_val) + "\nloss_val: " + str(loss_val))
+
+    if not args.nowandb and confusion_matrix is not None:  # if nowandb flag was set, skip
         plt.figure(figsize=(10, 7))
         sn.heatmap(confusion_matrix, annot=True, fmt='.2f')
-        wandb.log({"Test/Acc": acc, "conf-matrix_test": wandb.Image(plt)})
+        wandb.log({"Test/Acc": acc_val, "conf-matrix_test": wandb.Image(plt)})
 
 
 def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
