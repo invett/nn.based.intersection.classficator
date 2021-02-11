@@ -111,6 +111,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
         if args.model == 'LSTM':
             model = model.cuda()
             feature_extractor_model = feature_extractor_model.cuda()
+            feature_extractor_model.eval()
         else:
             model = model.cuda()
 
