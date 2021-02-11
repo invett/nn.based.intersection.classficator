@@ -36,7 +36,6 @@ from miscellaneous.utils import init_function, send_telegram_message, send_teleg
 from model.models import Resnet18, Vgg11, LSTM
 
 
-
 def str2bool(v):
     """
     Parsing boolean values with argparse
@@ -50,13 +49,14 @@ def str2bool(v):
     """
 
     if isinstance(v, bool):
-       return v
+        return v
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
         return True
     elif v.lower() in ('no', 'false', 'f', 'n', '0'):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
+
 
 def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save_embeddings=None):
     print('start Test!')
@@ -296,11 +296,11 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         # Build loss criterion
         if args.weighted:
             if args.dataloader == 'Kitti360':
-                weights = [0.85, 0.86, 0.84, 0.85, 0.90, 0.84, 0.85]
+                weights = [0.99, 1.01, 0.98, 0.99, 1.05, 0.98, 0.99]
             elif args.dataloader == 'alcala26012021':
-                weights = [0.76, 0.96, 0.93, 0.89, 0.79, 0.90, 0.73]
+                weights = [0.89, 1.13, 1.09, 1.05, 0.93, 1.06, 0.86]
             else:
-                weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
+                weights = [1.06, 1.11, 1.12, 0.98, 0.99, 0.96, 0.78]
 
             if args.lossfunction == 'SmoothL1':
                 criterion = torch.nn.SmoothL1Loss(reduction='none')
@@ -331,11 +331,11 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         # Build loss criterion
         if args.weighted:
             if args.dataloader == 'Kitti360':
-                weights = [0.85, 0.86, 0.84, 0.85, 0.90, 0.84, 0.85]
+                weights = [0.99, 1.01, 0.98, 0.99, 1.05, 0.98, 0.99]
             elif args.dataloader == 'alcala26012021':
-                weights = [0.76, 0.96, 0.93, 0.89, 0.79, 0.90, 0.73]
+                weights = [0.89, 1.13, 1.09, 1.05, 0.93, 1.06, 0.86]
             else:
-                weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
+                weights = [1.06, 1.11, 1.12, 0.98, 0.99, 0.96, 0.78]
 
             if args.distance_function == 'pairwise':
                 criterion = torch.nn.TripletMarginWithDistanceLoss(
@@ -379,13 +379,13 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
 
         if args.weighted:
             if args.dataloader == 'Kitti360':
-                weights = [0.85, 0.86, 0.84, 0.85, 0.90, 0.84, 0.85]
+                weights = [0.99, 1.01, 0.98, 0.99, 1.05, 0.98, 0.99]
                 class_weights = torch.FloatTensor(weights).cuda()
             elif args.dataloader == 'alcala26012021' or args.dataloader == 'lstmDataloader_alcala26012021':
-                weights = [0.76, 0.96, 0.93, 0.89, 0.79, 0.90, 0.73]
+                weights = [0.89, 1.13, 1.09, 1.05, 0.93, 1.06, 0.86]
                 class_weights = torch.FloatTensor(weights).cuda()
             else:
-                weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
+                weights = [1.06, 1.11, 1.12, 0.98, 0.99, 0.96, 0.78]
                 class_weights = torch.FloatTensor(weights).cuda()
             reducer = reducers.ClassWeightedReducer(class_weights)
         elif args.nonzero:
@@ -433,15 +433,15 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         miner = None  # No need of miner
         if args.weighted:
             if args.dataloader == 'Kitti360':
-                weights = [0.85, 0.86, 0.84, 0.85, 0.90, 0.84, 0.85]
+                weights = [0.99, 1.01, 0.98, 0.99, 1.05, 0.98, 0.99]
                 class_weights = torch.FloatTensor(weights).cuda()
                 criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
             elif args.dataloader == 'alcala26012021' or args.dataloader == 'lstmDataloader_alcala26012021':
-                weights = [0.76, 0.96, 0.93, 0.89, 0.79, 0.90, 0.73]
+                weights = [0.89, 1.13, 1.09, 1.05, 0.93, 1.06, 0.86]
                 class_weights = torch.FloatTensor(weights).cuda()
                 criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
             else:
-                weights = [0.91, 0.95, 0.96, 0.84, 0.85, 0.82, 0.67]
+                weights = [1.06, 1.11, 1.12, 0.98, 0.99, 0.96, 0.78]
                 class_weights = torch.FloatTensor(weights).cuda()
                 criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
         else:
@@ -762,7 +762,8 @@ def main(args, model=None):
                 wandb.config.update(args)
 
         # The dataloaders that not use Kitti360 uses list-like inputs
-        if '360' not in args.dataloader and (args.dataloader != 'lstmDataloader_alcala26012021' and args.dataloader != 'alcala26012021'):
+        if '360' not in args.dataloader and (
+                args.dataloader != 'lstmDataloader_alcala26012021' and args.dataloader != 'alcala26012021'):
             train_path = np.array(train_path)
             val_path = np.array([val_path])
 
@@ -1078,7 +1079,8 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=0, help='Starting seed, for reproducibility. Default is ZERO!')
     parser.add_argument('--train', type=str2bool, nargs='?', const=True, default=False, help='Train/Validate the model')
     parser.add_argument('--test', type=str2bool, nargs='?', const=True, default=False, help='Test the model')
-    parser.add_argument('--oposite', type=str2bool, nargs='?', const=True, default=False, help='Test the model with the oposite dataset')
+    parser.add_argument('--oposite', type=str2bool, nargs='?', const=True, default=False,
+                        help='Test the model with the oposite dataset')
     parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs to train for')
     parser.add_argument('--start_epoch', type=int, default=0, help='Number of epochs to train for')
     parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
@@ -1094,7 +1096,8 @@ if __name__ == '__main__':
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     parser.add_argument('--wandb_resume', type=str, default=None, help='the id of the wandb-resume, e.g. jhc0gvhb')
 
-    parser.add_argument('--telegram', type=str2bool, nargs='?', const=True, default=False, help='Send info through Telegram')
+    parser.add_argument('--telegram', type=str2bool, nargs='?', const=True, default=False,
+                        help='Send info through Telegram')
     parser.add_argument('--dataset', type=str, help='path to the dataset you are using.')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
     parser.add_argument('--model', type=str, default="resnet18",
@@ -1106,7 +1109,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--num_classes', type=int, default=7, help='num of object classes')
     parser.add_argument('--cuda', type=str, default='0', help='GPU is used for training')
-    parser.add_argument('--use_gpu', type=str2bool, nargs='?', const=True, default=True, help='whether to user gpu for training')
+    parser.add_argument('--use_gpu', type=str2bool, nargs='?', const=True, default=True,
+                        help='whether to user gpu for training')
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
     parser.add_argument('--adam_weight_decay', type=float, default=5e-4, help='adam_weight_decay')
     parser.add_argument('--lossfunction', type=str, default='MSE',
@@ -1130,22 +1134,26 @@ if __name__ == '__main__':
     parser.add_argument('--distance', type=float, default=20.0, help='Distance from the cross')
 
     parser.add_argument('--weighted', type=str2bool, nargs='?', const=True, default=False, help='Weighted losses')
-    parser.add_argument('--miner', type=str2bool, nargs='?', const=True, default=False, help='miner for metric learning')
+    parser.add_argument('--miner', type=str2bool, nargs='?', const=True, default=False,
+                        help='miner for metric learning')
     parser.add_argument('--nonzero', type=str2bool, nargs='?', const=True, default=False, help='nonzero losses')
-    parser.add_argument('--pretrained', type=str2bool, nargs='?', const=True, default=False, help='whether to use a pretrained net, or not')
+    parser.add_argument('--pretrained', type=str2bool, nargs='?', const=True, default=False,
+                        help='whether to use a pretrained net, or not')
     parser.add_argument('--scheduler', type=str2bool, nargs='?', const=True, default=False, help='scheduling lr')
     parser.add_argument('--scheduler_type', type=str, default='MultiStepLR', choices=['MultiStepLR',
                                                                                       'ReduceLROnPlateau'])
 
     parser.add_argument('--lstm_dropout', type=float, default=0.0, help='Lstm dropout between layers')
     parser.add_argument('--fc_dropout', type=float, default=0.0, help='fc dropout between layers')
-    parser.add_argument('--normalize', type=str2bool, nargs='?', const=True, default=False, help='normalize embeddings in metric learning')
+    parser.add_argument('--normalize', type=str2bool, nargs='?', const=True, default=False,
+                        help='normalize embeddings in metric learning')
 
     parser.add_argument('--resume', type=str, default=None,
                         help='path to checkpoint model; consider check wandb_resume')
 
     # to enable the STUDENT training, set --embedding and provide the teacher path
-    parser.add_argument('--embedding', type=str2bool, nargs='?', const=True, default=False, help='Use embedding matching')
+    parser.add_argument('--embedding', type=str2bool, nargs='?', const=True, default=False,
+                        help='Use embedding matching')
     parser.add_argument('--triplet', type=str2bool, nargs='?', const=True, default=False, help='Use embedding matching')
     parser.add_argument('--centroids_path', type=str, help='Insert centroids teacher path (for student training)')
     parser.add_argument('--student_path', type=str, help='Insert student path (for student testing)')
