@@ -25,7 +25,7 @@ class AbstractSequence:
     """
 
     def __init__(self, isSequence=False):
-        self.isSequence = False
+        self.isSequence = isSequence
 
     def getIsSequence(self):
         return self.isSequence
@@ -1530,6 +1530,9 @@ class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
                         on a sample.
                     usePIL: default True, but if not, return numpy-arrays!
 
+                    isSequence : this parameter specifies that this dataloader is using sequences! used together with
+                                 the abstract class
+
         """
 
         # call the super init class. from this we'll have
@@ -1540,7 +1543,6 @@ class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
         # Sequences_alcala26012021_Dataloader.__init__(self, path_filename, transform, usePIL)
         super().__init__(path_filename, transform, usePIL, isSequence=isSequence)
 
-        # TODO: GIGI CONTINUA DA QUI PIRLUN!
         sequences = {}
         last_seq = 0
         sequences, last_seq = self.__get_sequences('', self.images, last_seq, sequences)
