@@ -27,7 +27,9 @@ def main(args):
     # execute = 'standard'
     # execute = 'kitti360'
     # execute = 'kitti360-warping'
-    execute = 'alcala26012021'
+    # execute = 'alcala26012021'
+    execute = 'alcala.12.02.2021.000'
+    #execute = 'alcala.12.02.2021.001'
 
     # alcala26122012 does not walk os paths! it directly uses a .txt file!
     if not execute == 'alcala26012021':
@@ -103,7 +105,32 @@ def main(args):
                                                                                  WriteDebugInfoOnNewDataset(),
                                                                                  GenerateNewDataset(args.savefolder)]), usePIL=False)
 
+    if execute == 'alcala.12.02.2021.000':
+            dataset = alcala26012021(path_filename=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
+                                                                                                     random_Ry_degrees=0.5,
+                                                                                                     random_Rz_degrees=0.5,
+                                                                                                     random_Tx_meters=2.0,
+                                                                                                     random_Ty_meters=1.0,
+                                                                                                     random_Tz_meters=0.1,
+                                                                                                     warpdataset='alcala26012021'),
+                                                                                     #Mirror(),
+                                                                                     Rescale((224, 224)),
+                                                                                     WriteDebugInfoOnNewDataset(),
+                                                                                     GenerateNewDataset(args.savefolder)]), usePIL=False)
 
+
+    if execute == 'alcala.12.02.2021.001':
+            dataset = alcala26012021(path_filename=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
+                                                                                                     random_Ry_degrees=0.5,
+                                                                                                     random_Rz_degrees=0.5,
+                                                                                                     random_Tx_meters=2.0,
+                                                                                                     random_Ty_meters=1.0,
+                                                                                                     random_Tz_meters=0.1,
+                                                                                                     warpdataset='alcala26012021'),
+                                                                                     #Mirror(),
+                                                                                     Rescale((224, 224)),
+                                                                                     WriteDebugInfoOnNewDataset(),
+                                                                                     GenerateNewDataset(args.savefolder)]), usePIL=False)
 
     if execute == 'standard':
         dataset = fromAANETandDualBisenet(folders, transform=transforms.Compose([#Normalize(),
@@ -128,16 +155,16 @@ def main(args):
     # num_workers starts from 0
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=args.workers)
 
-    # for i in range(10):
-    #     sample = dataloader.dataset.__getitem__(2030)
-    #     data = sample['data']
-    #     label = sample['label']
-    #     # a = plt.figure()
-    #     # plt.imshow(sample['data'] / 255.0)
-    #     # send_telegram_picture(a, '')
-    #     # plt.close('all')
-    #
-    # exit(1)
+    # USE THIS TO SELECT ONE SINGLE IMAGE AND VERIFY THE WARPING
+    for i in range(10):
+        sample = dataloader.dataset.__getitem__(2030)
+        data = sample['data']
+        label = sample['label']
+        # a = plt.figure()
+        # plt.imshow(sample['data'] / 255.0)
+        # send_telegram_picture(a, '')
+        # plt.close('all')
+    exit(1)
 
     for index in range(args.augmentation + 1):
         print("Generating run {} ... ".format(index))
@@ -153,7 +180,7 @@ def main(args):
             if args.telegram:
                 a = plt.figure()
                 plt.imshow(sample['data'].numpy().squeeze() / 255.0)
-                #send_telegram_picture(a, str(sample['bev_path_filename']))
+                # send_telegram_picture(a, str(sample['bev_path_filename']))
                 send_telegram_picture(a, '')
                 plt.close('all')
 
@@ -194,6 +221,9 @@ if __name__ == '__main__':
     # parser.add_argument('--savefolder', default="/home/malvaro/Documentos/DualBiSeNet/data_raw_bev", type=str, help='Where to save the new data')
     # parser.add_argument('--rootfolder', default="/media/augusto/500GBHECTOR/augusto/kitti360-augusto", type=str, help='Root folder for all datasets')
     # parser.add_argument('--savefolder', default="/media/augusto/500GBHECTOR/augusto/kitti360-augusto-augmented-warped", type=str, help='Where to save the new data')
+
+    # parser.add_argument('--rootfolder', default="/home/ballardini/Desktop/alcala-26.01.2021_selected/all.txt", type=str, help='Root folder for all datasets')
+    # parser.add_argument('--savefolder', default="/home/ballardini/Desktop/alcala-26.01.2021_selected_augmented_warped", type=str, help='Where to save the new data')
 
     parser.add_argument('--rootfolder', default="/home/ballardini/Desktop/alcala-26.01.2021_selected/all.txt", type=str, help='Root folder for all datasets')
     parser.add_argument('--savefolder', default="/home/ballardini/Desktop/alcala-26.01.2021_selected_augmented_warped", type=str, help='Where to save the new data')

@@ -28,7 +28,9 @@ import random
 # dataset = 'KITTI360'
 # dataset = 'ALCALA'
 # dataset = 'AQP'
-dataset = 'alcala-26.01.2021'
+# dataset = 'alcala-26.01.2021'
+dataset = 'alcala-12.02.2021.000'
+# dataset = 'alcala-12.02.2021.001'
 
 # definitions, will be specialized later .. but just to avoid warnings
 resizeme = 0
@@ -106,6 +108,43 @@ if dataset == 'alcala-26.01.2021':
 
     csv_filename = "alcala-26.01.2021.csv"
     pickle_filename = 'alcala-26.01.2021.pickle'
+
+    height = 500
+    position1 = (10, 30)
+    position2 = (500, 30)
+    position3 = (500, 60)
+    resizeme = 0  # resizeme = 0 does not perform the resize
+    width = 800
+
+if dataset == 'alcala-12.02.2021.000':
+    # images from raw files are 1920x1200 - resize as needed.
+    # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
+    # scale=800:-1 R2_video_0002_camera2_png/%010d.png
+    base_folder = '/home/ballardini/Desktop/alcala-12.02.2021.000/'
+
+    folders = ['120445AA', '122302AA']
+
+    csv_filename = 'alcala-12.02.2021.000' + '.csv'
+    pickle_filename = 'alcala-12.02.2021.000' + '.pickle'
+
+    height = 500
+    position1 = (10, 30)
+    position2 = (500, 30)
+    position3 = (500, 60)
+    resizeme = 0  # resizeme = 0 does not perform the resize
+    width = 800
+
+if dataset == 'alcala-12.02.2021.001':
+    # images from raw files are 1920x1200 - resize as needed.
+    # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
+    # scale=800:-1 R2_video_0002_camera2_png/%010d.png
+    base_folder = '/home/ballardini/Desktop/alcala-12.02.2021.000/'
+
+    # TODO ALVARO CAMBIA ACA
+    folders = ['120445AA', '122302AA']
+
+    csv_filename = 'alcala-12.02.2021.000' + '.csv'
+    pickle_filename = 'alcala-12.02.2021.000' + '.pickle'
 
     height = 500
     position1 = (10, 30)
@@ -452,6 +491,8 @@ for folder in folders:
         path = os.path.join(base_folder, folder)
     if dataset == 'alcala-26.01.2021':
         path = os.path.join(base_folder, folder)
+    if dataset == 'alcala-12.02.2021.000' or dataset == 'alcala-12.02.2021.001':
+        path = os.path.join(base_folder, 'RGB', folder)
     if dataset == 'AQP':
         path = os.path.join(base_folder, folder, 'image_02')
     if dataset == 'OXFORD':
