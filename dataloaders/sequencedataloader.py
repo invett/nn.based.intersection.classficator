@@ -133,8 +133,8 @@ class alcala26012021(AbstractSequence, Dataset):
         return sample
 
 
-class kitti360(Dataset):
-    def __init__(self, path, sequence_list, transform=None):
+class kitti360(AbstractSequence, Dataset):
+    def __init__(self, path, sequence_list, transform=None, isSequence=False):
         """
 
                 THIS IS THE DATALOADER USED TO DIRECTLY USE RGB IMAGES on Kitti 360 dataset
@@ -147,6 +147,7 @@ class kitti360(Dataset):
 
 
         """
+        super().__init__(isSequence=isSequence)
         self.transform = transform
 
         images = {}
