@@ -30,8 +30,11 @@ data_path = '/home/ballardini/Desktop/alcala-26.01.2021/'
 
 # dataset = alcala26012021(path_filename='/home/ballardini/Desktop/alcala-26.01.2021/train_list.txt')
 
-dataset = Sequences_alcala26012021_Dataloader(path_filename='/home/ballardini/Desktop/alcala-26.01.2021/train_list.txt',
-                                              usePIL=False)
+# dataset = Sequences_alcala26012021_Dataloader(path_filename='/home/ballardini/Desktop/alcala-26.01.2021/train_list.txt',
+#                                               usePIL=False)
+
+dataset = Sequences_alcala26012021_Dataloader(
+    path_filename='/home/ballardini/DualBiSeNet/alcala-12.02.2021/test_list.txt', usePIL=False)
 
 loader = DataLoader(
     dataset,

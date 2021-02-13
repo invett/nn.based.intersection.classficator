@@ -80,6 +80,8 @@ class alcala26012021(AbstractSequence, Dataset):
         imagepath = self.images[idx]
         image = Image.open(imagepath)
 
+        print(imagepath)
+
         label = int(self.labels[idx])
         neg_label = choice([i for i in range(0, 7) if i != label])
 
@@ -87,14 +89,9 @@ class alcala26012021(AbstractSequence, Dataset):
             # copy to avoid warnings from pytorch, or bad edits ...
             image = np.copy(np.asarray(image))
 
-        if self.transform:
-            image = self.transform(image)
-
-        '''
         sample = {'image_02': image,
                   'label': label,
                   'neg_label': neg_label}
-
 
         transformed = []
         if self.transform:
@@ -106,7 +103,7 @@ class alcala26012021(AbstractSequence, Dataset):
 
             dataset_path = os.path.join(transformed['path'], imagepath.split('/')[-2])
             if not os.path.isdir(dataset_path):
-                os.mkdir(dataset_path)
+                os.makedirs(dataset_path)
             base_file_star = os.path.splitext(os.path.split(imagepath)[1])[0]
             current_filelist = glob.glob1(dataset_path, base_file_star + '*')
             last_number = len([x for x in current_filelist if "json" not in x])
@@ -124,10 +121,11 @@ class alcala26012021(AbstractSequence, Dataset):
                 os.makedirs(dataset_path)
             flag = cv2.imwrite(bev_path_filename, transformed['data'])
             assert flag, "can't write file"
-        '''
-        sample = {'data': image,
+
+        sample = {'data': transformed['data'],
                   'label': label,
                   'neg_label': neg_label}
+
 
         return sample
 

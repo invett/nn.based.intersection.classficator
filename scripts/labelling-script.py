@@ -29,8 +29,8 @@ import random
 # dataset = 'ALCALA'
 # dataset = 'AQP'
 # dataset = 'alcala-26.01.2021'
-#dataset = 'alcala-12.02.2021.000'
-dataset = 'alcala-12.02.2021.001'
+dataset = 'alcala-12.02.2021.000'
+# dataset = 'alcala-12.02.2021.001'
 
 # definitions, will be specialized later .. but just to avoid warnings
 resizeme = 0
