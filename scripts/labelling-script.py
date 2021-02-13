@@ -138,9 +138,8 @@ if dataset == 'alcala-12.02.2021.001':
     # images from raw files are 1920x1200 - resize as needed.
     # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
     # scale=800:-1 R2_video_0002_camera2_png/%010d.png
-    base_folder = 'D:\\alcala-21.02.2021.001\\'
+    base_folder = '/mnt/d/alcala-21.02.2021.001/'
 
-    # TODO ALVARO CAMBIA ACA
     folders = ['164002AA', '164002AA']
 
     csv_filename = 'alcala-12.02.2021.001' + '.csv'
@@ -430,7 +429,7 @@ def summary(annotations):
     print("Type6 seq/frames:", len(type_x_sequences[6]), "/", type_6, "\t-\t", [len(i) for i in type_x_sequences[6]])
     print("Overall Sequences: ", sequences)
     print("The number of frames associated to each sequence is: ", sequences_frame_number)
-    print("Sum of frames in seq ", sum(sequences_frame_number), '\\', type_x_frames)
+    print("Sum of frames in seq ", sum(sequences_frame_number), '/', type_x_frames)
 
     train_list = []
     validation_list = []
@@ -498,7 +497,7 @@ for folder in folders:
     if dataset == 'OXFORD':
         path = os.path.join(base_folder, folder)
     # files.append(sorted([f for f in listdir(path) if isfile(join(path, f))]))
-    files.append(sorted([path + '\\' + f for f in listdir(path)]))
+    files.append(sorted([path + '/' + f for f in listdir(path)]))
 
 # if for some reason some of the folders is empty, say no.
 for file_list_check in files:
@@ -570,7 +569,7 @@ for sequence_number, sequence in enumerate(files):
             img[v_pos:v_pos + img_type_0.shape[0], h_pos:h_pos + img_type_0.shape[1]] = img_type_6
 
         cv2.putText(img, str(annotations[sequence_number][file]), position1, font, fontScale, fontColor, lineType)
-        cv2.putText(img, str(file) + '\\' + str(len(sequence) - 2), position2, font, fontScale, fontColor, lineType)
+        cv2.putText(img, str(file) + '/' + str(len(sequence) - 2), position2, font, fontScale, fontColor, lineType)
         cv2.putText(img, os.path.basename(sequence[file]), position3, font, fontScale, fontColor, lineType)
 
         cv2.imshow('image', img)

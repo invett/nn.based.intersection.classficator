@@ -90,7 +90,6 @@ class alcala26012021(AbstractSequence, Dataset):
         if self.transform:
             image = self.transform(image)
 
-        # TODO: FIX THIS LOADER! 
         '''
         sample = {'image_02': image,
                   'label': label,
