@@ -1630,7 +1630,14 @@ class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
             # the following trick does the job, but it doesn't work for folders with multiple
             # data augmentation files, ie, filename.002+.png won't be handled correctly.
             # TODO: improve the creation of sequences from data-augmented folders.
-            frame_number = int(os.path.splitext(os.path.split(file)[1])[0].split('.')[0])
+
+            if '2013_' in file:
+                # BRUTAL kitti360 patch: ... the frame numbering is different since they contain "folder" in the
+                # filename itself... i'll try to catch this searching '2013_' in the string ...
+                # 6/2013_05_28_drive_0009_sync_0000007162.001.png
+                frame_number = int(os.path.splitext(os.path.split(file)[1])[0].split('.')[0].split('_')[-1])
+            else:
+                frame_number = int(os.path.splitext(os.path.split(file)[1])[0].split('.')[0])
 
             # check for sequence. if the current frame number is not the previous+1, then we have a new sequence.
             if not (prev_framenumber is None or (frame_number == (prev_framenumber + 1))):
