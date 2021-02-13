@@ -1630,8 +1630,9 @@ class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
             # the following trick does the job, but it doesn't work for folders with multiple
             # data augmentation files, ie, filename.002+.png won't be handled correctly.
             # TODO: improve the creation of sequences from data-augmented folders.
-            # frame_number = int(os.path.splitext(os.path.split(file)[1])[0].split('.')[0])
-            frame_number = int(os.path.splitext(os.path.split(file)[1])[0].split('.')[0].split('_')[-1])
+
+            frame_number = int(os.path.splitext(os.path.split(file)[1])[0].split('.')[0])
+            # kitti360 patch: frame_number = int(os.path.splitext(os.path.split(file)[1])[0].split('.')[0].split('_')[-1])
 
             # check for sequence. if the current frame number is not the previous+1, then we have a new sequence.
             if not (prev_framenumber is None or (frame_number == (prev_framenumber + 1))):
