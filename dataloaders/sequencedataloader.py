@@ -89,43 +89,50 @@ class alcala26012021(AbstractSequence, Dataset):
             # copy to avoid warnings from pytorch, or bad edits ...
             image = np.copy(np.asarray(image))
 
-        sample = {'image_02': image,
-                  'label': label,
-                  'neg_label': neg_label}
+            sample = {'image_02': image,
+                      'label': label,
+                      'neg_label': neg_label}
 
-        transformed = []
-        if self.transform:
-            transformed = self.transform(sample)
+            transformed = []
+            if self.transform:
+                transformed = self.transform(sample)
 
-        # save the image if needed, ie, we have the path inserted with the "fake-transform".
-        if "path" in transformed:
-            print("Saving image in ", transformed['path'])
+            # save the image if needed, ie, we have the path inserted with the "fake-transform".
+            if "path" in transformed:
+                print("Saving image in ", transformed['path'])
 
-            dataset_path = os.path.join(transformed['path'], imagepath.split('/')[-2])
-            if not os.path.isdir(dataset_path):
-                os.makedirs(dataset_path)
-            base_file_star = os.path.splitext(os.path.split(imagepath)[1])[0]
-            current_filelist = glob.glob1(dataset_path, base_file_star + '*')
-            last_number = len([x for x in current_filelist if "json" not in x])
-            final_filename = base_file_star + '.' + str(last_number + 1).zfill(3) + '.png'
-            bev_path_filename = os.path.join(dataset_path, final_filename)
+                dataset_path = os.path.join(transformed['path'], imagepath.split('/')[-2])
+                if not os.path.isdir(dataset_path):
+                    os.makedirs(dataset_path)
+                base_file_star = os.path.splitext(os.path.split(imagepath)[1])[0]
+                current_filelist = glob.glob1(dataset_path, base_file_star + '*')
+                last_number = len([x for x in current_filelist if "json" not in x])
+                final_filename = base_file_star + '.' + str(last_number + 1).zfill(3) + '.png'
+                bev_path_filename = os.path.join(dataset_path, final_filename)
 
-            wheretowrite = os.path.join(transformed['path'],'output.txt')
-            towrite = os.path.join(os.path.split(dataset_path)[1], final_filename) + ';' + str(
-                transformed['label']) + '\n'
-            with open(wheretowrite, 'a') as file_object:
-                file_object.write(towrite)
+                wheretowrite = os.path.join(transformed['path'], 'output.txt')
+                towrite = os.path.join(os.path.split(dataset_path)[1], final_filename) + ';' + str(
+                    transformed['label']) + '\n'
+                with open(wheretowrite, 'a') as file_object:
+                    file_object.write(towrite)
 
-            # path must already exist!
-            if not os.path.exists(dataset_path):
-                os.makedirs(dataset_path)
-            flag = cv2.imwrite(bev_path_filename, transformed['data'])
-            assert flag, "can't write file"
+                # path must already exist!
+                if not os.path.exists(dataset_path):
+                    os.makedirs(dataset_path)
+                flag = cv2.imwrite(bev_path_filename, transformed['data'])
+                assert flag, "can't write file"
 
-        sample = {'data': transformed['data'],
-                  'label': label,
-                  'neg_label': neg_label}
+            sample = {'data': transformed['data'],
+                      'label': label,
+                      'neg_label': neg_label}
 
+        else:
+            sample = {'data': image,
+                      'label': label,
+                      'neg_label': neg_label}
+
+            if self.transform:
+                transformed = self.transform(sample)
 
         return sample
 
@@ -1751,7 +1758,7 @@ class SequencesDataloader(AbstractSequence, Dataset):
 
         sample = {'sequence': img_list, 'label': previous_label}
 
-        if self.transform: #No se si esto funciona!
+        if self.transform:  # No se si esto funciona!
             sample['sequence'] = self.transform(sample['sequence'])
 
         return sample
