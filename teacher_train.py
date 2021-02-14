@@ -65,12 +65,12 @@ def main(args):
         else:
             if args.test:
                 wandb.init(project="nn-based-intersection-classficator", entity="chiringuito",
-                           group="Teacher_train_ultimate",
+                           group="Teacher_train",
                            job_type="eval", tags=["Teacher", "ultimate", "class", hostname],
                            config=hyperparameter_defaults)
             else:
                 wandb.init(project="nn-based-intersection-classficator", entity="chiringuito",
-                           group="Teacher_train_ultimate",
+                           group="Teacher_train",
                            job_type="training", tags=["Teacher", "ultimate", "class", hostname],
                            config=hyperparameter_defaults)
             wandb.config.update(args, allow_val_change=True)
