@@ -304,6 +304,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
 
     if args.embedding:  # For Teacher/Student training
         miner = None  # No need of miner
+        acc_metric = None  # No nedd of metric acc
         # Build loss criterion
         if args.weighted:
             if args.dataloader == 'Kitti360':
@@ -339,6 +340,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
     elif args.triplet or args.lossfunction == 'triplet':
         gt_list = None  # No need of centroids
         miner = None  # No need of miner
+        acc_metric = None  # No nedd of metric acc
         # Build loss criterion
         if args.weighted:
             if args.dataloader == 'Kitti360':
@@ -730,7 +732,8 @@ def main(args, model=None):
             test_path = os.path.join(args.dataset, 'test/test_list.txt')
         else:
             train_path = os.path.join(args.dataset, 'test/test_list.txt')  # DATASET ALCALA 12_02_21
-            val_path = os.path.join(args.dataset_val, 'validation_test/validation_test_list.txt')  # DATASET ALACALA 26_01_21 (val+test)
+            val_path = os.path.join(args.dataset_val,
+                                    'validation_test/validation_test_list.txt')  # DATASET ALACALA 26_01_21 (val+test)
             test_path = os.path.join(args.dataset_val, 'train/train_list.txt')  # DATASET ALCALA 26_01_21 (Train)
 
     elif '360' not in args.dataloader:
