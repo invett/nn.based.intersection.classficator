@@ -727,9 +727,9 @@ def main(args, model=None):
 
         # ALCALA
         if args.dataset_val is None:
-            val_path = os.path.join(args.dataset, 'validation/validation_list.txt')
-            train_path = os.path.join(args.dataset, 'train/train_list.txt')
-            test_path = os.path.join(args.dataset, 'test/test_list.txt')
+            val_path = os.path.join(args.dataset, 'validation/2nd.split.validation_list.txt')
+            train_path = os.path.join(args.dataset, 'train/2nd.split.train_list.txt')
+            test_path = os.path.join(args.dataset, 'test/2nd.split.test_list.txt')
         else:
             train_path = os.path.join(args.dataset, 'test/test_list.txt')  # DATASET ALCALA 12_02_21
             val_path = os.path.join(args.dataset_val,
