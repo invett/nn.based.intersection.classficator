@@ -76,12 +76,17 @@ def summary(annotations, files):
             current_sequence_filenames.append(frame_filename)
 
     # some sequences of kitti 360 have only one frame, others 2 or 3 ... we need to prune these sequences
-    threshold = 8
+    threshold = 5
+    excluded_counter = 0
     type_x_sequences_ = [[], [], [], [], [], [], []]
     for index, val in enumerate(type_x_sequences):
         for sq in val:
             if len(sq) > threshold:
                 type_x_sequences_[index].append(sq)
+            else:
+                print("Skipping sequence with #frames: " + str(len(sq)))
+                excluded_counter = excluded_counter + len(sq)
+
 
 
     print("Type0 seq/frames:", len(type_x_sequences[0]), "/", type_0, "\t-\t", [len(i) for i in type_x_sequences[0]])
@@ -139,17 +144,21 @@ def summary(annotations, files):
           len(train_list) + len(validation_list) + len(test_list))
 
     base_folder = '/home/ballardini/DualBiSeNet/kitti360-augusto-warping/kitti360-augusto-warping_flat/'
+    base_folder = '/home/ballardini/DualBiSeNet/kitti360-augusto-warping/kitti360-augusto-warping_flat/validation/bugged/'
 
     # save the lists using the base_folder as root
-    with open(os.path.join(base_folder, 'train_list.txt'), 'w') as f:
+    # WERE train_list.txt   validation_list.txt     test_list.txt
+    with open(os.path.join(base_folder, 'train_list_2nd.split.txt'), 'w') as f:
         for item in train_list:
             f.write("%s\n" % item)
-    with open(os.path.join(base_folder, 'validation_list.txt'), 'w') as f:
+    with open(os.path.join(base_folder, 'validation_list_2nd.split.txt'), 'w') as f:
         for item in validation_list:
             f.write("%s\n" % item)
-    with open(os.path.join(base_folder, 'test_list.txt'), 'w') as f:
+    with open(os.path.join(base_folder, 'test_list_2nd.split.txt'), 'w') as f:
         for item in test_list:
             f.write("%s\n" % item)
+
+    print("Finish")
 
 
 # annotations = list(np.loadtxt('/home/ballardini/DualBiSeNet/kitti360-augusto-warping/kitti360-augusto-warping_flat/all_annotations.txt', dtype='str'))
@@ -158,9 +167,14 @@ def summary(annotations, files):
 annotations = []
 files = []
 
-with open('/home/ballardini/DualBiSeNet/kitti360-augusto-warping/kitti360-augusto-warping_flat/all_files.txt', "r") as f:
+# with open('/home/ballardini/DualBiSeNet/kitti360-augusto-warping/kitti360-augusto-warping_flat/all_files_2nd.split.txt', "r") as f:
+#     files = [f.read().splitlines()]
+# with open('/home/ballardini/DualBiSeNet/kitti360-augusto-warping/kitti360-augusto-warping_flat/all_annotations_2nd.split.txt', "r") as a:
+#     annotations = [a.read().splitlines()]
+
+with open('/home/ballardini/DualBiSeNet/kitti360-augusto-warping/kitti360-augusto-warping_flat/validation/bugged/all_files_bugged.txt', "r") as f:
     files = [f.read().splitlines()]
-with open('/home/ballardini/DualBiSeNet/kitti360-augusto-warping/kitti360-augusto-warping_flat/all_annotations.txt', "r") as a:
+with open('/home/ballardini/DualBiSeNet/kitti360-augusto-warping/kitti360-augusto-warping_flat/validation/bugged/all_annotations_bugged.txt', "r") as a:
     annotations = [a.read().splitlines()]
 
 for i in range(0, len(annotations[0])):

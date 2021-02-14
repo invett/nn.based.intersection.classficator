@@ -1607,6 +1607,9 @@ class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
 
         sample = {'sequence': img_list, 'label': label}
 
+        if len(img_list) == 1:
+            print("LENGHT OF IMAGE LIST IS 1 !!!!! TAKE CARE!!!!")
+
         return sample
 
     @staticmethod
