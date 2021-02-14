@@ -225,10 +225,10 @@ if __name__ == '__main__':
     # parser.add_argument('--savefolder', default="/home/ballardini/Desktop/alcala-26.01.2021_selected_augmented_warped", type=str, help='Where to save the new data')
 
     # ALCALA 12 02 2021 000+001
-    #000
-    #001
     parser.add_argument('--rootfolder', default="/home/ballardini/DualBiSeNet/alcala-12.02.2021/001_test_list.txt", type=str, help='Root folder for all datasets')
     parser.add_argument('--savefolder', default="/home/ballardini/DualBiSeNet/alcala-12.02.2021_augmented_warped_1", type=str, help='Where to save the new data')
+    # for the 1-b, remember to set the RANDOM values (ex: random_Rx_degrees and so on...) to ZERO
+    # parser.add_argument('--savefolder', default="/home/ballardini/DualBiSeNet/alcala-12.02.2021_augmented_warped_1-b", type=str, help='Where to save the new data')
 
 
 
