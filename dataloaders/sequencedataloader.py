@@ -132,7 +132,7 @@ class alcala26012021(AbstractSequence, Dataset):
                       'neg_label': neg_label}
 
             if self.transform:
-                sample = self.transform(sample)
+                sample['data'] = self.transform(sample['data'])
 
         return sample
 
