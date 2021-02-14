@@ -724,9 +724,14 @@ def main(args, model=None):
     if args.dataloader == 'lstmDataloader_alcala26012021' or args.dataloader == 'alcala26012021':
 
         # ALCALA
-        val_path = os.path.join(args.dataset, 'validation/validation_list.txt')
-        train_path = os.path.join(args.dataset, 'train/train_list.txt')
-        test_path = os.path.join(args.dataset, 'test/test_list.txt')
+        if args.dataset_val is None:
+            val_path = os.path.join(args.dataset, 'validation/validation_list.txt')
+            train_path = os.path.join(args.dataset, 'train/train_list.txt')
+            test_path = os.path.join(args.dataset, 'test/test_list.txt')
+        else:
+            train_path = os.path.join(args.dataset, 'test/test_list.txt')  # DATASET ALCALA 12_02_21
+            val_path = os.path.join(args.dataset_val, 'validation_test/validation_test_list.txt')  # DATASET ALACALA 26_01_21 (val+test)
+            test_path = os.path.join(args.dataset_val, 'train/train_list.txt')  # DATASET ALCALA 26_01_21 (Train)
 
     elif '360' not in args.dataloader:
         # All sequence folders
@@ -737,7 +742,7 @@ def main(args, model=None):
         folders = folders[folders != os.path.join(data_path, '2011_09_30_drive_0028_sync')]
         test_path = os.path.join(data_path, '2011_09_30_drive_0028_sync')
 
-        # Exclude validation samples
+        # Exclude validation samples"
         train_path = folders[folders != os.path.join(data_path, '2011_10_03_drive_0034_sync')]
         val_path = os.path.join(data_path, '2011_10_03_drive_0034_sync')
 
@@ -1077,8 +1082,8 @@ def main(args, model=None):
 
         if test_dataset.getIsSequence():
             dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
-                                        num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=False,
-                                        collate_fn=lambda x: x)
+                                         num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=False,
+                                         collate_fn=lambda x: x)
         else:
             dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
                                          num_workers=args.num_workers, worker_init_fn=init_fn)
@@ -1147,6 +1152,8 @@ if __name__ == '__main__':
     parser.add_argument('--telegram', type=str2bool, nargs='?', const=True, default=False,
                         help='Send info through Telegram')
     parser.add_argument('--dataset', type=str, help='path to the dataset you are using.')
+    parser.add_argument('--dataset_val', type=str, default=None,
+                        help='path to the  validation dataset that you are using if is different to the training one')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
     parser.add_argument('--model', type=str, default="resnet18",
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
