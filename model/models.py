@@ -78,7 +78,8 @@ class LSTM(torch.nn.Module):
     def __init__(self, num_classes, lstm_dropout, fc_dropout, input_size=512):
         super().__init__()
 
-        self.lstm = torch.nn.LSTM(input_size=input_size, hidden_size=256, num_layers=2, batch_first=True, dropout=lstm_dropout)
+        self.lstm = torch.nn.LSTM(input_size=input_size, hidden_size=256, num_layers=2, batch_first=True,
+                                  dropout=lstm_dropout)
         self.fc = torch.nn.Linear(256, num_classes)
         self.drop = torch.nn.Dropout(p=fc_dropout)
 
@@ -102,11 +103,13 @@ class Resnet50_Coco(torch.nn.Module):  # Resnet50 trained in coco segmentation d
             param.requires_grad = False
 
         self.encoder = model.backbone
+        self.avgpool = torch.nn.AdaptiveAvgPool2d(output_size=(1, 1))
         if embeddings_size == 512:
             self.fc = torch.nn.Linear(2048, 512)
 
     def forward(self, data):
         x = self.encoder(data)
+        x = self.avgpool(x)
         if self.embeddings_size == 512:
             embedding = self.fc(x)
         else:
