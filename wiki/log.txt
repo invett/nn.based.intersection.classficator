@@ -1,3 +1,8 @@
+TODO
+Make again all kitti360 warpings without mirror
+
+
+
 pruebas
 
 ------------------------------------------------------------ 15.02.2021
