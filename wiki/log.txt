@@ -16,6 +16,7 @@ TRAIN
             out: no parece para nada los viejos resultados
 
 ------------------------------------------------------------ 15.02.2021
+
 TRAIN
     lstm
             output de RESNET50/COCO + average.pooling
@@ -26,4 +27,44 @@ TRAIN
                 LR 0.0001           out: un poco mejor, per todavia acc: ~ 0.18         handsome-lovebird-433
                 LR 0.000001         out: loss baja lento, pero igual queda a ~ 0.15     enthusiastic-lovebird-434
                 LR 0.01             out: como antes, ~ 0.17                             enthusiastic-lovebird-434
+
+------------------------------------------------------------ 15.02.2021
+
+TRAIN
+
+    resnet
+            train.data  alcala-26.01.2021_selected_augmented_warped_1/
+            val.data
+
+                        KEVIN effervescent-hug-436
+
+                                        python train.py --batch_size=64 --dataloader alcala26012021 --decimate 2
+                                        --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_augmented_warped_1
+                                        --distance_function pairwise --p 2 --lr 0.0005 --margin 5 --metric --miner
+                                        --model resnet18 --normalize --num_epochs 2000 --num_workers 4 --optimizer adam
+                                        --patience=5 --patience_start=50 --pretrained --telegram --train
+                                        --wandb_group_id Resnet_Alcala_26 --weighted --nowandb
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
