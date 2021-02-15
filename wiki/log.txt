@@ -1,0 +1,24 @@
+pruebas
+
+------------------------------------------------------------ 15.02.2021
+TRAIN
+    teacher
+            RANDOM OSM
+                margin 10 + 750 elem en train, 150 en val.
+                margin  5 + 750 elem en train, 150 en val.
+
+            OSM de kitti:
+            out: no parece para nada los viejos resultados
+
+------------------------------------------------------------ 15.02.2021
+TRAIN
+    lstm
+            output de RESNET50/COCO + average.pooling
+            out: muy mal
+
+            RESNET50/COCO + average.pooling + FULLY CONNECTED
+                LR 0.005            out: mal, oscila                                    smoldering-candy-heart-432
+                LR 0.0001           out: un poco mejor, per todavia acc: ~ 0.18         handsome-lovebird-433
+                LR 0.000001         out: loss baja lento, pero igual queda a ~ 0.15     enthusiastic-lovebird-434
+                LR 0.01             out: como antes, ~ 0.17                             enthusiastic-lovebird-434
+
