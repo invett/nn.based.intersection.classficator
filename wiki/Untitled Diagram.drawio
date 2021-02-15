@@ -316,14 +316,14 @@
           <mxGeometry x="504" y="1071" width="40" height="20" as="geometry" />
         </mxCell>
         <mxCell id="dqrIhCOy4dputuyZEAVO-84" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="dqrIhCOy4dputuyZEAVO-85" edge="1">
-          <mxGeometry relative="1" as="geometry">
+          <mxGeometry relaty4dive="1" as="geometry">
             <mxPoint x="694" y="1151" as="targetPoint" />
           </mxGeometry>
         </mxCell>
         <mxCell id="dqrIhCOy4dputuyZEAVO-85" value="VAL" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
           <mxGeometry x="504" y="1141" width="40" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="dqrIhCOy4dputuyZEAVO-86" value="TEST" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+        <mxCell id="dqrIhCOputuyZEAVO-86" value="TEST" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
           <mxGeometry x="504" y="1171" width="40" height="20" as="geometry" />
         </mxCell>
         <mxCell id="dqrIhCOy4dputuyZEAVO-87" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" edge="1">

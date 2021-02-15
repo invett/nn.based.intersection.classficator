@@ -144,7 +144,6 @@ def summary(annotations, files):
           len(train_list) + len(validation_list) + len(test_list))
 
     base_folder = '/home/ballardini/DualBiSeNet/kitti360-augusto-warping/kitti360-augusto-warping_flat/'
-    base_folder = '/home/ballardini/DualBiSeNet/kitti360-augusto-warping/kitti360-augusto-warping_flat/validation/bugged/'
 
     # save the lists using the base_folder as root
     # WERE train_list.txt   validation_list.txt     test_list.txt

@@ -32,7 +32,7 @@ class AbstractSequence:
 
 
 class alcala26012021(AbstractSequence, Dataset):
-    def __init__(self, path_filename=None, transform=None, usePIL=True, isSequence=False):
+    def __init__(self, path_filename=None, transform=None, usePIL=True, isSequence=False, decimateStep=1):
         """
 
                 THIS IS THE DATALOADER USES the split files generated with labelling-script.py
@@ -45,9 +45,14 @@ class alcala26012021(AbstractSequence, Dataset):
                     transform (callable, optional): Optional transform to be applied
                         on a sample.
                     usePIL: default True, but if not, return numpy-arrays!
+                    decimateStep: use this value to decimate the dataset; set as "::STEP"
 
 
         """
+
+        if not isinstance(decimateStep, int) and decimateStep > 0:
+            print("decimateStep must be an integer > 0. Passed: ", decimateStep)
+            exit(-1)
 
         super().__init__(isSequence=isSequence)
 
@@ -66,6 +71,12 @@ class alcala26012021(AbstractSequence, Dataset):
                 trainlabels.append(line.strip().split(';')[1])
 
         self.transform = transform
+
+        # decimate
+        if decimateStep != 1:
+            print("The dataset will be decimated taking 1 out of " + str(decimateStep) + " elements")
+            trainimages = trainimages[::decimateStep]
+            trainlabels = trainlabels[::decimateStep]
 
         self.images = trainimages
         self.labels = trainlabels
