@@ -445,7 +445,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         gt_list = None  # No need of centroids
         miner = None  # No need of miner
         if args.weighted:
-            if args.dataloader == 'Kitti360':
+            if args.dataloader == 'Kitti360' or 'kitti360' in args.dataset:
                 weights = [0.99, 1.01, 0.98, 0.99, 1.05, 0.98, 0.99]
                 class_weights = torch.FloatTensor(weights).cuda()
                 criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
