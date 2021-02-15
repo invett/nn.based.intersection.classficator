@@ -939,7 +939,7 @@ def main(args, model=None):
                     print("=> loaded checkpoint '{}'".format(args.feature_detector_path))
                 else:
                     print("=> no checkpoint found at '{}'".format(args.feature_detector_path))
-                    print("=> training with ImageNet weights")
+                    print("=> training with ImageNet/COCO weights")
 
                 if torch.cuda.is_available() and args.use_gpu:
                     feature_extractor_model = feature_extractor_model.cuda()
