@@ -109,9 +109,9 @@ class Resnet50_Coco(torch.nn.Module):  # Resnet50 trained in coco segmentation d
 
     def forward(self, data):
         x = self.encoder(data)
-        x = self.avgpool(x['out'])
+        x = self.avgpool(x['out']) # Selecting the results for the 4th layer
         if self.embeddings_size == 512:
-            embedding = self.fc(x)
+            embedding = self.fc(x.squeeze())
         else:
             embedding = x
 
