@@ -33,7 +33,7 @@ from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTe
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanovis_testing, lstm_network_pass, \
     get_all_embeddings
-from model.models import Resnet18, Vgg11, LSTM
+from model.models import Resnet18, Vgg11, LSTM, Resnet50_Coco
 
 
 def str2bool(v):
@@ -729,7 +729,7 @@ def main(args, model=None):
         if args.dataset_val is None:
             val_path = os.path.join(args.dataset, 'validation/3rd.split.validation_list.txt')
             train_path = os.path.join(args.dataset, 'train/train_list_2.txt')
-            test_path = os.path.join(args.dataset, 'test/2nd.split.test_list.txt') #tenemos que cambiar esta todavia.q
+            test_path = os.path.join(args.dataset, 'test/2nd.split.test_list.txt')  # tenemos que cambiar esta todavia.q
         else:
             train_path = os.path.join(args.dataset, 'test/test_list.txt')  # DATASET ALCALA 12_02_21
             val_path = os.path.join(args.dataset_val,
@@ -884,9 +884,9 @@ def main(args, model=None):
             train_dataset = Sequences_alcala26012021_Dataloader(train_path, transform=rgb_image_train_transforms)
 
         elif args.dataloader == 'alcala26012021':
-            val_dataset = alcala26012021(val_path, transform=rgb_image_test_transforms)
+            val_dataset = alcala26012021(val_path, decimateStep=args.decimate, transform=rgb_image_test_transforms)
 
-            train_dataset = alcala26012021(train_path, transform=rgb_image_train_transforms)
+            train_dataset = alcala26012021(train_path, decimateStep=args.decimate, transform=rgb_image_train_transforms)
 
 
         else:
@@ -920,12 +920,16 @@ def main(args, model=None):
                 model = Resnet18(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
             elif args.model == 'vgg11':
                 model = Vgg11(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
+            elif args.model == 'resnet50_coco':
+                model = Resnet50_Coco(embeddings_size=512)
             elif args.model == 'LSTM':
-                model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout)
+                model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, input_size=args.lstm_input)
                 if args.feature_model == 'resnet18':
                     feature_extractor_model = Resnet18(pretrained=True, embeddings=True, num_classes=args.num_classes)
                 if args.feature_model == 'vgg11':
                     feature_extractor_model = Vgg11(pretrained=True, embeddings=True, num_classes=args.num_classes)
+                if args.feature_model == 'resnet50_coco':
+                    feature_extractor_model = Resnet50_Coco(embeddings_size=args.lstm_input)
 
                 # load saved feature extractor model
                 if args.feature_detector_path is not None and os.path.isfile(args.feature_detector_path):
@@ -1203,6 +1207,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--lstm_dropout', type=float, default=0.0, help='Lstm dropout between layers')
     parser.add_argument('--fc_dropout', type=float, default=0.0, help='fc dropout between layers')
+    parser.add_argument('--lstm_input', type=int, default=512, help='size of the embbedings for lstm')
     parser.add_argument('--normalize', type=str2bool, nargs='?', const=True, default=False,
                         help='normalize embeddings in metric learning')
 
