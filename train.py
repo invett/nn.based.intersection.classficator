@@ -391,7 +391,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         # Accuracy metrics for metric learning
 
         if args.weighted:
-            if args.dataloader == 'Kitti360':
+            if args.dataloader == 'Kitti360' or 'kitti360' in args.dataset:
                 weights = [0.99, 1.01, 0.98, 0.99, 1.05, 0.98, 0.99]
                 class_weights = torch.FloatTensor(weights).cuda()
             elif args.dataloader == 'alcala26012021' or args.dataloader == 'lstmDataloader_alcala26012021':
@@ -925,9 +925,9 @@ def main(args, model=None):
             elif args.model == 'LSTM':
                 model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, input_size=args.lstm_input)
                 if args.feature_model == 'resnet18':
-                    feature_extractor_model = Resnet18(pretrained=True, embeddings=True, num_classes=args.num_classes)
+                    feature_extractor_model = Resnet18(pretrained=False, embeddings=True, num_classes=args.num_classes)
                 if args.feature_model == 'vgg11':
-                    feature_extractor_model = Vgg11(pretrained=True, embeddings=True, num_classes=args.num_classes)
+                    feature_extractor_model = Vgg11(pretrained=False, embeddings=True, num_classes=args.num_classes)
                 if args.feature_model == 'resnet50_coco':
                     feature_extractor_model = Resnet50_Coco(embeddings_size=args.lstm_input)
 
