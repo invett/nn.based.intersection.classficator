@@ -1,4 +1,4 @@
-<mxfile host="app.diagrams.net" modified="2021-02-15T15:59:00.634Z" agent="5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36" etag="OMN4Nos_Thc-KZDIPJFG" version="14.3.2" type="github">
+<mxfile host="app.diagrams.net" modified="2021-02-15T15:59:55.912Z" agent="5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36" etag="QE0ppyz_wMHYapzWJ3hM" version="14.3.2" type="github">
   <diagram id="OwbG5oHq4rT-jGktvwgA" name="Page-1">
     <mxGraphModel dx="1822" dy="739" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
@@ -476,10 +476,7 @@
         <mxCell id="hHNkAstzioS36UwAv1eE-47" value="&lt;i&gt;RESNET: eval ; LSTM train&lt;/i&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
           <mxGeometry x="-133" y="991" width="189" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="hHNkAstzioS36UwAv1eE-48" value="param.fixed&lt;br&gt;trained with alcala 26" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;rotation=-30;" vertex="1" parent="1">
-          <mxGeometry x="-217" y="1014" width="40" height="20" as="geometry" />
-        </mxCell>
-        <mxCell id="hHNkAstzioS36UwAv1eE-49" value="1° TRAIN resnet con ALCALA26 + decimate; VAL=ALCALA26; TRAIN=ALCALA12&amp;nbsp;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+        <mxCell id="hHNkAstzioS36UwAv1eE-49" value="1° TRAIN resnet con ALCALA26 + decimate; VAL=ALCALA26; TEST=ALCALA12&amp;nbsp;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
           <mxGeometry x="-378" y="944" width="696" height="20" as="geometry" />
         </mxCell>
         <mxCell id="hHNkAstzioS36UwAv1eE-51" value="2 pass - resnet (eval) + TRAIN lstm --- ALCALA12 &amp;gt; resnet (eval) &amp;gt; LSTM;&amp;nbsp;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
