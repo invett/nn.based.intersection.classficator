@@ -886,7 +886,7 @@ def main(args, model=None):
         elif args.dataloader == 'alcala26012021':
             val_dataset = alcala26012021(val_path, transform=rgb_image_test_transforms, decimateStep=args.decimate)
 
-            train_dataset = alcala26012021(train_path, transform=rgb_image_train_transforms, decimateStep=args.decimate,)
+            train_dataset = alcala26012021(train_path, transform=rgb_image_train_transforms, decimateStep=args.decimate)
 
 
         else:
