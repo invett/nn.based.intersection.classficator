@@ -10,7 +10,7 @@ parameters:
     distribution: categorical
   wandb_group_id:
     values:
-      - Resnet18.warping.1.Alcala26
+      - Resnet18.warping.1.Alcala_26.12
     distribution: categorical
   scheduler_type:
     values:
