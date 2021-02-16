@@ -37,6 +37,7 @@ parameters:
     distribution: categorical
     values:
       - ../../DualBiSeNet/alcala-26.01.2021_selected_augmented_warped_1
+      - ../../DualBiSeNet/alcala-12.02.2021_augmented_warped_1
   batch_size:
     distribution: categorical
     values:
