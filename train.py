@@ -1004,7 +1004,7 @@ def main(args, model=None):
                     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
                     # Set new learning rate from command line
                     optimizer.param_groups[0]['lr'] = args.lr
-            elif args.optimizar == 'adamW':
+            elif args.optimizer == 'adamW':
                 optimizer = torch.optim.AdamW(model.parameters(), args.lr, weight_decay=args.adam_weight_decay)
                 if args.resume:
                     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
