@@ -1,9 +1,10 @@
-# CHIRINGUITO
+# CHIRINGUITO LOG
 
 Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdownguide.org/cheat-sheet/)
 
 ## TODOs
 - [ ] Make again all kitti360 warpings without mirror
+- [ ] Resnet50/Coco, but using the segmentation? I mean, RGB>SEGMENTED>fc512>LSTM
 
 ## Log
 ### TRAIN 15.02.2021
@@ -38,12 +39,17 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
     Train RESNET+LSTM in two steps using alcala26:resnet and alcala12:lstm
   
     - resnet18
-      - train.data + val.data = alcala-26.01.2021_selected_augmented_warped_1/ 
-        - KEVIN 
+      - train.data + val.data = alcala-26.01.2021_selected_augmented_warped_1/
+        - Difference with previous SWEEPS
+            - set decimateStep = 2 (one of of two, 50%). This will differ from the previous SWEEPS!
+            - using `26.01.2021_selected_augmented_warped_1` instead of `26.01.2021_selected_augmented_warped_5` of [Resnet Warping Alclaa](https://wandb.ai/chiringuito/lstm-based-intersection-classficator/sweeps/n0r5wtvt)
+
+        Tests:
+        - [Kevinmusgrave](kevinmusgrave.github.io/pytorch-metric-learning/)
             - [x] [effervescent-hug-436](https://wandb.ai/chiringuito/lstm-based-intersection-classficator/runs/27hiammi)
                 `python train.py --batch_size=64 --dataloader alcala26012021 --decimate 2 --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_augmented_warped_1 --distance_function pairwise --p 2 --lr 0.0005 --margin 5 --metric --miner --model resnet18 --normalize --num_epochs 2000 --num_workers 4 --optimizer adam --patience=5 --patience_start=50 --pretrained --telegram --train --wandb_group_id Resnet_Alcala_26 --weighted --nowandb`
             
-            - [ ] [compassionate-admirer-437](https://wandb.ai/chiringuito/lstm-based-intersection-classficator/runs/8qduw5og)
+            - [x] [compassionate-admirer-437](https://wandb.ai/chiringuito/lstm-based-intersection-classficator/runs/8qduw5og)
                 `python train.py --batch_size=64 --dataloader alcala26012021 --decimate 2 --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_augmented_warped_1 --distance_function pairwise --p 2 --lr 0.005 --margin 5 --metric --miner --model resnet18 --normalize --num_epochs 2000 --num_workers 4 --optimizer adam --patience=5 --patience_start=50 --pretrained --telegram --train --wandb_group_id Resnet_Alcala_26 --weighted`
 
         - OUR metric learning
