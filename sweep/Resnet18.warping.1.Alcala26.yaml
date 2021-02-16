@@ -76,8 +76,9 @@ parameters:
     distribution: categorical
   # p afecta solo 'pairwise', es L1 o L2
   p:
-    max: 2.0
-    min: 1.0
+    values:
+    - 2.0
+    - 1.0
     distribution: categorical
   telegram:
     distribution: categorical
