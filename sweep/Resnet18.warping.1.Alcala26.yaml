@@ -1,8 +1,5 @@
 program: train.py
-method: bayes
-metric:
-  goal: maximize
-  name: Val/MAPR
+method: random
 parameters:
   metric:
     values:
@@ -18,9 +15,6 @@ parameters:
     distribution: categorical
   num_workers:
     values: 8
-    distribution: categorical
-  num_classes:
-    values: 7
     distribution: categorical
   pretrained:
     values:
@@ -84,7 +78,7 @@ parameters:
   p:
     max: 2.0
     min: 1.0
-    distribution: uniform
+    distribution: categorical
   telegram:
     distribution: categorical
     values:
