@@ -14,14 +14,16 @@ parameters:
       - ReduceLROnPlateau
     distribution: categorical
   num_workers:
-    values: 8
+    values:
+    - 8
     distribution: categorical
   pretrained:
     values:
       - "true"
     distribution: categorical
   num_epochs:
-    values: 500
+    values:
+    - 500
     distribution: categorical
   dataloader:
     values:
