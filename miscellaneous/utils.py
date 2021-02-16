@@ -9,6 +9,7 @@ from functools import reduce
 from io import BytesIO
 from math import asin, atan2, cos, pi, sin
 
+from pytorch_metric_learning import testers
 from sklearn import svm
 
 import numpy as np
@@ -315,7 +316,8 @@ def teacher_network_pass(args, sample, model, criterion, gt_list=None):
         return acc, loss, label, predict
 
 
-def student_network_pass(args, sample, criterion, model, gt_list=None, weights_param=None, return_embedding=False):
+def student_network_pass(args, sample, criterion, model, gt_list=None, weights_param=None, return_embedding=False,
+                         miner=None, acc_metric=None):
     embedding = None
     label = None
     predict = None
@@ -370,6 +372,33 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
         loss = criterion(out_anchor, out_positive, out_negative)
         acc = acc_triplet_score(args, out_anchor, out_positive, out_negative)
 
+    elif args.metric:
+        data = sample['data']  # RGB images
+        label = sample['label']
+        if torch.cuda.is_available() and args.use_gpu:
+            data = data.cuda()
+            label = label.cuda()
+
+        embeddings = model(data)
+        if miner is not None:
+            hard_pairs = miner(embeddings.squeeze(), label)
+            loss = criterion(embeddings.squeeze(), label, hard_pairs)
+        else:
+            loss = criterion(embeddings.squeeze(), label)
+
+        # acc is not a value is a dict
+        acc = acc_metric.get_accuracy(embeddings.squeeze().detach().cpu().numpy(),
+                                      embeddings.squeeze().detach().cpu().numpy(), label.cpu().numpy(),
+                                      label.cpu().numpy(), embeddings_come_from_same_source=True)
+
+        # TODO : no se puede hacer algo asi?
+        # conf_matrix = pd.crosstab(np.array(label_list),
+        #                           np.array(prediction_list),
+        #                           rownames=['Actual'],
+        #                           colnames=['Predicted'],
+        #                           normalize='index')
+        # conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6], fill_value=0.0)
+
     else:
         data = sample['data']
         label = sample['label']
@@ -394,30 +423,27 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
     return acc, loss, label, predict, embedding
 
 
-def lstm_network_pass(args, sample, criterion, model, lstm):
-    feature_list = []
+def lstm_network_pass(batch, criterion, model, lstm):
     seq_list = []
     len_list = []
-    batch = sample['sequence']  # --> Batch x Seq x W x H
-    label = sample['label']  # --> Batch x 1
+    label = torch.tensor([int(i['label']) for i in batch]).cuda()  # Unpack label values
 
     with torch.no_grad():
         for sequence in batch:
-            for img in sequence:
-                features = model(img)  # --> (1x512)
-                feature_list.append(features)
-            seq_tensor = torch.stack(feature_list, dim=1)  # --> (seq_len x 512)
-            seq_list.append(seq_tensor)
+            seq_tensor = model(torch.stack(sequence['sequence']).cuda())
+            seq_list.append(seq_tensor.squeeze())
             len_list.append(len(sequence))
-        padded_batch = pad_sequence(seq_list, batch_first=True).size()
-        packed_padded_batch = pack_padded_sequence(padded_batch, len_list, batch_first=True)  # --> (Batch x Max_seq_len x 512)
+
+    padded_batch = pad_sequence(seq_list, batch_first=True)
+    packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
+                                               batch_first=True)  # --> (Batch x Max_seq_len x 512)
 
     result = lstm(packed_padded_batch)
 
     loss = criterion(result, label)
 
     predict = torch.argmax(result, 1)
-    label = label.numpy()
+    label = label.cpu().numpy()
     predict = predict.cpu().numpy()
 
     acc = accuracy_score(label, predict)
@@ -463,7 +489,7 @@ def reset_wandb_env():
             del os.environ[k]
 
 
-def svm_generator(args, model, dataloader_train, dataloader_val):
+def svm_generator(args, model, dataloader_train=None, dataloader_val=None, features=None, labels=None):
     svm_path = args.load_path.replace('.pth', 'svm.sav')
     if os.path.isfile(svm_path):
         print('SVM already trained in => {}'.format(svm_path))
@@ -471,7 +497,10 @@ def svm_generator(args, model, dataloader_train, dataloader_val):
     else:
         print('training SVM classifier\n')
         print('svm model will be saved in : {}\n'.format(svm_path))
-        features, labels = embb_data(args, model, dataloader_train, dataloader_val)
+        if dataloader_train is not None and dataloader_val is not None:
+            features, labels = embb_data(args, model, dataloader_train, dataloader_val)
+        elif features is not None and labels is not None:
+            print('Training embeddings already obtained\n')
         classifier = svm_train(features, labels, mode=args.svm_mode)
         pickle.dump(classifier, open(svm_path, 'wb'))
 
@@ -579,8 +608,11 @@ def svm_testing(args, model, dataloader_test, classifier):
         return conf_matrix, acc
 
 
-def covmatrix_generator(args, model, dataloader_train, dataloader_val):
-    features, labels = embb_data(args, model, dataloader_train, dataloader_val)
+def covmatrix_generator(args, model, dataloader_train=None, dataloader_val=None, features=None, labels=None):
+    if dataloader_train is not None and dataloader_val is not None:
+        features, labels = embb_data(args, model, dataloader_train, dataloader_val)
+    elif features is not None and labels is not None:
+        print('Training embeddings already obtained\n')
     clusters = {}
     covariances = {}
     for lbl in np.unique(labels):
@@ -628,6 +660,11 @@ def mahalanovis_testing(args, model, dataloader_test, covariances):
         acc = accuracy_score(np.array(label_list), np.array(prediction_list))
         print('Accuracy for test : %f\n' % acc)
         return conf_matrix, acc
+
+
+def get_all_embeddings(dataset, model):
+    tester = testers.BaseTester()
+    return tester.get_all_embeddings(dataset, model)
 
 
 def gt_validation(output, gt_list, criterion=None):

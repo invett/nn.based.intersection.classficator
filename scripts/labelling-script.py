@@ -21,14 +21,19 @@ import json
 
 import cv2
 import numpy as np
+import random
 
 # datasets: KITTI360 | ALCALA | OXFORD | KITTI-ROAD
 # dataset = 'KITTI-ROAD'
 # dataset = 'KITTI360'
 # dataset = 'ALCALA'
 # dataset = 'AQP'
-dataset = 'alcala-26.01.2021'
+# dataset = 'alcala-26.01.2021'
+dataset = 'alcala-12.02.2021.000'
+# dataset = 'alcala-12.02.2021.001'
 
+# definitions, will be specialized later .. but just to avoid warnings
+resizeme = 0
 
 if dataset == 'KITTI-ROAD':
     base_folder = '/home/ballardini/Desktop/KITTI-ROAD/'
@@ -46,7 +51,7 @@ if dataset == 'KITTI-ROAD':
     position3 = (950, 60)
     csv_filename = "kitti-road-crossings.csv"
     pickle_filename = 'kitti-road-annotations.pickle'
-    resizeme = 0 #resizeme = 0 does not perform the resize
+    resizeme = 0  # resizeme = 0 does not perform the resize
 
 if dataset == 'KITTI360':
     base_folder = '/media/ballardini/4tb/ALVARO/KITTI-360/'
@@ -60,7 +65,7 @@ if dataset == 'KITTI360':
     position3 = (1000, 60)
     csv_filename = "kitti360-crossings.csv"
     pickle_filename = 'kitti360-annotations.pickle'
-    resizeme = 0 #resizeme = 0 does not perform the resize
+    resizeme = 0  # resizeme = 0 does not perform the resize
 
 if dataset == 'ALCALA':
     # images from raw files are 1920x1200 - resize as needed.
@@ -84,7 +89,7 @@ if dataset == 'ALCALA':
     position1 = (10, 30)
     position2 = (500, 30)
     position3 = (500, 60)
-    resizeme = 0 #resizeme = 0 does not perform the resize
+    resizeme = 0  # resizeme = 0 does not perform the resize
     width = 800
 
 if dataset == 'alcala-26.01.2021':
@@ -103,6 +108,42 @@ if dataset == 'alcala-26.01.2021':
 
     csv_filename = "alcala-26.01.2021.csv"
     pickle_filename = 'alcala-26.01.2021.pickle'
+
+    height = 500
+    position1 = (10, 30)
+    position2 = (500, 30)
+    position3 = (500, 60)
+    resizeme = 0  # resizeme = 0 does not perform the resize
+    width = 800
+
+if dataset == 'alcala-12.02.2021.000':
+    # images from raw files are 1920x1200 - resize as needed.
+    # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
+    # scale=800:-1 R2_video_0002_camera2_png/%010d.png
+    base_folder = '/home/ballardini/Desktop/alcala-12.02.2021.000/'
+
+    folders = ['120445AA', '122302AA']
+
+    csv_filename = 'alcala-12.02.2021.000' + '.csv'
+    pickle_filename = 'alcala-12.02.2021.000' + '.pickle'
+
+    height = 500
+    position1 = (10, 30)
+    position2 = (500, 30)
+    position3 = (500, 60)
+    resizeme = 0  # resizeme = 0 does not perform the resize
+    width = 800
+
+if dataset == 'alcala-12.02.2021.001':
+    # images from raw files are 1920x1200 - resize as needed.
+    # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
+    # scale=800:-1 R2_video_0002_camera2_png/%010d.png
+    base_folder = '/mnt/d/alcala-21.02.2021.001/'
+
+    folders = ['164002AA', '164002AA']
+
+    csv_filename = 'alcala-12.02.2021.001' + '.csv'
+    pickle_filename = 'alcala-12.02.2021.001' + '.pickle'
 
     height = 500
     position1 = (10, 30)
@@ -133,11 +174,10 @@ if dataset == 'AQP':
     # scale=800:-1 R2_video_0002_camera2_png/%010d.png
     base_folder = '/home/ballardini/Desktop/AQP/'
 
-    folders = ['2014_0101_004025_115',
-               '2014_0101_034707_116', '2014_0101_221527_116', '2014_0102_102920_117', '2020_1101_144951_003',
-               '2020_1101_153807_018', '2020_1104_090905_021', '2020_1104_091505_023', '2020_1104_094943_028',
-               '2020_1104_133551_032', '2020_1104_133852_033', '2020_1104_135353_038', '2020_1104_141259_039',
-               '2020_1104_165659_057', '2020_1104_172359_066']
+    folders = ['2014_0101_004025_115', '2014_0101_034707_116', '2014_0101_221527_116', '2014_0102_102920_117',
+               '2020_1101_144951_003', '2020_1101_153807_018', '2020_1104_090905_021', '2020_1104_091505_023',
+               '2020_1104_094943_028', '2020_1104_133551_032', '2020_1104_133852_033', '2020_1104_135353_038',
+               '2020_1104_141259_039', '2020_1104_165659_057', '2020_1104_172359_066']
 
     csv_filename = "aqp.csv"
     pickle_filename = 'aqp.pickle'
@@ -146,7 +186,7 @@ if dataset == 'AQP':
     position1 = (10, 30)
     position2 = (500, 30)
     position3 = (500, 60)
-    resizeme = 0 #resizeme = 0 does not perform the resize
+    resizeme = 0  # resizeme = 0 does not perform the resize
     width = 800
 
 font = cv2.FONT_HERSHEY_SIMPLEX
@@ -268,9 +308,17 @@ def save_frames(where, simulate=True, mono=True):
                 for seq_file, j in enumerate(i):
                     if j > -1:
                         src = files[seq_ann][seq_file]
-                        src = src.replace("image_00", camera)
-                        dst_folder = os.path.join(where, str(j), leftright)
-                        file_prefix = [s for s in src.split('/') if "2013" in s][0]
+                        src = src.replace("image_00",
+                                          camera)  # replace image_00; does nothing otherwise; here the origin png
+                        dst_folder = os.path.join(where, str(j), leftright)  # setup destination folder
+                        if dataset == 'KITTI360':
+                            # from
+                            # '/media/ballardini/4tb/ALVARO/KITTI-360/data_2d_raw/2013_05_28_drive_0000_sync/image_00/data_rect/0000000193.png'
+                            # extrats:
+                            # '2013_05_28_drive_0000_sync'
+                            file_prefix = [s for s in src.split('/') if "2013" in s][0]
+                        if dataset == 'alcala-26.01.2021':
+                            file_prefix = src.split('/')[5]
                         file_suffix = os.path.split(src)[1]
                         dst = os.path.join(dst_folder, file_prefix + '_' + file_suffix)
                         if src != dst:
@@ -317,15 +365,9 @@ def summary(annotations):
     type_4 = sum(sum(i == 4 for i in j) for j in annotations)
     type_5 = sum(sum(i == 5 for i in j) for j in annotations)
     type_6 = sum(sum(i == 6 for i in j) for j in annotations)
+    type_x_frames = type_0 + type_1 + type_2 + type_3 + type_4 + type_5 + type_6
 
-    print("Type 0: ", type_0)
-    print("Type 1: ", type_1)
-    print("Type 2: ", type_2)
-    print("Type 3: ", type_3)
-    print("Type 4: ", type_4)
-    print("Type 5: ", type_5)
-    print("Type 6: ", type_6)
-    print("Overall: ", type_0 + type_1 + type_2 + type_3 + type_4 + type_5 + type_6, "\n")
+    type_x_sequences = [[], [], [], [], [], [], []]
 
     sequences = 0
     sequences_frame_number = []
@@ -333,24 +375,113 @@ def summary(annotations):
         current_sequence_frames = 0
         prev_frame_class = None
 
-        for frame_class in annotations[i]:
+        current_sequence_filenames = []
+
+        # iterate both annotations and filename lists together, contains labels and frame-names
+        for frame_class, frame_filename in zip(annotations[i], files[i]):
             if current_sequence_frames == 0 and frame_class == -1:
                 continue
+
             # check for sequence. if the current frame number is not the previous+1, then we have a new sequence.
-            if not (prev_frame_class is None or (frame_class == prev_frame_class)):
+            # we need to enter here also if we're analyzing the last frame, or we will lost ALL the frames in the last
+            # sequence of the folder
+            if not (prev_frame_class is None or (frame_class == prev_frame_class)) or (frame_filename == files[i][-1]):
+
+                # if we're in the last frame, we need to re-check if the last frame belongs to the sequence again
+                if frame_filename == files[i][-1]:
+                    if frame_class == prev_frame_class:
+                        current_sequence_frames = current_sequence_frames + 1
+                        current_sequence_filenames.append(frame_filename)
+
+                if prev_frame_class == 0:
+                    type_x_sequences[0].append(current_sequence_filenames.copy())
+                if prev_frame_class == 1:
+                    type_x_sequences[1].append(current_sequence_filenames.copy())
+                if prev_frame_class == 2:
+                    type_x_sequences[2].append(current_sequence_filenames.copy())
+                if prev_frame_class == 3:
+                    type_x_sequences[3].append(current_sequence_filenames.copy())
+                if prev_frame_class == 4:
+                    type_x_sequences[4].append(current_sequence_filenames.copy())
+                if prev_frame_class == 5:
+                    type_x_sequences[5].append(current_sequence_filenames.copy())
+                if prev_frame_class == 6:
+                    type_x_sequences[6].append(current_sequence_filenames.copy())
+
+                if len(current_sequence_filenames) != current_sequence_frames:
+                    print("Error")
                 sequences_frame_number.append(current_sequence_frames)
                 prev_frame_class = None
                 current_sequence_frames = 0
                 sequences += 1
+                current_sequence_filenames = []
                 continue
             current_sequence_frames = current_sequence_frames + 1
             prev_frame_class = frame_class
+            current_sequence_filenames.append(frame_filename)
 
-    print("Sequences: ", sequences)
+    print("Type0 seq/frames:", len(type_x_sequences[0]), "/", type_0, "\t-\t", [len(i) for i in type_x_sequences[0]])
+    print("Type1 seq/frames:", len(type_x_sequences[1]), "/", type_1, "\t-\t", [len(i) for i in type_x_sequences[1]])
+    print("Type2 seq/frames:", len(type_x_sequences[2]), "/", type_2, "\t-\t", [len(i) for i in type_x_sequences[2]])
+    print("Type3 seq/frames:", len(type_x_sequences[3]), "/", type_3, "\t-\t", [len(i) for i in type_x_sequences[3]])
+    print("Type4 seq/frames:", len(type_x_sequences[4]), "/", type_4, "\t-\t", [len(i) for i in type_x_sequences[4]])
+    print("Type5 seq/frames:", len(type_x_sequences[5]), "/", type_5, "\t-\t", [len(i) for i in type_x_sequences[5]])
+    print("Type6 seq/frames:", len(type_x_sequences[6]), "/", type_6, "\t-\t", [len(i) for i in type_x_sequences[6]])
+    print("Overall Sequences: ", sequences)
     print("The number of frames associated to each sequence is: ", sequences_frame_number)
+    print("Sum of frames in seq ", sum(sequences_frame_number), '/', type_x_frames)
+
+    train_list = []
+    validation_list = []
+    test_list = []
+
+    for i in range(7):
+        # split_train_val_test = list(range(len(type_x_sequences[i])))
+        # random.shuffle(split_train_val_test)
+        # a = split_train_val_test[:int(len(split_train_val_test) * 0.8)]
+        # a = split_train_val_test[:int(len(split_train_val_test) * 0.8)]
+        # a = split_train_val_test[:int(len(split_train_val_test) * 0.8)]
+
+        # create a copy of the sequence_x list. Then shuffle, then split using np.split
+        # in three parts 0.7 | 0.2 | 0.1 for train/validation/test
+
+        tosplit = type_x_sequences[i].copy()
+        random.shuffle(tosplit)
+        split_train_val_test = np.split(tosplit, [int(len(tosplit) * 0.7), int(len(tosplit) * 0.9)])
+
+        # and append those lists for each of the train/val/test sets ; don't forget to add also the label at the end
+        # so the file will have namefile;label
+
+        for split_train in split_train_val_test[0]:
+            for filename in split_train:
+                towrite = os.path.relpath(filename, os.path.commonpath([base_folder, filename]))
+                train_list.append(towrite + ';' + str(i))
+        for split_valid in split_train_val_test[1]:
+            for filename in split_valid:
+                towrite = os.path.relpath(filename, os.path.commonpath([base_folder, filename]))
+                validation_list.append(towrite + ';' + str(i))
+        for split_test in split_train_val_test[2]:
+            for filename in split_test:
+                towrite = os.path.relpath(filename, os.path.commonpath([base_folder, filename]))
+                test_list.append(towrite + ';' + str(i))
+
+    print("Frames for Train/Val/Test: ", len(train_list), "/", len(validation_list), "/", len(test_list), "\tTot: ",
+          len(train_list) + len(validation_list) + len(test_list))
+
+    # save the lists using the base_folder as root
+    with open(os.path.join(base_folder, 'train_list.txt'), 'w') as f:
+        for item in train_list:
+            f.write("%s\n" % item)
+    with open(os.path.join(base_folder, 'validation_list.txt'), 'w') as f:
+        for item in validation_list:
+            f.write("%s\n" % item)
+    with open(os.path.join(base_folder, 'test_list.txt'), 'w') as f:
+        for item in test_list:
+            f.write("%s\n" % item)
 
 
 for folder in folders:
+    path = ''
     if dataset == 'KITTI-ROAD':
         path = os.path.join(base_folder, folder, 'image_02/data')
     if dataset == 'KITTI360':
@@ -359,6 +490,8 @@ for folder in folders:
         path = os.path.join(base_folder, folder)
     if dataset == 'alcala-26.01.2021':
         path = os.path.join(base_folder, folder)
+    if dataset == 'alcala-12.02.2021.000' or dataset == 'alcala-12.02.2021.001':
+        path = os.path.join(base_folder, 'RGB', folder)
     if dataset == 'AQP':
         path = os.path.join(base_folder, folder, 'image_02')
     if dataset == 'OXFORD':
@@ -386,6 +519,7 @@ else:
 
 # ENABLE THIS LINE TO CREATE THE DATASET, IE, CREATE A NEW FOLDER STRUCTURE WITH DATA
 if SAVING_CALLS:
+    # save_frames('/home/ballardini/Desktop/alcala-26.01.2021-kitti360like', simulate=False, mono=True)
     # save_frames('/media/ballardini/4tb/KITTI-360/moved', simulate=False, mono=False)
     save_csv(annotations)
     exit(1)
@@ -435,9 +569,8 @@ for sequence_number, sequence in enumerate(files):
             img[v_pos:v_pos + img_type_0.shape[0], h_pos:h_pos + img_type_0.shape[1]] = img_type_6
 
         cv2.putText(img, str(annotations[sequence_number][file]), position1, font, fontScale, fontColor, lineType)
-        cv2.putText(img, str(file) + '/' + str(len(sequence)-2), position2, font, fontScale, fontColor, lineType)
+        cv2.putText(img, str(file) + '/' + str(len(sequence) - 2), position2, font, fontScale, fontColor, lineType)
         cv2.putText(img, os.path.basename(sequence[file]), position3, font, fontScale, fontColor, lineType)
-
 
         cv2.imshow('image', img)
 
@@ -516,12 +649,7 @@ for sequence_number, sequence in enumerate(files):
                     continue
                 if 0 <= frame < len(sequence):
                     file = frame
-                    break
-            # while True:
-            #     frame = int(input("Insert GOTO frame: "))
-            #     if 0 <= frame < len(sequence):
-            #         file = frame
-            #         break
+                    break  # while True:  #     frame = int(input("Insert GOTO frame: "))  #     if 0 <= frame < len(sequence):  #         file = frame  #         break
 
         if k == 113:  # pressing q
             cv2.waitKey(10)

@@ -1,0 +1,90 @@
+program: train.py
+method: bayes
+metric:
+  goal: maximize
+  name: Val/MAPR
+parameters:
+  metric:
+    values:
+      - "true"
+    distribution: categorical
+  wandb_group_id:
+    values:
+      - Resnet18.warping.1.Alcala26
+    distribution: categorical
+  scheduler_type:
+    values:
+      - ReduceLROnPlateau
+    distribution: categorical
+  num_workers:
+    values: 8
+    distribution: categorical
+  num_classes:
+    values: 7
+    distribution: categorical
+  pretrained:
+    values:
+      - "true"
+    distribution: categorical
+  num_epochs:
+    values: 500
+    distribution: categorical
+  dataloader:
+    values:
+      - alcala26012021
+    distribution: categorical
+  dataset:
+    distribution: categorical
+    values:
+      - ../../DualBiSeNet/alcala-26.01.2021_selected_augmented_warped_1
+  batch_size:
+    distribution: categorical
+    values:
+    - 128
+    - 64
+    - 32
+  optimizer:
+    values:
+      - adamW
+      - adam
+    distribution: categorical
+  weighted:
+    values:
+      - "true"
+    distribution: categorical
+  decimate:
+    max: 2
+    min: 1
+    distribution: int_uniform
+  margin:
+    max: 5.0
+    min: 0.2
+    distribution: uniform
+  miner:
+    values:
+      - "true"
+      - "false"
+    distribution: categorical
+  TripletMarginMinerType:
+    values:
+      - "all"
+      - "hard"
+  lr:
+    max: 0.01
+    min: 0.0000025
+    distribution: uniform
+  distance_function:
+    values:
+      - SNR
+      - pairwise
+      - cosine
+    distribution: categorical
+  # p afecta solo 'pairwise', es L1 o L2
+  p:
+    max: 2.0
+    min: 1.0
+    distribution: uniform
+  telegram:
+    distribution: categorical
+    values:
+      - "true"

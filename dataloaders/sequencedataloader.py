@@ -13,13 +13,141 @@ from numpy import load
 from torch.utils.data import Dataset
 
 from miscellaneous.utils import write_ply
-from scripts.OSM_generator import Crossing, test_crossing_pose
 
 from random import choice
 
+from scripts.OSM_generator import test_crossing_pose, Crossing
 
-class kitti360(Dataset):
-    def __init__(self, path, sequence_list, transform=None):
+
+class AbstractSequence:
+    """
+    This "abstract" class is used to include/inherance in all future "sequences" dataloaders
+    """
+
+    def __init__(self, isSequence=False):
+        self.isSequence = isSequence
+
+    def getIsSequence(self):
+        return self.isSequence
+
+
+class alcala26012021(AbstractSequence, Dataset):
+    def __init__(self, path_filename=None, transform=None, usePIL=True, isSequence=False, decimateStep=1):
+        """
+
+                THIS IS THE DATALOADER USES the split files generated with labelling-script.py
+
+                USED TO TRAIN THE FRAME-BASED CLASSIFICATOR!
+
+                Args:
+                    path_filename (string): filename with all the files that you want to use; this dataloader uses a file
+                    with all the images, does not walk a os folder!
+                    transform (callable, optional): Optional transform to be applied
+                        on a sample.
+                    usePIL: default True, but if not, return numpy-arrays!
+                    decimateStep: use this value to decimate the dataset; set as "::STEP"
+
+
+        """
+
+        if not isinstance(decimateStep, int) and decimateStep > 0:
+            print("decimateStep must be an integer > 0. Passed: ", decimateStep)
+            exit(-1)
+
+        super().__init__(isSequence=isSequence)
+
+        trainimages = []
+        trainlabels = []
+
+        # Check the file containing all the images! This dataloader does not work walking a folder!
+        if not os.path.isfile(path_filename):
+            print('Class: ' + __class__.__name__, " - file doesn't exist - ", path_filename)
+
+        with open(path_filename) as filename:
+            Lines = filename.readlines()
+            for line in Lines:
+                # trainimages.append(os.path.join('../DualBiSeNet/', line.strip().split(';')[0]))
+                trainimages.append(os.path.join(os.path.split(path_filename)[0], line.strip().split(';')[0]))
+                trainlabels.append(line.strip().split(';')[1])
+
+        self.transform = transform
+
+        # decimate
+        if decimateStep != 1:
+            print("The dataset will be decimated taking 1 out of " + str(decimateStep) + " elements")
+            trainimages = trainimages[::decimateStep]
+            trainlabels = trainlabels[::decimateStep]
+
+        self.images = trainimages
+        self.labels = trainlabels
+        self.usePIL = usePIL
+
+    def __len__(self):
+
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        # Select file subset
+        imagepath = self.images[idx]
+        image = Image.open(imagepath)
+
+        label = int(self.labels[idx])
+        neg_label = choice([i for i in range(0, 7) if i != label])
+
+        if not self.usePIL:
+            # copy to avoid warnings from pytorch, or bad edits ...
+            image = np.copy(np.asarray(image))
+
+            sample = {'image_02': image,
+                      'label': label,
+                      'neg_label': neg_label}
+
+            transformed = []
+            if self.transform:
+                transformed = self.transform(sample)
+
+            # save the image if needed, ie, we have the path inserted with the "fake-transform".
+            if "path" in transformed:
+                print("Saving image in ", transformed['path'])
+
+                dataset_path = os.path.join(transformed['path'], imagepath.split('/')[-2])
+                if not os.path.isdir(dataset_path):
+                    os.makedirs(dataset_path)
+                base_file_star = os.path.splitext(os.path.split(imagepath)[1])[0]
+                current_filelist = glob.glob1(dataset_path, base_file_star + '*')
+                last_number = len([x for x in current_filelist if "json" not in x])
+                final_filename = base_file_star + '.' + str(last_number + 1).zfill(3) + '.png'
+                bev_path_filename = os.path.join(dataset_path, final_filename)
+
+                wheretowrite = os.path.join(transformed['path'], 'output.txt')
+                towrite = os.path.join(os.path.split(dataset_path)[1], final_filename) + ';' + str(
+                    transformed['label']) + '\n'
+                with open(wheretowrite, 'a') as file_object:
+                    file_object.write(towrite)
+
+                # path must already exist!
+                if not os.path.exists(dataset_path):
+                    os.makedirs(dataset_path)
+                flag = cv2.imwrite(bev_path_filename, transformed['data'])
+                assert flag, "can't write file"
+
+            sample = {'data': transformed['data'],
+                      'label': label,
+                      'neg_label': neg_label}
+
+        else:
+            sample = {'data': image,
+                      'label': label,
+                      'neg_label': neg_label}
+
+            if self.transform:
+                sample['data'] = self.transform(sample['data'])
+
+        return sample
+
+
+class kitti360(AbstractSequence, Dataset):
+    def __init__(self, path, sequence_list, transform=None, isSequence=False):
         """
 
                 THIS IS THE DATALOADER USED TO DIRECTLY USE RGB IMAGES on Kitti 360 dataset
@@ -29,17 +157,29 @@ class kitti360(Dataset):
                     root_dir (string): Directory with all the images.
                     transform (callable, optional): Optional transform to be applied
                         on a sample.
-                """
+
+
+        """
+        super().__init__(isSequence=isSequence)
         self.transform = transform
 
         images = {}
         for root, dirs, files in os.walk(path, topdown=False):
             for name in files:
-                head, ext = os.path.splitext(name)
+                # name example: '2013_05_28_drive_0002_sync_0000018453.png'
+                head, ext = os.path.splitext(name)  # name example: '2013_05_28_drive_0002_sync_0000018453.png'
                 if (ext == '.png') and (root.split('/')[-1] == 'left'):
-                    sequence = '_'.join(name.split('_')[0:6])
+                    # sequence example: 2013_05_28_drive_0002_sync
+                    sequence = '_'.join(name.split('_')[0:6])  # kitti360-augusto
+                    # sequence = '_'.join(name.split('_')[0:1])  # alcala26.01.21
+
+                    # frame example:_0000018453.png
                     frame = name.split('_')[-1]
+
+                    # label example: 2 (from the folder name)
                     label = int(root.split('/')[-2])
+
+                    # this if appends or creates the first element of the list
                     if sequence in images:
                         images[sequence]['labels'].append(label)
                         images[sequence]['frames'].append(os.path.join(root, '_'.join([sequence, frame])))
@@ -49,6 +189,17 @@ class kitti360(Dataset):
 
         trainimages = []
         trainlabels = []
+
+        # images should contain a dictionary with
+        # 2013_05_28_drive_0003_sync = {dict: 2} {'labels': [..., ...], 'frames': ['../DualBiseNet/kitti/5/left/.png']
+        # 2013_05_28_drive_0002_sync = {dict: 2} {'labels': [..., ...], 'frames': ['../DualBiseNet/kitti/5/left/.png']
+        # 2013_05_28_drive_0005_sync = {dict: 2} {'labels': [..., ...], 'frames': ['../DualBiseNet/kitti/5/left/.png']
+        # 2013_05_28_drive_0006_sync = {dict: 2} {'labels': [..., ...], 'frames': ['../DualBiseNet/kitti/5/left/.png']
+        # 2013_05_28_drive_0007_sync = {dict: 2} {'labels': [..., ...], 'frames': ['../DualBiseNet/kitti/5/left/.png']
+        # 2013_05_28_drive_0009_sync = {dict: 2} {'labels': [..., ...], 'frames': ['../DualBiseNet/kitti/5/left/.png']
+        # 2013_05_28_drive_0010_sync = {dict: 2} {'labels': [..., ...], 'frames': ['../DualBiseNet/kitti/5/left/.png']
+        # 2013_05_28_drive_0004_sync = {dict: 2} {'labels': [..., ...], 'frames': ['../DualBiseNet/kitti/5/left/.png']
+        # 2013_05_28_drive_0000_sync = {dict: 2} {'labels': [..., ...], 'frames': ['../DualBiseNet/kitti/5/left/.png']
         for sequence, samples in images.items():
             if sequence in sequence_list:
                 for k, list in samples.items():
@@ -1364,9 +1515,197 @@ class fromAANETandDualBisenet360(Dataset):
         return bev_with_new_label
 
 
-class SequencesDataloader(Dataset):
+class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
+    """
 
-    def __init__(self, root, folders, transform=None, suffixPath='image_02'):
+    This dataloader is intended to be used with just a "filename" passed, containing the list of
+    images to be used. No OS walk will be used. Is intended to be used as the dataloader in
+    class alcala26012021(Dataset), but for sequences.
+
+    Do not copy, use inheritance!
+
+    Used like this:
+
+    dataset = Sequences_alcala26012021_Dataloader(
+                                path_filename='/home/ballardini/Desktop/alcala-26.01.2021/train_list.txt',
+                                usePIL=False)
+
+    """
+
+    def __init__(self, path_filename=None, transform=None, usePIL=True, isSequence=True):
+        """
+
+                THIS IS THE DATALOADER USES the split files generated with labelling-script.py
+
+                Args:
+                    path_filename (string): filename with all the files that you want to use; this dataloader uses a file
+                    with all the images, does not walk a os folder!
+                    transform (callable, optional): Optional transform to be applied
+                        on a sample.
+                    usePIL: default True, but if not, return numpy-arrays!
+
+                    isSequence : this parameter specifies that this dataloader is using sequences! used together with
+                                 the abstract class
+
+        """
+
+        # call the super init class. from this we'll have
+        # self.transform = transform
+        # self.images = trainimages
+        # self.labels = trainlabels
+        # self.usePIL = usePIL
+        # Sequences_alcala26012021_Dataloader.__init__(self, path_filename, transform, usePIL)
+        super().__init__(path_filename, transform, usePIL, isSequence=isSequence)
+
+        sequences = {}
+        last_seq = 0
+        sequences, last_seq = self.__get_sequences('', self.images, last_seq, sequences)
+
+        self.sequences = sequences
+
+    def __len__(self):
+        return len(self.sequences)
+
+    def __getitem__(self, idx):
+        """
+
+        Args:
+            idx: index of the sequence. this is generated by the dataloader
+
+        Returns:
+
+            the sample containing the image list and the label of the sequence. if not all the frames have the same
+            label, an "exit" will be called.
+
+        """
+
+        # print('Class: ' + __class__.__name__ + " -- getitem: " + str(idx))
+
+        sequence_list = self.sequences[idx]
+        img_list = []
+
+        # get the label of the image using the label as "index" of the first image of the sequence. The label should
+        # be consistent in all the sequence, this will be ensured later
+        label = self.labels[self.images.index(sequence_list[0])]
+
+        # flag used to print warning in the loop
+        warning_flag = True
+
+        for path in sequence_list:
+
+            # ensure the labels are consistent within the sequence
+            if label != self.labels[self.images.index(path)]:
+                assert 0, "Inconsistent label in sequence"
+
+            # if (previous_label is not None) and (label != previous_label):
+            #     print('Error in file: {}\n'.format(path))
+            #     print('Sequence labels are not consistents')
+            #     exit(-1)
+            image = Image.open(path)
+
+            if not self.usePIL:
+                # copy to avoid warnings from pytorch, or bad edits ...
+                image = np.copy(np.asarray(image))
+
+            if self.transform:
+                image = self.transform(image)
+            else:
+                if warning_flag:
+                    print('Class: ' + __class__.__name__ + " Warning: no transform passed. Sure?")
+                    warning_flag = False
+
+            img_list.append(image)
+
+        sample = {'sequence': img_list, 'label': label}
+
+        if len(img_list) == 1:
+            print("LENGHT OF IMAGE LIST IS 1 !!!!! TAKE CARE!!!!")
+
+        return sample
+
+    @staticmethod
+    def __get_sequences(image_path, filelist, last_seq, seq_dict):
+        """
+
+        Args:
+            image_path: folder of the images
+            filelist: list of files in the specific folder.
+            last_seq: this function will be called more than one time. this variable is used as index.
+            seq_dict: this list-of-lists will contain the intersection sequences
+
+        Returns:
+
+            the list of intersections, and for each of the intersections the associated frame filenames.
+
+        """
+        sq = last_seq
+        sequence = []
+        prev_framenumber = None
+        for file in filelist:
+            # take into account also the 'warpings' folder that contains appendix numbers like
+            # framenumber.data-augmentation-counter.png like 0000000084.001.png
+            # the following trick does the job, but it doesn't work for folders with multiple
+            # data augmentation files, ie, filename.002+.png won't be handled correctly.
+            # TODO: improve the creation of sequences from data-augmented folders.
+
+            if '2013_' in file:
+                # BRUTAL kitti360 patch: ... the frame numbering is different since they contain "folder" in the
+                # filename itself... i'll try to catch this searching '2013_' in the string ...
+                # 6/2013_05_28_drive_0009_sync_0000007162.001.png
+                frame_number = int(os.path.splitext(os.path.split(file)[1])[0].split('.')[0].split('_')[-1])
+            else:
+                frame_number = int(os.path.splitext(os.path.split(file)[1])[0].split('.')[0])
+
+            # check for sequence. if the current frame number is not the previous+1, then we have a new sequence.
+            if not (prev_framenumber is None or (frame_number == (prev_framenumber + 1))):
+                seq_dict[sq] = sequence.copy()
+                sequence.clear()
+                sq += 1
+
+            sequence.append(os.path.join(image_path, file))
+            prev_framenumber = frame_number
+
+        print("SequencesDataloader, loaded folder: ", image_path)
+        print("Found", len(seq_dict), " sequences; for each sequence, the associated frames are: ")
+        print([len(v) for k, v in seq_dict.items()])
+        return seq_dict, sq
+
+    @staticmethod
+    # TODO unused function here
+    def __get_label(self, path):
+        head, tail = os.path.split(path)
+        head, _ = os.path.split(head)
+        gt_path = os.path.join(head, 'frames_topology.txt')
+        filename, _ = os.path.splitext(tail)
+        gtdata = pd.read_csv(gt_path, sep=';', header=None, dtype=str)
+        label = int(gtdata.loc[gtdata[0] == filename][2])
+
+        return label
+
+
+class SequencesDataloader(AbstractSequence, Dataset):
+    """
+    This dataloader is used to load sequences of the ALCALA dataset **ONLY**
+
+    The Alcala dataset was recorded in 2019, and consists of three folders
+    with data from 2 cameras, front/back. Was recorded when Daniele was here
+    as visiting student; most of the dataset is "urban" in downtown Alcala.
+
+    (base) ballardini@ballardini-T14:~/Desktop/ALCALA$ tree -d
+    .
+    ├── R1_video_0002_camera1_png
+    ├── R2_video_0002_camera1_png
+    │ └── image_02
+    └── R2_video_0002_camera2_png
+
+    there's one script "checkSequenceDataloader.py" we used to test this class, basically
+
+    dataset = SequencesDataloader(root='/home/ballardini/Desktop/ALCALA/',
+                              folders=['R2_video_0002_camera1_png'])
+
+    """
+
+    def __init__(self, root, folders, transform=None, isSequence=True):
         """
 
         Args:
@@ -1374,15 +1713,14 @@ class SequencesDataloader(Dataset):
             folders: list of folders
             transform (callable, optional): Optional transform to be applied
                 on a sample.
-
-            suffixPath: when adding the images using the list of folders, most of datasets have the images in common
-                        sub-folders (image_02). You can change this suffix with this parameter.
         """
+        super().__init__(isSequence=isSequence)
+
         self.transform = transform
         sequences = {}
         last_seq = 0
         for folder in folders:
-            image_path = os.path.join(root, os.path.join(folder, suffixPath))
+            image_path = os.path.join(root, os.path.join(folder, 'image_02'))
             filelist = glob.glob1(image_path, '*.png')
             filelist.sort()
             sequences, last_seq = self.__get_sequences(image_path, filelist, last_seq, sequences)
@@ -1407,6 +1745,10 @@ class SequencesDataloader(Dataset):
         sequence_list = self.sequences[idx]
         img_list = []
         previous_label = None
+
+        # flag used to print warning in the loop
+        warning_flag = True
+
         for path in sequence_list:
             label = self.__get_label(path)
 
@@ -1416,11 +1758,20 @@ class SequencesDataloader(Dataset):
                 print('Sequence labels are not consistents')
                 exit(-1)
             image = Image.open(path)
-            image = self.transform(image)
+
+            if self.transform:
+                image = self.transform(image)
+            else:
+                if warning_flag:
+                    print('Class: ' + __class__.__name__ + " Warning: no transform passed. Sure?")
+                    warning_flag = False
             img_list.append(image)
             previous_label = label
 
         sample = {'sequence': img_list, 'label': previous_label}
+
+        if self.transform:  # No se si esto funciona!
+            sample['sequence'] = self.transform(sample['sequence'])
 
         return sample
 

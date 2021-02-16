@@ -228,6 +228,11 @@ class GenerateWarping(object):
             self.K = np.array([[552.554261, 0.00000000, 682.049453, 0.000000],
                                [0.00000000, 552.554261, 238.769549, 0.000000],
                                [0.00000000, 0.00000000, 1.00000000, 0.000000]], dtype=np.float64)
+
+            # sj7 star
+            self.K = np.array([[300.000000, 0.00000000, 800.0 / 2., 0.000000],
+                               [0.00000000, 300.000000, 450.0 / 2., 0.000000],
+                               [0.00000000, 0.00000000, 1.00000000, 0.000000]], dtype=np.float64)
         else:
             self.K = cameramatrix
 
@@ -273,6 +278,9 @@ class GenerateWarping(object):
             pitchCorrection = 0.084 + random_Rx
             yawCorrection = 0.1 + random_Ry
             rollCorrection = 0.0 + random_Rz
+            # the importan one here are:              
+            # first [x x x x] [y y y y] [....] [....]
+            points_3d = np.array([[16, 16, 120, 120], [16, -16, -16, 16], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
         elif self.warpdataset == 'kitti360':
             # position of the virtual camera -- standard kitti 360
             dx = 15   + random_Tx
@@ -281,11 +289,48 @@ class GenerateWarping(object):
             pitchCorrection = 0.1   + random_Rx  # 0.29 deg 0.005rad feasible
             yawCorrection = -0.055  + random_Ry
             rollCorrection = 0.000  + random_Rz
+            # the importan one here are:
+            # first [x x x x] [y y y y] [....] [....]
+            points_3d = np.array([[16, 16, 120, 120], [16, -16, -16, 16], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
+        elif self.warpdataset == 'alcala26012021':
+            # position of the virtual camera -- standard kitti 360
+            dx = 12   + random_Tx  # position of the camera: distance
+            dy = 1    + random_Ty  # position of the camera: positive, to the left
+            dz = 1.5  + random_Tz  # height of the camera; positive, more up :)
+            pitchCorrection = 0.008  + random_Rx  # 0.29 deg 0.005rad feasible
+            yawCorrection =   0.14   + random_Ry
+            rollCorrection =  0.000  + random_Rz
+            # the importan one here are:
+            # first [x x x x] [y y y y] [....] [....]
+            points_3d = np.array([[14, 14, 120, 120], [26, -26, -26, 26], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
+        elif self.warpdataset == 'alcala-12.02.2021.000':
+            # position of the virtual camera
+            # ALCALA DATASET OF 12.02.2021, NOON, WITH AUGUSTO'S FORD FOCUS
+            dx = 12   + random_Tx  # position of the camera: distance
+            dy = 1    + random_Ty  # position of the camera: positive, to the left
+            dz = 1.5  + random_Tz  # height of the camera; positive, more up :)
+            pitchCorrection =  -0.028 + random_Rx  # 0.29 deg 0.005rad feasible
+            yawCorrection   =  -0.03  + random_Ry
+            rollCorrection  =   0.00  + random_Rz
+            # the importan one here are:
+            # first [x x x x] [y y y y] [....] [....]
+            points_3d = np.array([[13, 13, 120, 120], [26, -26, -26, 26], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
+        elif self.warpdataset == 'alcala-12.02.2021.001':
+            # position of the virtual camera
+            # ALCALA DATASET OF 12.02.2021, AFTERNOON, WITH THE C4
+            dx = 12   + random_Tx  # position of the camera: distance
+            dy = 1    + random_Ty  # position of the camera: positive, to the left
+            dz = 1.5  + random_Tz  # height of the camera; positive, more up :)
+            pitchCorrection = 0.0925 + random_Rx  # 0.29 deg 0.005rad feasible
+            yawCorrection =   -0.09  + random_Ry
+            rollCorrection =  0.000  + random_Rz
+            # the importan one here are:
+            # first [x x x x] [y y y y] [....] [....]
+            points_3d = np.array([[14, 14, 120, 120], [26, -26, -26, 26], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
+
         else:
-            assert "unknown warping .... check generatewarping"
+            assert 0, "unknown warping .... check generatewarping"
 
-
-        points_3d = np.array([[16, 16, 120, 120], [16, -16, -16, 16], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
         points_dst = torch.FloatTensor(
             [[[0, self.bev_width], [self.bev_height, self.bev_width], [self.bev_height, 0], [0, 0], ]])
         WorldToCam = np.linalg.inv(getCameraRototraslation(pitchCorrection, yawCorrection, rollCorrection, dx, dy, dz))
@@ -451,7 +496,7 @@ class GenerateBev(object):
         # ALVARO MASK # TODO this is the right place to disable ALVARO MASK s and so get the FULL - BEVs
         alvaro = sample['alvaromask']
 
-        # this if was added once we have kitti360
+        # this if was added once we had kitti360
         if alvaro is not None:
             # nice trick to avoid touching more code than needed... from this out_points needs to be 453620 x 3
             if self.excludeMask:

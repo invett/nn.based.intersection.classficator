@@ -1,3 +1,18 @@
+# Remote Debug using SSH Tunnels
+
+From your machine, open a connection do the DGX. This line will leave you an open shell.
+```ssh -L 1111:localhost:1111 ballardini@dgx-invett.aut.uah.es```
+
+From that open connection, create a second tunnel direct to the Docker Container:
+```ssh -L 1111:localhost:22 ballardini@172.17.0.3```
+
+Now from your machine use port 1111 to connect to the 22 of the Docker Container. You can test the connection connecting 
+with SSH from your local machine using ``-p`` parameter. 
+
+```ssh ballardini@127.0.0.1 -p 1111```
+
+Don't forget to open the VPN first.
+
 # nn.based.intersection.classficator
 
 - [ ] Create dataloader
