@@ -1,6 +1,10 @@
 program: train.py
 method: random
 parameters:
+  train:
+    distribution: categorical
+    values:
+      - "true"
   metric:
     values:
       - "true"
