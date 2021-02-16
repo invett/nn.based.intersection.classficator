@@ -726,6 +726,14 @@ def main(args, model=None):
     # TODO: ALVARO! Esto es lo que queria editar un poco para que quede claro cuando se usa uno y el otro, a lo mejor no con if elif else pero simples if..
     if args.dataloader == 'lstmDataloader_alcala26012021' or args.dataloader == 'alcala26012021':
 
+        # args.dataset          >>> *always used*
+        #                           it acts as dataset_train in the case you want
+        #                           to specify different train/val/test folders
+
+        # IF you want to use other validation/test folders, specify them using:
+        # args.dataset_val      >>> path to the folder
+        # args.dataset_test     >>> path to the folder
+
         # ALCALA
         if os.path.isfile(args.dataset) and os.path.isfile(args.dataset_val) and os.path.isfile(
                 args.dataset_test):

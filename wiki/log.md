@@ -5,6 +5,7 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
 ## TODOs
 - [ ] Make again all kitti360 warpings without mirror
 - [ ] Resnet50/Coco, but using the segmentation? I mean, RGB>SEGMENTED>fc512>LSTM
+- [ ] CARLA + pix2pixHD https://github.com/NVIDIA/pix2pixHD
 
 ## Log
 ### TRAIN 15.02.2021

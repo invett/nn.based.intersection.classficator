@@ -2,6 +2,46 @@ import numpy as np
 import random
 import os
 
+
+# This script takes the some list generated with the labelling script and divided it in three parts to be used in *BOTH*
+# RESNET and LSTM.
+#
+# Initially created to divide KITTI360 in three splits, it can be used to split other datasets as well.
+#
+#   NEEDED: one txt in the follwing form:
+#
+#   (base) ballardini@ballardini-T14:~/Desktop/alcala-12.02.2021.000$ head all_frames_labelled_focus_and_c4.txt
+#   122302AA/0000000791.png;0
+#   122302AA/0000000792.png;0
+#   122302AA/0000000793.png;0
+#   122302AA/0000000794.png;0
+#   122302AA/0000000795.png;0
+#   122302AA/0000000796.png;0
+#   122302AA/0000000797.png;0
+#   122302AA/0000000798.png;0
+#   122302AA/0000000799.png;0
+#   122302AA/0000000800.png;0
+#
+#   KITTI360 WARNING! if filename contains '_' then use this line
+#
+#   current_frame_number = int(frame_filename.replace('_', '.').replace('/', '.').split('.')[7])
+#
+#   and create a three files:
+#                               prefix_train_list.txt
+#                               prefix_validation_list.txt
+#                               prefix_test_list.txt
+
+prefix_filename = "prefix_"
+prefix_filename = "alcala.12.standard.split."
+annotations = []
+files = []
+iskitti360 = False
+overwrite_i_dont_care = False
+
+input_file = '/home/ballardini/Desktop/alcala-12.02.2021.000/all_frames_labelled_focus_and_c4.txt'
+save_folder = '/tmp/'
+
+
 def summary(annotations, files):
     print("Computing annotations...")
     type_0 = sum(sum(i == 0 for i in j) for j in annotations)
@@ -17,6 +57,7 @@ def summary(annotations, files):
 
     sequences = 0
     sequences_frame_number = []
+    file_added = 0
     for i in range(1):
         current_sequence_frames = 0
         prev_frame_class = None
@@ -26,11 +67,17 @@ def summary(annotations, files):
 
         # iterate both annotations and filename lists together, contains labels and frame-names
         for frame_class, frame_filename in zip(annotations[i], files[i]):
+
             print(frame_filename)
+
             if current_sequence_frames == 0 and frame_class == -1:
                 continue
 
-            current_frame_number = int(frame_filename.replace('_', '.').replace('/', '.').split('.')[7])
+            if iskitti360:
+                current_frame_number = int(frame_filename.replace('_', '.').replace('/', '.').split('.')[7])
+            else:
+                current_frame_number = int(frame_filename.replace('_', '.').replace('/', '.').split('.')[1])
+
             if prev_frame_number is None:
                 prev_frame_number = current_frame_number - 1
 
@@ -44,6 +91,9 @@ def summary(annotations, files):
                 if frame_filename == files[i][-1]:
                     if frame_class == prev_frame_class:
                         current_sequence_frames = current_sequence_frames + 1
+                        current_sequence_filenames.append(frame_filename)
+                else:
+                    if (frame_class == prev_frame_class) and (current_frame_number == prev_frame_number+1):
                         current_sequence_filenames.append(frame_filename)
 
                 if prev_frame_class == 0:
@@ -69,11 +119,16 @@ def summary(annotations, files):
                 current_sequence_frames = 0
                 sequences += 1
                 current_sequence_filenames = []
-                continue
+
+
+            file_added = file_added + 1
             current_sequence_frames = current_sequence_frames + 1
             prev_frame_class = frame_class
-            prev_frame_number = int(frame_filename.replace('_','.').replace('/','.').split('.')[7])
+            prev_frame_number = int(frame_filename.replace('_', '.').replace('/', '.').split('.')[1])
             current_sequence_filenames.append(frame_filename)
+
+
+
 
     # some sequences of kitti 360 have only one frame, others 2 or 3 ... we need to prune these sequences
     threshold = 5
@@ -85,9 +140,11 @@ def summary(annotations, files):
                 type_x_sequences_[index].append(sq)
             else:
                 print("Skipping sequence with #frames: " + str(len(sq)))
+                print("Frames skipped are: ")
+                print(sq)
                 excluded_counter = excluded_counter + len(sq)
 
-
+    type_x_sequences = type_x_sequences_.copy()
 
     print("Type0 seq/frames:", len(type_x_sequences[0]), "/", type_0, "\t-\t", [len(i) for i in type_x_sequences[0]])
     print("Type1 seq/frames:", len(type_x_sequences[1]), "/", type_1, "\t-\t", [len(i) for i in type_x_sequences[1]])
@@ -103,9 +160,6 @@ def summary(annotations, files):
     train_list = []
     validation_list = []
     test_list = []
-
-
-    type_x_sequences = type_x_sequences_.copy()
 
     for i in range(7):
         # split_train_val_test = list(range(len(type_x_sequences[i])))
@@ -143,42 +197,42 @@ def summary(annotations, files):
     print("Frames for Train/Val/Test: ", len(train_list), "/", len(validation_list), "/", len(test_list), "\tTot: ",
           len(train_list) + len(validation_list) + len(test_list))
 
-    base_folder = '/home/ballardini/DualBiSeNet/kitti360-augusto-warping/kitti360-augusto-warping_flat/'
+    # save the lists using the save_folder as root
+    train_filename = prefix_filename + 'train_list.txt'
+    validation_filename = prefix_filename + 'validation_list.txt'
+    test_filename = prefix_filename + 'test_list.txt'
 
-    # save the lists using the base_folder as root
-    # WERE train_list.txt   validation_list.txt     test_list.txt
-    with open(os.path.join(base_folder, 'train_list_2nd.split.txt'), 'w') as f:
+    if not overwrite_i_dont_care:
+        assert not os.path.isfile(os.path.join(save_folder, train_filename)), 'File exists: ' + os.path.join(save_folder, train_filename)
+        assert not os.path.isfile(os.path.join(save_folder, validation_filename)), 'File exists' + os.path.join(save_folder, validation_filename)
+        assert not os.path.isfile(os.path.join(save_folder, test_filename)), 'File exists' + os.path.join(save_folder, test_filename)
+
+    with open(os.path.join(save_folder, train_filename), 'w') as f:
         for item in train_list:
             f.write("%s\n" % item)
-    with open(os.path.join(base_folder, 'validation_list_2nd.split.txt'), 'w') as f:
+    with open(os.path.join(save_folder, validation_filename), 'w') as f:
         for item in validation_list:
             f.write("%s\n" % item)
-    with open(os.path.join(base_folder, 'test_list_2nd.split.txt'), 'w') as f:
+    with open(os.path.join(save_folder, test_filename), 'w') as f:
         for item in test_list:
             f.write("%s\n" % item)
 
     print("Finish")
 
+    print("Maybe you want to create the symbolic links....")
 
-# annotations = list(np.loadtxt('/home/ballardini/DualBiSeNet/kitti360-augusto-warping/kitti360-augusto-warping_flat/all_annotations.txt', dtype='str'))
-# files = list(np.loadtxt('/home/ballardini/DualBiSeNet/kitti360-augusto-warping/kitti360-augusto-warping_flat/all_files.txt', dtype='str'))
+    print('while read line; do folder=$(echo $line | cut -d \'/\' -f 1); filenamewithpath=$(echo $line | cut --d \';\' -f 1); filename=$(echo $filenamewithpath | cut --d \'/\' -f 2); echo mkdir -p test/$folder; echo ln -s ../../$filenamewithpath test/$folder/$filename ; done < test_list.txt')
 
-annotations = []
-files = []
 
-# with open('/home/ballardini/DualBiSeNet/kitti360-augusto-warping/kitti360-augusto-warping_flat/all_files_2nd.split.txt', "r") as f:
-#     files = [f.read().splitlines()]
-# with open('/home/ballardini/DualBiSeNet/kitti360-augusto-warping/kitti360-augusto-warping_flat/all_annotations_2nd.split.txt', "r") as a:
-#     annotations = [a.read().splitlines()]
+with open(input_file, "r") as f:
+    all_lines = f.read().splitlines()
 
-with open('/home/ballardini/DualBiSeNet/kitti360-augusto-warping/kitti360-augusto-warping_flat/validation/bugged/all_files_bugged.txt', "r") as f:
-    files = [f.read().splitlines()]
-with open('/home/ballardini/DualBiSeNet/kitti360-augusto-warping/kitti360-augusto-warping_flat/validation/bugged/all_annotations_bugged.txt', "r") as a:
-    annotations = [a.read().splitlines()]
+for line in all_lines:
+    file, label = line.split(';')
+    files.append(file)
+    annotations.append(int(label))
 
-for i in range(0, len(annotations[0])):
-    annotations[0][i] = int(annotations[0][i])
-
-annotations = [np.asarray(annotations[0])]
+files = [files]
+annotations = [annotations]  # stupid line to make previous code work here
 
 summary(annotations, files)
