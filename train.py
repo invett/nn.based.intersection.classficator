@@ -414,7 +414,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                                                  distance=SNRDistance(normalize_embeddings=args.normalize),
                                                  reducer=reducer)
             if args.miner:
-                miner = miners.TripletMarginMiner(margin=args.margin * 2.0, type_of_triplets="all",
+                miner = miners.TripletMarginMiner(margin=args.margin * 2.0, type_of_triplets=args.TripletMarginMinerType,
                                                   distance=SNRDistance(normalize_embeddings=args.normalize))
             else:
                 miner = None
@@ -425,7 +425,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                                                  distance=LpDistance(p=args.p, normalize_embeddings=args.normalize),
                                                  reducer=reducer)
             if args.miner:
-                miner = miners.TripletMarginMiner(margin=args.margin * 2.0, type_of_triplets="all",
+                miner = miners.TripletMarginMiner(margin=args.margin * 2.0, type_of_triplets=args.TripletMarginMinerType,
                                                   distance=LpDistance(p=args.p, normalize_embeddings=args.normalize))
             else:
                 miner = None
@@ -436,7 +436,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                                                  distance=CosineSimilarity(),
                                                  reducer=reducer)
             if args.miner:
-                miner = miners.TripletMarginMiner(margin=args.margin * 2.0, type_of_triplets="all",
+                miner = miners.TripletMarginMiner(margin=args.margin * 2.0, type_of_triplets=args.TripletMarginMinerType,
                                                   distance=CosineSimilarity())
             else:
                 miner = None
@@ -727,15 +727,18 @@ def main(args, model=None):
     if args.dataloader == 'lstmDataloader_alcala26012021' or args.dataloader == 'alcala26012021':
 
         # ALCALA
-        if args.dataset_val is None:
-            val_path = os.path.join(args.dataset, 'validation/validation_list.txt')
-            train_path = os.path.join(args.dataset, 'train/train_list.txt')
-            test_path = os.path.join(args.dataset, 'test/test_list.txt')
+        if os.path.isfile(args.dataset) and os.path.isfile(args.dataset_val) and os.path.isfile(
+                args.dataset_test):
+            train_path = args.dataset  # Path to train dataset
+            val_path = args.dataset_val  # Path to validation dataset
+            test_path = args.dataset_test  # Path to test dataset
         else:
-            train_path = os.path.join(args.dataset, 'test/test_list.txt')  # DATASET ALCALA 12_02_21
-            val_path = os.path.join(args.dataset_val,
-                                    'validation_test/validation_test_list.txt')  # DATASET ALACALA 26_01_21 (val+test)
-            test_path = os.path.join(args.dataset_val, 'train/train_list.txt')  # DATASET ALCALA 26_01_21 (Train)
+            assert os.path.isfile(os.path.join(args.dataset, 'train/train_list.txt')), "Error in train dataset"
+            assert os.path.isfile(os.path.join(args.dataset, 'validation/validation_list.txt')), "Error in validation dataset"
+            assert os.path.isfile(os.path.join(args.dataset, 'test/test_list.txt')), "Error in test dataset"
+            train_path = os.path.join(args.dataset, 'train/train_list.txt')
+            val_path = os.path.join(args.dataset, 'validation/validation_list.txt')
+            test_path = os.path.join(args.dataset, 'test/test_list.txt')
 
     elif '360' not in args.dataloader:
         # All sequence folders
@@ -993,6 +996,12 @@ def main(args, model=None):
                     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
                     # Set new learning rate from command line
                     optimizer.param_groups[0]['lr'] = args.lr
+            elif args.optimizar == 'adamW':
+                optimizer = torch.optim.AdamW(model.parameters(), args.lr, weight_decay=args.adam_weight_decay)
+                if args.resume:
+                    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                    # Set new learning rate from command line
+                    optimizer.param_groups[0]['lr'] = args.lr
             else:
                 print('not supported optimizer \n')
                 exit()
@@ -1159,9 +1168,11 @@ if __name__ == '__main__':
 
     parser.add_argument('--telegram', type=str2bool, nargs='?', const=True, default=False,
                         help='Send info through Telegram')
-    parser.add_argument('--dataset', type=str, help='path to the dataset you are using.')
+    parser.add_argument('--dataset', type=str, help='path to the dataset you are using. (Train or full split)')
     parser.add_argument('--dataset_val', type=str, default=None,
-                        help='path to the  validation dataset that you are using if is different to the training one')
+                        help='path to the validation dataset that you are using if is different to the training one')
+    parser.add_argument('--dataset_test', type=str, default=None,
+                        help='path to the testing dataset that you are using if is different to the training one')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
     parser.add_argument('--model', type=str, default="resnet18",
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
@@ -1199,6 +1210,7 @@ if __name__ == '__main__':
     parser.add_argument('--weighted', type=str2bool, nargs='?', const=True, default=False, help='Weighted losses')
     parser.add_argument('--miner', type=str2bool, nargs='?', const=True, default=False,
                         help='miner for metric learning')
+    parser.add_argument('--TripletMarginMinerType', type=str, default='all', choices=['all', 'hard'])
     parser.add_argument('--nonzero', type=str2bool, nargs='?', const=True, default=False, help='nonzero losses')
     parser.add_argument('--pretrained', type=str2bool, nargs='?', const=True, default=False,
                         help='whether to use a pretrained net, or not')
