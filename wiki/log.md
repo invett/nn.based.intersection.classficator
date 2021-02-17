@@ -7,6 +7,19 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
 - [ ] Resnet50/Coco, but using the segmentation? I mean, RGB>SEGMENTED>fc512>LSTM
 - [ ] CARLA + pix2pixHD https://github.com/NVIDIA/pix2pixHD
 
+### DATASETS
+
+- [ ] Make new dataset of crossing types
+  
+    - [ ] Path planing
+    - [ ] Data recording (Stereo + Lidar + gopro) (¿Posicion?) *cameras with wide fov
+    - [ ] Labeling and corrections
+    
+- [ ] Kitti360 actualization
+
+    - [ ] Warpings No mirror
+    - [ ] Stereo + Lidar --> 3D-Mask 
+
 ## Log
 ### TRAIN 15.02.2021
    - teacher
