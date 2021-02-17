@@ -23,7 +23,9 @@ for line in all_lines:
     files.append(file)
     annotations.append(int(label))
 
+# split_dataset should ??? :) work with multiple folders for the labelling script so annotations should be a list of
+# lists...
 files = [files]
-annotations = [annotations]  # stupid line to make previous code work here
+annotations = [annotations]
 
 split_dataset(annotations, files, prefix_filename, save_folder, iskitti360, overwrite_i_dont_care)

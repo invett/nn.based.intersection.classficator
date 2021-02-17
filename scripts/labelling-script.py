@@ -22,6 +22,7 @@ import json
 import cv2
 import numpy as np
 import random
+from miscellaneous.utils import split_dataset
 
 # datasets: KITTI360 | ALCALA | OXFORD | KITTI-ROAD
 # dataset = 'KITTI-ROAD'
@@ -398,7 +399,6 @@ else:
 if SAVING_CALLS:
     # save_frames('/home/ballardini/Desktop/alcala-26.01.2021-kitti360like', simulate=False, mono=True)
     # save_frames('/media/ballardini/4tb/KITTI-360/moved', simulate=False, mono=False)
-    save_csv(annotations)
     exit(1)
 
 print_help()
@@ -497,7 +497,8 @@ for sequence_number, sequence in enumerate(files):
             print_help()
 
         if k == 115:  # show statistics
-            summary(annotations)  # TODO now is split_dataset()
+            # summary(annotations)  # TODO now is split_dataset()
+            split_dataset(annotations, files)
 
         with open(annotations_file, 'wb') as f:
             pickle.dump(annotations, f)
@@ -539,7 +540,8 @@ for sequence_number, sequence in enumerate(files):
 
     cv2.destroyAllWindows()
 
-summary(annotations)  # TODO now is split_dataset()
+# summary(annotations)  # TODO now is split_dataset()
+split_dataset(annotations, files)
 save_csv(annotations)
 
 # if __name__ == '__main__':
