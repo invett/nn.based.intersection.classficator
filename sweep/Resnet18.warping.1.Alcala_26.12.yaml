@@ -38,10 +38,10 @@ parameters:
       - alcala26012021
     distribution: categorical
   dataset:
-    distribution: categorical
     values:
       - ../../DualBiSeNet/alcala-26.01.2021_selected_augmented_warped_1
       - ../../DualBiSeNet/alcala-12.02.2021_augmented_warped_1
+    distribution: categorical
   batch_size:
     distribution: categorical
     values:
