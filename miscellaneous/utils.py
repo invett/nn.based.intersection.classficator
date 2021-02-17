@@ -11,7 +11,7 @@ from math import asin, atan2, cos, pi, sin
 
 from pytorch_metric_learning import testers
 from sklearn import svm
-
+import pathlib
 import numpy as np
 import pandas as pd
 import requests
@@ -826,26 +826,17 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
         # iterate both annotations and filename lists together, contains labels and frame-names
         for frame_class, frame_filename in zip(annotations[i], files[i]):
 
+            if pathlib.Path(frame_filename).suffix != '.png':
+                print('WARNING!!! Hey take care! Folders with PNGs should contain PNG only! --> ' + frame_filename)
+                continue
+
             if debug_this_funcion:
                 print(frame_filename)
 
             if current_sequence_frames == 0 and frame_class == -1:
                 continue
 
-            try:
-                # we will try to split the filename with some tokens and then take the frame-number and convert it to
-                # integer.
-                if extract_field_from_path == -1:
-                    raise
-                current_frame_number = int(
-                    frame_filename.replace('_', '.').replace('/', '.').split('.')[extract_field_from_path])
-            except:
-                print('Current settings does not allow to extract the filename as number. Currently using field: ' +
-                      str(extract_field_from_path) + '\nExpected a number, got: <<' +
-                      frame_filename.replace('_', '.').replace('/', '.').split('.')[1] + '>>')
-                print('Please check this out:')
-                print(frame_filename.replace('_', '.').replace('/', '.').split('.'))
-                exit()
+            current_frame_number = getFrameNumber(extract_field_from_path, frame_filename)
 
             if prev_frame_number is None:
                 prev_frame_number = current_frame_number - 1
@@ -888,12 +879,12 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
                 current_sequence_frames = 0
                 sequences += 1
                 current_sequence_filenames = []
-
+                continue
 
             file_added = file_added + 1
             current_sequence_frames = current_sequence_frames + 1
             prev_frame_class = frame_class
-            prev_frame_number = int(frame_filename.replace('_', '.').replace('/', '.').split('.')[1])
+            prev_frame_number = getFrameNumber(extract_field_from_path, frame_filename)
             current_sequence_filenames.append(frame_filename)
 
     # some sequences of kitti 360 have only one frame, others 2 or 3 ... we need to prune these sequences
@@ -909,6 +900,7 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
                 print("Frames skipped are: ")
                 print(sq)
                 excluded_counter = excluded_counter + len(sq)
+    print("Total frames skipped: " + str(excluded_counter))
 
     type_x_sequences = type_x_sequences_.copy()
 
@@ -928,15 +920,7 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
     test_list = []
 
     for i in range(7):
-        # split_train_val_test = list(range(len(type_x_sequences[i])))
-        # random.shuffle(split_train_val_test)
-        # a = split_train_val_test[:int(len(split_train_val_test) * 0.8)]
-        # a = split_train_val_test[:int(len(split_train_val_test) * 0.8)]
-        # a = split_train_val_test[:int(len(split_train_val_test) * 0.8)]
-
-        # create a copy of the sequence_x list. Then shuffle, then split using np.split
-        # in three parts 0.7 | 0.2 | 0.1 for train/validation/test
-
+        # split the sequences, not the files!
 
         tosplit = type_x_sequences[i].copy()
         random.shuffle(tosplit)
@@ -950,15 +934,24 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
 
         for split_train in split_train_val_test[0]:
             for filename in split_train:
-                towrite = os.path.relpath(filename, os.path.commonpath([base_folder, filename]))
+                if not os.path.isabs(filename):
+                    towrite = os.path.relpath(filename, os.path.commonpath([base_folder, filename]))
+                else:
+                    towrite = filename
                 train_list.append(towrite + ';' + str(i))
         for split_valid in split_train_val_test[1]:
             for filename in split_valid:
-                towrite = os.path.relpath(filename, os.path.commonpath([base_folder, filename]))
+                if not os.path.isabs(filename):
+                    towrite = os.path.relpath(filename, os.path.commonpath([base_folder, filename]))
+                else:
+                    towrite = filename
                 validation_list.append(towrite + ';' + str(i))
         for split_test in split_train_val_test[2]:
             for filename in split_test:
-                towrite = os.path.relpath(filename, os.path.commonpath([base_folder, filename]))
+                if not os.path.isabs(filename):
+                    towrite = os.path.relpath(filename, os.path.commonpath([base_folder, filename]))
+                else:
+                    towrite = filename
                 test_list.append(towrite + ';' + str(i))
 
     print("Frames for Train/Val/Test: ", len(train_list), "/", len(validation_list), "/", len(test_list), "\tTot: ",
@@ -989,3 +982,21 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
     print("Maybe you want to create the symbolic links....")
 
     print('while read line; do folder=$(echo $line | cut -d \'/\' -f 1); filenamewithpath=$(echo $line | cut --d \';\' -f 1); filename=$(echo $filenamewithpath | cut --d \'/\' -f 2); echo mkdir -p test/$folder; echo ln -s ../../$filenamewithpath test/$folder/$filename ; done < test_list.txt')
+
+
+def getFrameNumber(extract_field_from_path, frame_filename):
+    try:
+        # we will try to split the filename with some tokens and then take the frame-number and convert it to
+        # integer.
+        if extract_field_from_path == -1:
+            raise
+        current_frame_number = int(
+            frame_filename.replace('_', '.').replace('/', '.').split('.')[extract_field_from_path])
+    except:
+        print('Current settings does not allow to extract the filename as number. Currently using field: ' + str(
+            extract_field_from_path) + '\nExpected a number, got: <<' +
+              frame_filename.replace('_', '.').replace('/', '.').split('.')[1] + '>>')
+        print('Please check this out:')
+        print(frame_filename.replace('_', '.').replace('/', '.').split('.'))
+        exit()
+    return current_frame_number
