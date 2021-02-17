@@ -1,42 +1,47 @@
 program: train.py
-method: bayes
-metric:
-  goal: maximize
-  name: Val/MAPR
+method: random
 parameters:
+  train:
+    distribution: categorical
+    values:
+      - "true"
   metric:
     values:
       - "true"
     distribution: categorical
   wandb_group_id:
     values:
-      - Resnet18.warping.1.Alcala26
+      - Resnet18.warping.1.Alcala_26.12
+    distribution: categorical
+  scheduler:
+    values:
+      - "true"
     distribution: categorical
   scheduler_type:
     values:
       - ReduceLROnPlateau
     distribution: categorical
   num_workers:
-    values: 8
-    distribution: categorical
-  num_classes:
-    values: 7
+    values:
+    - 8
     distribution: categorical
   pretrained:
     values:
       - "true"
     distribution: categorical
   num_epochs:
-    values: 500
+    values:
+    - 500
     distribution: categorical
   dataloader:
     values:
       - alcala26012021
     distribution: categorical
   dataset:
-    distribution: categorical
     values:
       - ../../DualBiSeNet/alcala-26.01.2021_selected_augmented_warped_1
+      - ../../DualBiSeNet/alcala-12.02.2021_augmented_warped_1
+    distribution: categorical
   batch_size:
     distribution: categorical
     values:
@@ -81,10 +86,19 @@ parameters:
     distribution: categorical
   # p afecta solo 'pairwise', es L1 o L2
   p:
-    max: 2.0
-    min: 1.0
-    distribution: uniform
+    values:
+    - 2.0
+    - 1.0
+    distribution: categorical
   telegram:
     distribution: categorical
     values:
       - "true"
+  patience:
+    distribution: categorical
+    values:
+      - 5
+  patience_start:
+    distribution: categorical
+    values:
+      - 30
