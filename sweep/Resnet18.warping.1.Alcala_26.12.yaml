@@ -13,6 +13,10 @@ parameters:
     values:
       - Resnet18.warping.1.Alcala_26.12
     distribution: categorical
+  scheduler:
+    values:
+      - "true"
+    distribution: categorical
   scheduler_type:
     values:
       - ReduceLROnPlateau
@@ -90,3 +94,11 @@ parameters:
     distribution: categorical
     values:
       - "true"
+  patience:
+    distribution: categorical
+    values:
+      - 5
+  patience_start:
+    distribution: categorical
+    values:
+      - 30
