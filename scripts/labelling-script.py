@@ -356,129 +356,6 @@ def print_help():
     print("0..6 numbers for 0..6 intersection type")
 
 
-def summary(annotations):
-    print("Computing annotations...")
-    type_0 = sum(sum(i == 0 for i in j) for j in annotations)
-    type_1 = sum(sum(i == 1 for i in j) for j in annotations)
-    type_2 = sum(sum(i == 2 for i in j) for j in annotations)
-    type_3 = sum(sum(i == 3 for i in j) for j in annotations)
-    type_4 = sum(sum(i == 4 for i in j) for j in annotations)
-    type_5 = sum(sum(i == 5 for i in j) for j in annotations)
-    type_6 = sum(sum(i == 6 for i in j) for j in annotations)
-    type_x_frames = type_0 + type_1 + type_2 + type_3 + type_4 + type_5 + type_6
-
-    type_x_sequences = [[], [], [], [], [], [], []]
-
-    sequences = 0
-    sequences_frame_number = []
-    for i in range(len(annotations)):
-        current_sequence_frames = 0
-        prev_frame_class = None
-
-        current_sequence_filenames = []
-
-        # iterate both annotations and filename lists together, contains labels and frame-names
-        for frame_class, frame_filename in zip(annotations[i], files[i]):
-            if current_sequence_frames == 0 and frame_class == -1:
-                continue
-
-            # check for sequence. if the current frame number is not the previous+1, then we have a new sequence.
-            # we need to enter here also if we're analyzing the last frame, or we will lost ALL the frames in the last
-            # sequence of the folder
-            if not (prev_frame_class is None or (frame_class == prev_frame_class)) or (frame_filename == files[i][-1]):
-
-                # if we're in the last frame, we need to re-check if the last frame belongs to the sequence again
-                if frame_filename == files[i][-1]:
-                    if frame_class == prev_frame_class:
-                        current_sequence_frames = current_sequence_frames + 1
-                        current_sequence_filenames.append(frame_filename)
-
-                if prev_frame_class == 0:
-                    type_x_sequences[0].append(current_sequence_filenames.copy())
-                if prev_frame_class == 1:
-                    type_x_sequences[1].append(current_sequence_filenames.copy())
-                if prev_frame_class == 2:
-                    type_x_sequences[2].append(current_sequence_filenames.copy())
-                if prev_frame_class == 3:
-                    type_x_sequences[3].append(current_sequence_filenames.copy())
-                if prev_frame_class == 4:
-                    type_x_sequences[4].append(current_sequence_filenames.copy())
-                if prev_frame_class == 5:
-                    type_x_sequences[5].append(current_sequence_filenames.copy())
-                if prev_frame_class == 6:
-                    type_x_sequences[6].append(current_sequence_filenames.copy())
-
-                if len(current_sequence_filenames) != current_sequence_frames:
-                    print("Error")
-                sequences_frame_number.append(current_sequence_frames)
-                prev_frame_class = None
-                current_sequence_frames = 0
-                sequences += 1
-                current_sequence_filenames = []
-                continue
-            current_sequence_frames = current_sequence_frames + 1
-            prev_frame_class = frame_class
-            current_sequence_filenames.append(frame_filename)
-
-    print("Type0 seq/frames:", len(type_x_sequences[0]), "/", type_0, "\t-\t", [len(i) for i in type_x_sequences[0]])
-    print("Type1 seq/frames:", len(type_x_sequences[1]), "/", type_1, "\t-\t", [len(i) for i in type_x_sequences[1]])
-    print("Type2 seq/frames:", len(type_x_sequences[2]), "/", type_2, "\t-\t", [len(i) for i in type_x_sequences[2]])
-    print("Type3 seq/frames:", len(type_x_sequences[3]), "/", type_3, "\t-\t", [len(i) for i in type_x_sequences[3]])
-    print("Type4 seq/frames:", len(type_x_sequences[4]), "/", type_4, "\t-\t", [len(i) for i in type_x_sequences[4]])
-    print("Type5 seq/frames:", len(type_x_sequences[5]), "/", type_5, "\t-\t", [len(i) for i in type_x_sequences[5]])
-    print("Type6 seq/frames:", len(type_x_sequences[6]), "/", type_6, "\t-\t", [len(i) for i in type_x_sequences[6]])
-    print("Overall Sequences: ", sequences)
-    print("The number of frames associated to each sequence is: ", sequences_frame_number)
-    print("Sum of frames in seq ", sum(sequences_frame_number), '/', type_x_frames)
-
-    train_list = []
-    validation_list = []
-    test_list = []
-
-    for i in range(7):
-        # split_train_val_test = list(range(len(type_x_sequences[i])))
-        # random.shuffle(split_train_val_test)
-        # a = split_train_val_test[:int(len(split_train_val_test) * 0.8)]
-        # a = split_train_val_test[:int(len(split_train_val_test) * 0.8)]
-        # a = split_train_val_test[:int(len(split_train_val_test) * 0.8)]
-
-        # create a copy of the sequence_x list. Then shuffle, then split using np.split
-        # in three parts 0.7 | 0.2 | 0.1 for train/validation/test
-
-        tosplit = type_x_sequences[i].copy()
-        random.shuffle(tosplit)
-        split_train_val_test = np.split(tosplit, [int(len(tosplit) * 0.7), int(len(tosplit) * 0.9)])
-
-        # and append those lists for each of the train/val/test sets ; don't forget to add also the label at the end
-        # so the file will have namefile;label
-
-        for split_train in split_train_val_test[0]:
-            for filename in split_train:
-                towrite = os.path.relpath(filename, os.path.commonpath([base_folder, filename]))
-                train_list.append(towrite + ';' + str(i))
-        for split_valid in split_train_val_test[1]:
-            for filename in split_valid:
-                towrite = os.path.relpath(filename, os.path.commonpath([base_folder, filename]))
-                validation_list.append(towrite + ';' + str(i))
-        for split_test in split_train_val_test[2]:
-            for filename in split_test:
-                towrite = os.path.relpath(filename, os.path.commonpath([base_folder, filename]))
-                test_list.append(towrite + ';' + str(i))
-
-    print("Frames for Train/Val/Test: ", len(train_list), "/", len(validation_list), "/", len(test_list), "\tTot: ",
-          len(train_list) + len(validation_list) + len(test_list))
-
-    # save the lists using the base_folder as root
-    with open(os.path.join(base_folder, 'train_list.txt'), 'w') as f:
-        for item in train_list:
-            f.write("%s\n" % item)
-    with open(os.path.join(base_folder, 'validation_list.txt'), 'w') as f:
-        for item in validation_list:
-            f.write("%s\n" % item)
-    with open(os.path.join(base_folder, 'test_list.txt'), 'w') as f:
-        for item in test_list:
-            f.write("%s\n" % item)
-
 
 for folder in folders:
     path = ''
@@ -620,7 +497,7 @@ for sequence_number, sequence in enumerate(files):
             print_help()
 
         if k == 115:  # show statistics
-            summary(annotations)
+            summary(annotations)  # TODO now is split_dataset()
 
         with open(annotations_file, 'wb') as f:
             pickle.dump(annotations, f)
@@ -662,7 +539,7 @@ for sequence_number, sequence in enumerate(files):
 
     cv2.destroyAllWindows()
 
-summary(annotations)
+summary(annotations)  # TODO now is split_dataset()
 save_csv(annotations)
 
 # if __name__ == '__main__':
