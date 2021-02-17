@@ -38,13 +38,13 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
   - LSTM
     
     - output de RESNET50/COCO + average.pooling    
-        - *out: todos bastante mal*
+        - [x] *out: todos bastante mal*
 
     - Pruebas RESNET50/COCO + average.pooling + FULLY CONNECTED
-        - LR 0.005            out: mal, oscila                                    smoldering-candy-heart-432
-        - LR 0.0001           out: un poco mejor, per todavia acc: ~ 0.18         handsome-lovebird-433
-        - LR 0.000001         out: loss baja lento, pero igual queda a ~ 0.15     enthusiastic-lovebird-434
-        - LR 0.01             out: como antes, ~ 0.17                             enthusiastic-lovebird-434
+        - [x] LR 0.005            out: mal, oscila                                    smoldering-candy-heart-432
+        - [x] LR 0.0001           out: un poco mejor, per todavia acc: ~ 0.18         handsome-lovebird-433
+        - [x] LR 0.000001         out: loss baja lento, pero igual queda a ~ 0.15     enthusiastic-lovebird-434
+        - [x] LR 0.01             out: como antes, ~ 0.17                             enthusiastic-lovebird-434
 
 ---
 
@@ -65,6 +65,8 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
             
             - [x] [compassionate-admirer-437](https://wandb.ai/chiringuito/lstm-based-intersection-classficator/runs/8qduw5og)
                 `python train.py --batch_size=64 --dataloader alcala26012021 --decimate 2 --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_augmented_warped_1 --distance_function pairwise --p 2 --lr 0.005 --margin 5 --metric --miner --model resnet18 --normalize --num_epochs 2000 --num_workers 4 --optimizer adam --patience=5 --patience_start=50 --pretrained --telegram --train --wandb_group_id Resnet_Alcala_26 --weighted`
+              
+            - [ ] Prepare a sweep
 
         - OUR metric learning
             - [ ]  []()
