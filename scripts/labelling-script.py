@@ -497,8 +497,7 @@ for sequence_number, sequence in enumerate(files):
             print_help()
 
         if k == 115:  # show statistics
-            # summary(annotations)  # TODO now is split_dataset()
-            split_dataset(annotations, files)
+            split_dataset(annotations, files, extract_field_from_path=10)
 
         with open(annotations_file, 'wb') as f:
             pickle.dump(annotations, f)
@@ -540,8 +539,7 @@ for sequence_number, sequence in enumerate(files):
 
     cv2.destroyAllWindows()
 
-# summary(annotations)  # TODO now is split_dataset()
-split_dataset(annotations, files)
+split_dataset(annotations, files, extract_field_from_path=10)
 save_csv(annotations)
 
 # if __name__ == '__main__':

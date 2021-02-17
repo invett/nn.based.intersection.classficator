@@ -749,8 +749,8 @@ def acc_triplet_score(args, out_anchor, out_positive, out_negative):
     return acc
 
 
-def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/tmp', iskitti360=False,
-            overwrite_i_dont_care=False):
+def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/tmp',
+            overwrite_i_dont_care=False, extract_field_from_path = -1):
     '''
 
     This function is called from the labelling-script and similar scripts.
@@ -793,13 +793,13 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
         files:
         prefix_filename:
         save_folder:
-        iskitti360:
         overwrite_i_dont_care:
+        extract_field_from_path:
 
     Returns: nothing
 
     '''
-    debug_this_funcion = False
+    debug_this_funcion = True
 
     print("Computing annotations...")
     type_0 = sum(sum(i == 0 for i in j) for j in annotations)
@@ -816,7 +816,7 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
     sequences = 0
     sequences_frame_number = []
     file_added = 0
-    for i in range(1):
+    for i in range(len(annotations)):
         current_sequence_frames = 0
         prev_frame_class = None
         prev_frame_number = None
@@ -832,10 +832,20 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
             if current_sequence_frames == 0 and frame_class == -1:
                 continue
 
-            if iskitti360:
-                current_frame_number = int(frame_filename.replace('_', '.').replace('/', '.').split('.')[7])
-            else:
-                current_frame_number = int(frame_filename.replace('_', '.').replace('/', '.').split('.')[1])
+            try:
+                # we will try to split the filename with some tokens and then take the frame-number and convert it to
+                # integer.
+                if extract_field_from_path == -1:
+                    raise
+                current_frame_number = int(
+                    frame_filename.replace('_', '.').replace('/', '.').split('.')[extract_field_from_path])
+            except:
+                print('Current settings does not allow to extract the filename as number. Currently using field: ' +
+                      str(extract_field_from_path) + '\nExpected a number, got: <<' +
+                      frame_filename.replace('_', '.').replace('/', '.').split('.')[1] + '>>')
+                print('Please check this out:')
+                print(frame_filename.replace('_', '.').replace('/', '.').split('.'))
+                exit()
 
             if prev_frame_number is None:
                 prev_frame_number = current_frame_number - 1

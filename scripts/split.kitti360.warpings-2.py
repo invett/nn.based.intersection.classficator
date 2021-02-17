@@ -11,7 +11,6 @@ input_file = '/home/ballardini/Desktop/alcala-12.02.2021.000/all_frames_labelled
 # parameters that will be passed to split_dataset
 prefix_filename = "prefix_"
 prefix_filename = "alcala.12.standard.split."
-iskitti360 = False
 overwrite_i_dont_care = False
 save_folder = '/tmp/'
 
@@ -28,4 +27,4 @@ for line in all_lines:
 files = [files]
 annotations = [annotations]
 
-split_dataset(annotations, files, prefix_filename, save_folder, iskitti360, overwrite_i_dont_care)
+split_dataset(annotations, files, prefix_filename, save_folder, overwrite_i_dont_care)
