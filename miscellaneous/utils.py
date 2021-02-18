@@ -799,7 +799,7 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
     Returns: nothing
 
     '''
-    debug_this_funcion = True
+    debug_this_funcion = False
 
     print("Computing annotations...")
     type_0 = sum(sum(i == 0 for i in j) for j in annotations)
@@ -963,9 +963,15 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
     test_filename = prefix_filename + 'test_list.txt'
 
     if not overwrite_i_dont_care:
-        assert not os.path.isfile(os.path.join(save_folder, train_filename)), 'File exists: ' + os.path.join(save_folder, train_filename)
-        assert not os.path.isfile(os.path.join(save_folder, validation_filename)), 'File exists' + os.path.join(save_folder, validation_filename)
-        assert not os.path.isfile(os.path.join(save_folder, test_filename)), 'File exists' + os.path.join(save_folder, test_filename)
+        if os.path.isfile(os.path.join(save_folder, train_filename)):
+            print('File already exists: ' + os.path.join(save_folder, train_filename))
+            exit(1)
+        if os.path.isfile(os.path.join(save_folder, validation_filename)):
+            print('File already exists' + os.path.join(save_folder, validation_filename))
+            exit(1)
+        if os.path.isfile(os.path.join(save_folder, test_filename)):
+            print('File already exists' + os.path.join(save_folder, test_filename))
+            exit(1)
 
     with open(os.path.join(save_folder, train_filename), 'w') as f:
         for item in train_list:
@@ -984,19 +990,25 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
     print('while read line; do folder=$(echo $line | cut -d \'/\' -f 1); filenamewithpath=$(echo $line | cut --d \';\' -f 1); filename=$(echo $filenamewithpath | cut --d \'/\' -f 2); echo mkdir -p test/$folder; echo ln -s ../../$filenamewithpath test/$folder/$filename ; done < test_list.txt')
 
 
+def tokenize(text, token_list=['/', '_', ';'], split=True):
+    text_ = text
+    for token in token_list:
+        text_ = text_.replace(token, '.')
+    if split:
+        text_ = text_.split('.')
+    return text_
+
 def getFrameNumber(extract_field_from_path, frame_filename):
     try:
         # we will try to split the filename with some tokens and then take the frame-number and convert it to
         # integer.
         if extract_field_from_path == -1:
             raise
-        current_frame_number = int(
-            frame_filename.replace('_', '.').replace('/', '.').split('.')[extract_field_from_path])
+        current_frame_number = int(tokenize(frame_filename)[extract_field_from_path])
     except:
         print('Current settings does not allow to extract the filename as number. Currently using field: ' + str(
-            extract_field_from_path) + '\nExpected a number, got: <<' +
-              frame_filename.replace('_', '.').replace('/', '.').split('.')[1] + '>>')
-        print('Please check this out:')
+            extract_field_from_path) + '\nExpected a number, but asket to extract field ' +
+              str(extract_field_from_path) + ' from the following list. Remember: start to count from zero!')
         print(frame_filename.replace('_', '.').replace('/', '.').split('.'))
         exit()
     return current_frame_number
