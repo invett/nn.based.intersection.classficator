@@ -26,17 +26,18 @@ from miscellaneous.utils import split_dataset
 
 # datasets: KITTI360 | ALCALA | OXFORD | KITTI-ROAD
 # dataset = 'KITTI-ROAD'
-# dataset = 'KITTI360'
+dataset = 'KITTI360'
 # dataset = 'ALCALA'
 # dataset = 'AQP'
 # dataset = 'alcala-26.01.2021'
-dataset = 'alcala-12.02.2021.000'
+# dataset = 'alcala-12.02.2021.000'
 # dataset = 'alcala-12.02.2021.001'
 
 # definitions, will be specialized later .. but just to avoid warnings
 resizeme = 0
 
 pickle_filenames = []
+extract_field_from_path = -1
 
 if dataset == 'KITTI-ROAD':
     base_folder = '/home/ballardini/Desktop/KITTI-ROAD/'
@@ -84,16 +85,30 @@ if dataset == 'KITTI-ROAD':
 
 if dataset == 'KITTI360':
     base_folder = '/media/ballardini/4tb/ALVARO/KITTI-360/'
+    extract_field_from_path = 19
+
     folders = ['2013_05_28_drive_0000_sync', '2013_05_28_drive_0002_sync', '2013_05_28_drive_0003_sync',
                '2013_05_28_drive_0004_sync', '2013_05_28_drive_0005_sync', '2013_05_28_drive_0006_sync',
                '2013_05_28_drive_0007_sync', '2013_05_28_drive_0009_sync', '2013_05_28_drive_0010_sync']
+
+    pickle_filenames = ['2013_05_28_drive_0000_sync.pickle', '2013_05_28_drive_0002_sync.pickle',
+                        '2013_05_28_drive_0003_sync.pickle', '2013_05_28_drive_0004_sync.pickle',
+                        '2013_05_28_drive_0005_sync.pickle', '2013_05_28_drive_0006_sync.pickle',
+                        '2013_05_28_drive_0007_sync.pickle', '2013_05_28_drive_0009_sync.pickle',
+                        '2013_05_28_drive_0010_sync.pickle']
+
+    csv_filenames = ['2013_05_28_drive_0000_sync.csv', '2013_05_28_drive_0002_sync.csv',
+                        '2013_05_28_drive_0003_sync.csv', '2013_05_28_drive_0004_sync.csv',
+                        '2013_05_28_drive_0005_sync.csv', '2013_05_28_drive_0006_sync.csv',
+                        '2013_05_28_drive_0007_sync.csv', '2013_05_28_drive_0009_sync.csv',
+                        '2013_05_28_drive_0010_sync.csv']
+
     width = 1408
     height = 376
     position1 = (10, 30)
     position2 = (1000, 30)
     position3 = (1000, 60)
-    csv_filename = "kitti360-crossings.csv"
-    pickle_filename = 'kitti360-annotations.pickle'
+
     resizeme = 0  # resizeme = 0 does not perform the resize
 
 if dataset == 'ALCALA':
@@ -150,6 +165,7 @@ if dataset == 'alcala-12.02.2021.000':
     # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
     # scale=800:-1 R2_video_0002_camera2_png/%010d.png
     base_folder = '/home/ballardini/Desktop/alcala-12.02.2021.000/'
+    extract_field_from_path = 10
 
     folders = ['120445AA', '122302AA']
 
@@ -299,13 +315,9 @@ def save_csv(annotations, save_folder='/tmp'):
         with open(filename, 'w') as csv:
             for sequence_file, j in enumerate(i):
                 if j > -1:
-                    # old behavior /home/ballardini/Desktop/ALCALA/R1_video_0002_camera1_png/0000000265.png;6
-                    # out = files[seq_ann][seq_file] + ';' + str(j) + '\n'
-
                     # according with the documentation: '0000003374;-1;4;0'
-                    out = os.path.splitext(os.path.split(files[sequence_number_][sequence_file])[1])[0] + ';-1;' + str(j) + ';0\n'
-
-                    # print(out)
+                    out = os.path.splitext(os.path.split(files[sequence_number_][sequence_file])[1])[0] + ';-1;' + str(
+                        j) + ';0\n'
                     csv.write(out)
         print("Annotations saved to ", csv_filenames[sequence_number_])
 
@@ -551,7 +563,7 @@ for sequence_number, sequence in enumerate(files):
             print_help()
 
         if k == 115:  # show statistics
-            split_dataset(annotations, files, extract_field_from_path=10)
+            split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path)
 
         with open(annotations_filenames[sequence_number], 'wb') as f:
             pickle.dump(annotations[sequence_number], f)
@@ -589,10 +601,11 @@ for sequence_number, sequence in enumerate(files):
 
         if k == 201:  # pressing F12
             cv2.destroyAllWindows()
+            split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path)
             exit(-1)
 
     cv2.destroyAllWindows()
 
-split_dataset(annotations, files, extract_field_from_path=10)
+split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path)
 save_csv(annotations)
 
