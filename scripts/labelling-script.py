@@ -47,6 +47,32 @@ if dataset == 'KITTI-ROAD':
                '2011_09_26_drive_0087_sync', '2011_09_30_drive_0018_sync', '2011_09_30_drive_0020_sync',
                '2011_09_30_drive_0027_sync', '2011_09_30_drive_0028_sync', '2011_09_30_drive_0033_sync',
                '2011_09_30_drive_0034_sync', '2011_10_03_drive_0027_sync', '2011_10_03_drive_0034_sync']
+
+    # still to do, but this is an example
+    # pickle_filenames = ['2011_09_26_drive_0019_sync.pickle', '2011_09_26_drive_0020_sync.pickle',
+    #                     '2011_09_26_drive_0022_sync.pickle', '2011_09_26_drive_0023_sync.pickle',
+    #                     '2011_09_26_drive_0035_sync.pickle', '2011_09_26_drive_0036_sync.pickle',
+    #                     '2011_09_26_drive_0039_sync.pickle', '2011_09_26_drive_0046_sync.pickle',
+    #                     '2011_09_26_drive_0061_sync.pickle', '2011_09_26_drive_0064_sync.pickle',
+    #                     '2011_09_26_drive_0079_sync.pickle', '2011_09_26_drive_0086_sync.pickle',
+    #                     '2011_09_26_drive_0087_sync.pickle', '2011_09_30_drive_0018_sync.pickle',
+    #                     '2011_09_30_drive_0020_sync.pickle', '2011_09_30_drive_0027_sync.pickle',
+    #                     '2011_09_30_drive_0028_sync.pickle', '2011_09_30_drive_0033_sync.pickle',
+    #                     '2011_09_30_drive_0034_sync.pickle', '2011_10_03_drive_0027_sync.pickle',
+    #                     '2011_10_03_drive_0034_sync.pickle']
+    #
+    # csv_filenames = ['2011_09_26_drive_0019_sync.csv', '2011_09_26_drive_0020_sync.csv',
+    #                  '2011_09_26_drive_0022_sync.csv', '2011_09_26_drive_0023_sync.csv',
+    #                  '2011_09_26_drive_0035_sync.csv', '2011_09_26_drive_0036_sync.csv',
+    #                  '2011_09_26_drive_0039_sync.csv', '2011_09_26_drive_0046_sync.csv',
+    #                  '2011_09_26_drive_0061_sync.csv', '2011_09_26_drive_0064_sync.csv',
+    #                  '2011_09_26_drive_0079_sync.csv', '2011_09_26_drive_0086_sync.csv',
+    #                  '2011_09_26_drive_0087_sync.csv', '2011_09_30_drive_0018_sync.csv',
+    #                  '2011_09_30_drive_0020_sync.csv', '2011_09_30_drive_0027_sync.csv',
+    #                  '2011_09_30_drive_0028_sync.csv', '2011_09_30_drive_0033_sync.csv',
+    #                  '2011_09_30_drive_0034_sync.csv', '2011_10_03_drive_0027_sync.csv',
+    #                  '2011_10_03_drive_0034_sync.csv']
+
     width = 1408
     height = 376
     position1 = (10, 30)
@@ -127,11 +153,11 @@ if dataset == 'alcala-12.02.2021.000':
 
     folders = ['120445AA', '122302AA']
 
-    csv_filename = 'alcala-12.02.2021.000' + '.csv'
-    pickle_filename = 'alcala-12.02.2021.000' + '.pickle'
-
     pickle_filenames = ['alcala-12.02.2021.120445AA.pickle',
                         'alcala-12.02.2021.122302AA.pickle']
+
+    csv_filenames = ['alcala-12.02.2021.120445AA.csv',
+                     'alcala-12.02.2021.122302AA.csv']
 
     height = 500
     position1 = (10, 30)
@@ -251,7 +277,7 @@ def hasNumbers(inputString):
     return all(char.isdigit() for char in inputString)
 
 
-def save_csv(annotations, filename=csv_filename):
+def save_csv(annotations, save_folder='/tmp'):
     """
 
     Args:
@@ -268,20 +294,20 @@ def save_csv(annotations, filename=csv_filename):
     distance (that should be always positive).
 
     """
-    filename = os.path.join(base_folder, filename)
-    with open(filename, 'w') as csv:
-        for seq_ann, i in enumerate(annotations):
-            for seq_file, j in enumerate(i):
+    for sequence_number_, i in enumerate(annotations):
+        filename = os.path.join(save_folder, csv_filenames[sequence_number_])
+        with open(filename, 'w') as csv:
+            for sequence_file, j in enumerate(i):
                 if j > -1:
                     # old behavior /home/ballardini/Desktop/ALCALA/R1_video_0002_camera1_png/0000000265.png;6
                     # out = files[seq_ann][seq_file] + ';' + str(j) + '\n'
 
                     # according with the documentation: '0000003374;-1;4;0'
-                    out = os.path.splitext(os.path.split(files[seq_ann][seq_file])[1])[0] + ';-1;' + str(j) + ';0\n'
+                    out = os.path.splitext(os.path.split(files[sequence_number_][sequence_file])[1])[0] + ';-1;' + str(j) + ';0\n'
 
                     # print(out)
                     csv.write(out)
-    print("Annotations saved to ", filename)
+        print("Annotations saved to ", csv_filenames[sequence_number_])
 
 
 def save_frames(where, simulate=True, mono=True):
@@ -392,6 +418,7 @@ for file_list_check in files:
 annotations = []
 annotations_filenames = []
 pickle_filenames.sort()
+csv_filenames.sort()
 
 if pickle_filenames:
     for pickle_filename in pickle_filenames:
@@ -569,17 +596,3 @@ for sequence_number, sequence in enumerate(files):
 split_dataset(annotations, files, extract_field_from_path=10)
 save_csv(annotations)
 
-# if __name__ == '__main__':
-#
-#     # basic parameters
-#     parser = argparse.ArgumentParser()
-#
-#     parser.add_argument('--basefolder', type=str, default='.', help='Base folders for all datasets')
-#
-#     for folder in folders:
-#         if dataset == 'KITTI360':
-#             path = os.path.join(base_folder, 'data_2d_raw', folder, 'image_00/data_rect')
-#         if dataset == 'ALCALA':
-#             path = os.path.join(base_folder, folder)
-#         # files.append(sorted([f for f in listdir(path) if isfile(join(path, f))]))
-#         files.append(sorted([path + '/' + f for f in listdir(path)]))

@@ -924,8 +924,11 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
 
         tosplit = type_x_sequences[i].copy()
         random.shuffle(tosplit)
+
+        # This creates a ragged nested sequence warning ... tried to resolve, but didn't work
         split_train_val_test = np.array(np.split(tosplit, [int(len(tosplit) * 0.7), int(len(tosplit) * 0.9)]),
                                         dtype="object").tolist()
+
 
         # and append those lists for each of the train/val/test sets ; don't forget to add also the label at the end
         # so the file will have namefile;label
