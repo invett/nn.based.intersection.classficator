@@ -955,7 +955,8 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
                 test_list.append(towrite + ';' + str(i))
 
     print("Frames for Train/Val/Test: ", len(train_list), "/", len(validation_list), "/", len(test_list), "\tTot: ",
-          len(train_list) + len(validation_list) + len(test_list))
+          len(train_list) + len(validation_list) + len(test_list), ' -- Skipping ', str(excluded_counter), 'frame(s): ',
+          len(train_list) + len(validation_list) + len(test_list) - excluded_counter)
 
     # save the lists using the save_folder as root
     train_filename = prefix_filename + 'train_list.txt'

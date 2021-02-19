@@ -36,6 +36,8 @@ dataset = 'alcala-12.02.2021.000'
 # definitions, will be specialized later .. but just to avoid warnings
 resizeme = 0
 
+pickle_filenames = []
+
 if dataset == 'KITTI-ROAD':
     base_folder = '/home/ballardini/Desktop/KITTI-ROAD/'
     folders = ['2011_09_26_drive_0019_sync', '2011_09_26_drive_0020_sync', '2011_09_26_drive_0022_sync',
@@ -127,6 +129,9 @@ if dataset == 'alcala-12.02.2021.000':
 
     csv_filename = 'alcala-12.02.2021.000' + '.csv'
     pickle_filename = 'alcala-12.02.2021.000' + '.pickle'
+
+    pickle_filenames = ['alcala-12.02.2021.120445AA.pickle',
+                        'alcala-12.02.2021.122302AA.pickle']
 
     height = 500
     position1 = (10, 30)
@@ -356,8 +361,9 @@ def print_help():
     print("F12               -  exit | the CSV will NOT be generated/updated")
     print("0..6 numbers for 0..6 intersection type")
 
+folders.sort()
 
-
+# read the folders provided, please, only PNG files
 for folder in folders:
     path = ''
     if dataset == 'KITTI-ROAD':
@@ -374,8 +380,8 @@ for folder in folders:
         path = os.path.join(base_folder, folder, 'image_02')
     if dataset == 'OXFORD':
         path = os.path.join(base_folder, folder)
-    # files.append(sorted([f for f in listdir(path) if isfile(join(path, f))]))
-    files.append(sorted([path + '/' + f for f in listdir(path)]))
+    # list all files ending in .png
+    files.append(sorted([path + '/' + f for f in listdir(path) if f.endswith('.png')]))
 
 # if for some reason some of the folders is empty, say no.
 for file_list_check in files:
@@ -384,16 +390,37 @@ for file_list_check in files:
         exit(-1)
 
 annotations = []
-annotations_file = os.path.join(base_folder, pickle_filename)
+annotations_filenames = []
+pickle_filenames.sort()
 
-if os.path.exists(annotations_file):
-    with open(annotations_file, 'rb') as f:
-        annotations = pickle.load(f)
+if pickle_filenames:
+    for pickle_filename in pickle_filenames:
+        # try to read all the pickles in the list
+        annotations_file = os.path.join(base_folder, pickle_filename)
+        if os.path.exists(annotations_file):
+            with open(annotations_file, 'rb') as f:
+                annotations.append(pickle.load(f))
+                annotations_filenames.append(pickle_filename)
+        else:
+            if not annotations:
+                # create the pickle(s)
+                for pickle_filename_ in pickle_filenames:
+                    for sequence in files:
+                        annotations.append(np.ones(len(sequence), dtype=np.int8) * -1)
+                    with open(annotations_file, 'wb') as f:
+                        pickle.dump(annotations, f)
+                        annotations_filenames.append(pickle_filename_)
+            else:
+                annotations_file = os.path.join(base_folder, pickle_filename)
+                print('At least one of the provided pickles file is missing, so we won\'t continue')
+                print(annotations_file)
+                exit(2)
 else:
-    for sequence in files:
-        annotations.append(np.ones(len(sequence), dtype=np.int8) * -1)
-    with open(annotations_file, 'wb') as f:
-        pickle.dump(annotations, f)
+    print("No pickle_filenames provided")
+    exit(3)
+
+annotations_file = ''  # should not be used anymore
+f = ''
 
 # ENABLE THIS LINE TO CREATE THE DATASET, IE, CREATE A NEW FOLDER STRUCTURE WITH DATA
 if SAVING_CALLS:
@@ -499,8 +526,8 @@ for sequence_number, sequence in enumerate(files):
         if k == 115:  # show statistics
             split_dataset(annotations, files, extract_field_from_path=10)
 
-        with open(annotations_file, 'wb') as f:
-            pickle.dump(annotations, f)
+        with open(annotations_filenames[sequence_number], 'wb') as f:
+            pickle.dump(annotations[sequence_number], f)
 
         # RIGHT or F4
         if (k == right or k == 193) and file + 1 < len(sequence) - 1:
