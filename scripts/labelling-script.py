@@ -7,6 +7,19 @@
 
     NOTE 2: after labelling, when you go through all the images, the CSV will be saved! No need to add this call, this
             is needed only to recreate the dataset (or recreate the CSV from the pickle..)
+
+    NOTE 3:
+
+    code used to split old pickles in smaller ones 'per-folder'
+
+    for indice, valore in enumerate(lista):
+    annotations_ = annotations[0][indice]
+    annotations_file_ = '/home/ballardini/Desktop/KITTI-ROAD/' + valore + '.pickle'
+    print(str(len(annotations_)) + annotations_file_)
+    with open(annotations_file_, 'wb') as f:
+        pickle.dump(annotations_, f)
+
+
 """
 SAVING_CALLS = False
 
@@ -41,6 +54,8 @@ extract_field_from_path = -1
 
 if dataset == 'KITTI-ROAD':
     base_folder = '/home/ballardini/Desktop/KITTI-ROAD/'
+    extract_field_from_path = 14
+
     folders = ['2011_09_26_drive_0019_sync', '2011_09_26_drive_0020_sync', '2011_09_26_drive_0022_sync',
                '2011_09_26_drive_0023_sync', '2011_09_26_drive_0035_sync', '2011_09_26_drive_0036_sync',
                '2011_09_26_drive_0039_sync', '2011_09_26_drive_0046_sync', '2011_09_26_drive_0061_sync',
@@ -49,38 +64,35 @@ if dataset == 'KITTI-ROAD':
                '2011_09_30_drive_0027_sync', '2011_09_30_drive_0028_sync', '2011_09_30_drive_0033_sync',
                '2011_09_30_drive_0034_sync', '2011_10_03_drive_0027_sync', '2011_10_03_drive_0034_sync']
 
-    # still to do, but this is an example
-    # pickle_filenames = ['2011_09_26_drive_0019_sync.pickle', '2011_09_26_drive_0020_sync.pickle',
-    #                     '2011_09_26_drive_0022_sync.pickle', '2011_09_26_drive_0023_sync.pickle',
-    #                     '2011_09_26_drive_0035_sync.pickle', '2011_09_26_drive_0036_sync.pickle',
-    #                     '2011_09_26_drive_0039_sync.pickle', '2011_09_26_drive_0046_sync.pickle',
-    #                     '2011_09_26_drive_0061_sync.pickle', '2011_09_26_drive_0064_sync.pickle',
-    #                     '2011_09_26_drive_0079_sync.pickle', '2011_09_26_drive_0086_sync.pickle',
-    #                     '2011_09_26_drive_0087_sync.pickle', '2011_09_30_drive_0018_sync.pickle',
-    #                     '2011_09_30_drive_0020_sync.pickle', '2011_09_30_drive_0027_sync.pickle',
-    #                     '2011_09_30_drive_0028_sync.pickle', '2011_09_30_drive_0033_sync.pickle',
-    #                     '2011_09_30_drive_0034_sync.pickle', '2011_10_03_drive_0027_sync.pickle',
-    #                     '2011_10_03_drive_0034_sync.pickle']
-    #
-    # csv_filenames = ['2011_09_26_drive_0019_sync.csv', '2011_09_26_drive_0020_sync.csv',
-    #                  '2011_09_26_drive_0022_sync.csv', '2011_09_26_drive_0023_sync.csv',
-    #                  '2011_09_26_drive_0035_sync.csv', '2011_09_26_drive_0036_sync.csv',
-    #                  '2011_09_26_drive_0039_sync.csv', '2011_09_26_drive_0046_sync.csv',
-    #                  '2011_09_26_drive_0061_sync.csv', '2011_09_26_drive_0064_sync.csv',
-    #                  '2011_09_26_drive_0079_sync.csv', '2011_09_26_drive_0086_sync.csv',
-    #                  '2011_09_26_drive_0087_sync.csv', '2011_09_30_drive_0018_sync.csv',
-    #                  '2011_09_30_drive_0020_sync.csv', '2011_09_30_drive_0027_sync.csv',
-    #                  '2011_09_30_drive_0028_sync.csv', '2011_09_30_drive_0033_sync.csv',
-    #                  '2011_09_30_drive_0034_sync.csv', '2011_10_03_drive_0027_sync.csv',
-    #                  '2011_10_03_drive_0034_sync.csv']
+    pickle_filenames = ['2011_09_26_drive_0019_sync.pickle', '2011_09_26_drive_0020_sync.pickle',
+                        '2011_09_26_drive_0022_sync.pickle', '2011_09_26_drive_0023_sync.pickle',
+                        '2011_09_26_drive_0035_sync.pickle', '2011_09_26_drive_0036_sync.pickle',
+                        '2011_09_26_drive_0039_sync.pickle', '2011_09_26_drive_0046_sync.pickle',
+                        '2011_09_26_drive_0061_sync.pickle', '2011_09_26_drive_0064_sync.pickle',
+                        '2011_09_26_drive_0079_sync.pickle', '2011_09_26_drive_0086_sync.pickle',
+                        '2011_09_26_drive_0087_sync.pickle', '2011_09_30_drive_0018_sync.pickle',
+                        '2011_09_30_drive_0020_sync.pickle', '2011_09_30_drive_0027_sync.pickle',
+                        '2011_09_30_drive_0028_sync.pickle', '2011_09_30_drive_0033_sync.pickle',
+                        '2011_09_30_drive_0034_sync.pickle', '2011_10_03_drive_0027_sync.pickle',
+                        '2011_10_03_drive_0034_sync.pickle']
+
+    csv_filenames = ['2011_09_26_drive_0019_sync.csv', '2011_09_26_drive_0020_sync.csv',
+                     '2011_09_26_drive_0022_sync.csv', '2011_09_26_drive_0023_sync.csv',
+                     '2011_09_26_drive_0035_sync.csv', '2011_09_26_drive_0036_sync.csv',
+                     '2011_09_26_drive_0039_sync.csv', '2011_09_26_drive_0046_sync.csv',
+                     '2011_09_26_drive_0061_sync.csv', '2011_09_26_drive_0064_sync.csv',
+                     '2011_09_26_drive_0079_sync.csv', '2011_09_26_drive_0086_sync.csv',
+                     '2011_09_26_drive_0087_sync.csv', '2011_09_30_drive_0018_sync.csv',
+                     '2011_09_30_drive_0020_sync.csv', '2011_09_30_drive_0027_sync.csv',
+                     '2011_09_30_drive_0028_sync.csv', '2011_09_30_drive_0033_sync.csv',
+                     '2011_09_30_drive_0034_sync.csv', '2011_10_03_drive_0027_sync.csv',
+                     '2011_10_03_drive_0034_sync.csv']
 
     width = 1408
     height = 376
     position1 = (10, 30)
     position2 = (950, 30)
     position3 = (950, 60)
-    csv_filename = "kitti-road-crossings.csv"
-    pickle_filename = 'kitti-road-annotations.pickle'
     resizeme = 0  # resizeme = 0 does not perform the resize
 
 if dataset == 'KITTI360':
@@ -602,6 +614,7 @@ for sequence_number, sequence in enumerate(files):
         if k == 201:  # pressing F12
             cv2.destroyAllWindows()
             split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path)
+            save_csv(annotations)
             exit(-1)
 
     cv2.destroyAllWindows()
