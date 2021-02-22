@@ -9,10 +9,10 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
 
 ### DATASETS
 
-- [ ] Make new dataset of crossing types
+- [ ] Make a new dataset of crossing types
   
-    - [ ] Path planing
-    - [ ] Data recording (Stereo + Lidar + gopro) (¿Posicion?) *cameras with wide fov
+    - [ ] Path planing: where to go with the car
+    - [ ] Data recording (Stereo + Lidar + gopro) (¿Posicion?) *cameras with wide fov*
     - [ ] Labeling and corrections
     
 - [ ] Kitti360 actualization
@@ -55,7 +55,7 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
     - resnet18
       - train.data + val.data = alcala-26.01.2021_selected_augmented_warped_1/
         - Difference with previous SWEEPS
-            - set decimateStep = 2 (one of of two, 50%). This will differ from the previous SWEEPS!
+            - set decimateStep = 2 (one of two, 50%). This will differ from the previous SWEEPS!
             - using `26.01.2021_selected_augmented_warped_1` instead of `26.01.2021_selected_augmented_warped_5` of [Resnet Warping Alclaa](https://wandb.ai/chiringuito/lstm-based-intersection-classficator/sweeps/n0r5wtvt)
 
         Tests:
