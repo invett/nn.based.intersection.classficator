@@ -27,9 +27,9 @@ def main(args):
     # execute = 'standard'
     # execute = 'kitti360'
     # execute = 'kitti360-warping'
-    # execute = 'alcala26012021'   #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
+    execute = 'alcala26012021'   #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
     # execute = 'alcala.12.02.2021.000'   #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
-    execute = 'alcala.12.02.2021.001'  #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
+    # execute = 'alcala.12.02.2021.001'  #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
 
     # alcala26122012 does not walk os paths! it directly uses a .txt file!
     if execute != 'alcala26012021' and execute != 'alcala.12.02.2021.000' and execute != 'alcala.12.02.2021.001':
@@ -94,13 +94,13 @@ def main(args):
 
     if execute == 'alcala26012021':
         dataset = alcala26012021(path_filename=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
-                                                                                                 random_Ry_degrees=0.5,
-                                                                                                 random_Rz_degrees=0.5,
-                                                                                                 random_Tx_meters=2.0,
-                                                                                                 random_Ty_meters=1.0,
-                                                                                                 random_Tz_meters=0.1,
-                                                                                                 warpdataset='alcala26012021'),
-                                                                                 #Mirror(),
+                                                                                                 random_Ry_degrees=0.0, #0.2,
+                                                                                                 random_Rz_degrees=0.0, #0.2,
+                                                                                                 random_Tx_meters =0.0, #2.0,
+                                                                                                 random_Ty_meters =0.0, #1.0,
+                                                                                                 random_Tz_meters =0.0, #0.1,
+                                                                                                 warpdataset='alcala26012021',
+                                                                                                 ignoreAllGivenRandomValues=True),
                                                                                  Rescale((224, 224)),
                                                                                  WriteDebugInfoOnNewDataset(),
                                                                                  GenerateNewDataset(args.savefolder)]), usePIL=False)
@@ -154,16 +154,16 @@ def main(args):
     # num_workers starts from 0
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=args.workers)
 
-    # USE THIS TO SELECT ONE SINGLE IMAGE AND VERIFY THE WARPING
-    # for i in range(1):
-    #     sample = dataloader.dataset.__getitem__(2030)
-    #     data = sample['data']
-    #     label = sample['label']
-    #     a = plt.figure()
-    #     plt.imshow(sample['data'] / 255.0)
-    #     send_telegram_picture(a, '')
-    #     plt.close('all')
-    # exit(1)
+    #USE THIS TO SELECT ONE SINGLE IMAGE AND VERIFY THE WARPING
+    for i in range(1):
+        sample = dataloader.dataset.__getitem__(2030)
+        data = sample['data']
+        label = sample['label']
+        a = plt.figure()
+        plt.imshow(sample['data'] / 255.0)
+        send_telegram_picture(a, '')
+        plt.close('all')
+    exit(1)
 
     for index in range(args.augmentation + 1):
         print("Generating run {} ... ".format(index))
@@ -221,12 +221,13 @@ if __name__ == '__main__':
     # parser.add_argument('--rootfolder', default="/media/augusto/500GBHECTOR/augusto/kitti360-augusto", type=str, help='Root folder for all datasets')
     # parser.add_argument('--savefolder', default="/media/augusto/500GBHECTOR/augusto/kitti360-augusto-augmented-warped", type=str, help='Where to save the new data')
 
-    # parser.add_argument('--rootfolder', default="/home/ballardini/Desktop/alcala-26.01.2021_selected/all.txt", type=str, help='Root folder for all datasets')
-    # parser.add_argument('--savefolder', default="/home/ballardini/Desktop/alcala-26.01.2021_selected_augmented_warped", type=str, help='Where to save the new data')
+    # ALCALA 26 - AUGUSTO's LAPTOP
+    parser.add_argument('--rootfolder', default="/home/ballardini/Desktop/alcala-26.01.2021_selected/all.txt", type=str, help='Root folder for all datasets')
+    parser.add_argument('--savefolder', default="/home/ballardini/Desktop/alcala-26.01.2021_selected_augmented_warped", type=str, help='Where to save the new data')
 
     # ALCALA 12 02 2021 000+001
-    parser.add_argument('--rootfolder', default="/home/ballardini/DualBiSeNet/alcala-12.02.2021/001_test_list.txt", type=str, help='Root folder for all datasets')
-    parser.add_argument('--savefolder', default="/home/ballardini/DualBiSeNet/alcala-12.02.2021_augmented_warped_1", type=str, help='Where to save the new data')
+    # parser.add_argument('--rootfolder', default="/home/ballardini/DualBiSeNet/alcala-12.02.2021/001_test_list.txt", type=str, help='Root folder for all datasets')
+    # parser.add_argument('--savefolder', default="/home/ballardini/DualBiSeNet/alcala-12.02.2021_augmented_warped_1", type=str, help='Where to save the new data')
     # for the 1-b, remember to set the RANDOM values (ex: random_Rx_degrees and so on...) to ZERO
     # parser.add_argument('--savefolder', default="/home/ballardini/DualBiSeNet/alcala-12.02.2021_augmented_warped_1-b", type=str, help='Where to save the new data')
 

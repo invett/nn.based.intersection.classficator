@@ -202,7 +202,8 @@ class GenerateWarping(object):
                  random_Tx_meters=0.0,
                  random_Ty_meters=0.0,
                  random_Tz_meters=0.0,
-                 warpdataset='kitti'):
+                 warpdataset='kitti',
+                 ignoreAllGivenRandomValues=False):
         #######################################################################################
         # Code for the warping of RGB images - we use KORNIA to get the perspective transform #
         #######################################################################################
@@ -253,6 +254,8 @@ class GenerateWarping(object):
         assert self.random_Ty_meters is not None, "transform value can't be None in GenerateWarping"
         assert self.random_Tz_meters is not None, "transform value can't be None in GenerateWarping"
 
+        self.ignoreAllGivenRandomValues = ignoreAllGivenRandomValues
+
     def __call__(self, sample):
         """
 
@@ -263,12 +266,20 @@ class GenerateWarping(object):
 
         """
 
-        random_Rx = np.random.uniform(-self.random_Rx_radians, self.random_Rx_radians)
-        random_Ry = np.random.uniform(-self.random_Ry_radians, self.random_Ry_radians)
-        random_Rz = np.random.uniform(-self.random_Rz_radians, self.random_Rz_radians)
-        random_Tx = np.random.uniform(0.0, self.random_Tx_meters)
-        random_Ty = np.random.uniform(-self.random_Ty_meters, self.random_Ty_meters)
-        random_Tz = np.random.uniform(-self.random_Tz_meters, self.random_Tz_meters)
+        if self.ignoreAllGivenRandomValues:
+            random_Rx = 0.0
+            random_Ry = 0.0
+            random_Rz = 0.0
+            random_Tx = 0.0
+            random_Ty = 0.0
+            random_Tz = 0.0
+        else:
+            random_Rx = np.random.uniform(-self.random_Rx_radians, self.random_Rx_radians)
+            random_Ry = np.random.uniform(-self.random_Ry_radians, self.random_Ry_radians)
+            random_Rz = np.random.uniform(-self.random_Rz_radians, self.random_Rz_radians)
+            random_Tx = np.random.uniform(0.0, self.random_Tx_meters)
+            random_Ty = np.random.uniform(-self.random_Ty_meters, self.random_Ty_meters)
+            random_Tz = np.random.uniform(-self.random_Tz_meters, self.random_Tz_meters)
 
         if self.warpdataset == 'kitti':
             # position of the virtual camera -- standard kitti
@@ -302,7 +313,7 @@ class GenerateWarping(object):
             rollCorrection =  0.000  + random_Rz
             # the importan one here are:
             # first [x x x x] [y y y y] [....] [....]
-            points_3d = np.array([[14, 14, 120, 120], [26, -26, -26, 26], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
+            points_3d = np.array([[14, 14, 60, 60], [16, -16, -16, 16], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
         elif self.warpdataset == 'alcala-12.02.2021.000':
             # position of the virtual camera
             # ALCALA DATASET OF 12.02.2021, NOON, WITH AUGUSTO'S FORD FOCUS
