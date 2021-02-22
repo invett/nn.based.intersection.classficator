@@ -155,15 +155,15 @@ def main(args):
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=args.workers)
 
     #USE THIS TO SELECT ONE SINGLE IMAGE AND VERIFY THE WARPING
-    for i in range(1):
-        sample = dataloader.dataset.__getitem__(2030)
-        data = sample['data']
-        label = sample['label']
-        a = plt.figure()
-        plt.imshow(sample['data'] / 255.0)
-        send_telegram_picture(a, '')
-        plt.close('all')
-    exit(1)
+    # for i in range(1):
+    #     sample = dataloader.dataset.__getitem__(2030)
+    #     data = sample['data']
+    #     label = sample['label']
+    #     a = plt.figure()
+    #     plt.imshow(sample['data'] / 255.0)
+    #     send_telegram_picture(a, '')
+    #     plt.close('all')
+    # exit(1)
 
     for index in range(args.augmentation + 1):
         print("Generating run {} ... ".format(index))
