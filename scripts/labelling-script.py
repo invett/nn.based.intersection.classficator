@@ -39,12 +39,11 @@ from miscellaneous.utils import split_dataset
 
 # datasets: KITTI360 | ALCALA | OXFORD | KITTI-ROAD
 # dataset = 'KITTI-ROAD'
-dataset = 'KITTI360'
+# dataset = 'KITTI360'
 # dataset = 'ALCALA'
 # dataset = 'AQP'
 # dataset = 'alcala-26.01.2021'
-# dataset = 'alcala-12.02.2021.000'
-# dataset = 'alcala-12.02.2021.001'
+dataset = 'alcala-12.02.2021'
 
 # definitions, will be specialized later .. but just to avoid warnings
 resizeme = 0
@@ -172,38 +171,24 @@ if dataset == 'alcala-26.01.2021':
     resizeme = 0  # resizeme = 0 does not perform the resize
     width = 800
 
-if dataset == 'alcala-12.02.2021.000':
+if dataset == 'alcala-12.02.2021':
     # images from raw files are 1920x1200 - resize as needed.
     # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
     # scale=800:-1 R2_video_0002_camera2_png/%010d.png
     base_folder = '/home/ballardini/Desktop/alcala-12.02.2021.000/'
     extract_field_from_path = 10
 
-    folders = ['120445AA', '122302AA']
+    folders = ['120445AA', '122302AA', '164002AA', '165810AA']
 
     pickle_filenames = ['alcala-12.02.2021.120445AA.pickle',
-                        'alcala-12.02.2021.122302AA.pickle']
+                        'alcala-12.02.2021.122302AA.pickle',
+                        'alcala-12.02.2021.164002AA.pickle',
+                        'alcala-12.02.2021.165810AA.pickle']
 
     csv_filenames = ['alcala-12.02.2021.120445AA.csv',
-                     'alcala-12.02.2021.122302AA.csv']
-
-    height = 500
-    position1 = (10, 30)
-    position2 = (500, 30)
-    position3 = (500, 60)
-    resizeme = 0  # resizeme = 0 does not perform the resize
-    width = 800
-
-if dataset == 'alcala-12.02.2021.001':
-    # images from raw files are 1920x1200 - resize as needed.
-    # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
-    # scale=800:-1 R2_video_0002_camera2_png/%010d.png
-    base_folder = '/mnt/d/alcala-21.02.2021.001/'
-
-    folders = ['164002AA', '164002AA']
-
-    csv_filename = 'alcala-12.02.2021.001' + '.csv'
-    pickle_filename = 'alcala-12.02.2021.001' + '.pickle'
+                     'alcala-12.02.2021.122302AA.csv',
+                     'alcala-12.02.2021.164002AA.csv',
+                     'alcala-12.02.2021.165810AA.csv']
 
     height = 500
     position1 = (10, 30)
@@ -424,7 +409,7 @@ for folder in folders:
         path = os.path.join(base_folder, folder)
     if dataset == 'alcala-26.01.2021':
         path = os.path.join(base_folder, folder)
-    if dataset == 'alcala-12.02.2021.000' or dataset == 'alcala-12.02.2021.001':
+    if dataset == 'alcala-12.02.2021':
         path = os.path.join(base_folder, 'RGB', folder)
     if dataset == 'AQP':
         path = os.path.join(base_folder, folder, 'image_02')
@@ -442,7 +427,10 @@ for file_list_check in files:
 annotations = []
 annotations_filenames = []
 pickle_filenames.sort()
-csv_filenames.sort()
+if csv_filenames:
+    csv_filenames.sort()
+else:
+    print("CSV filenames list was not provided - no csv will be saved!")
 
 if pickle_filenames:
     for pickle_filename in pickle_filenames:
@@ -451,7 +439,7 @@ if pickle_filenames:
         if os.path.exists(annotations_file):
             with open(annotations_file, 'rb') as f:
                 annotations.append(pickle.load(f))
-                annotations_filenames.append(pickle_filename)
+                annotations_filenames.append(annotations_file)
         else:
             if not annotations:
                 # create the pickle(s)
@@ -460,7 +448,7 @@ if pickle_filenames:
                         annotations.append(np.ones(len(sequence), dtype=np.int8) * -1)
                     with open(annotations_file, 'wb') as f:
                         pickle.dump(annotations, f)
-                        annotations_filenames.append(pickle_filename_)
+                        annotations_filenames.append(os.path.join(base_folder, pickle_filename_))
             else:
                 annotations_file = os.path.join(base_folder, pickle_filename)
                 print('At least one of the provided pickles file is missing, so we won\'t continue')
