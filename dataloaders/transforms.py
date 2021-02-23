@@ -313,6 +313,7 @@ class GenerateWarping(object):
             rollCorrection =  0.000  + random_Rz
             # the importan one here are:
             # first [x x x x] [y y y y] [....] [....]
+            # points_3d = np.array([[13, 13, 120, 120], [26, -26, -26, 26], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
             points_3d = np.array([[14, 14, 60, 60], [16, -16, -16, 16], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
         elif self.warpdataset == 'alcala-12.02.2021.000':
             # position of the virtual camera
@@ -325,7 +326,8 @@ class GenerateWarping(object):
             rollCorrection  =   0.00  + random_Rz
             # the importan one here are:
             # first [x x x x] [y y y y] [....] [....]
-            points_3d = np.array([[13, 13, 120, 120], [26, -26, -26, 26], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
+            # points_3d = np.array([[13, 13, 120, 120], [26, -26, -26, 26], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
+            points_3d = np.array([[14, 14, 60, 60], [16, -16, -16, 16], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
         elif self.warpdataset == 'alcala-12.02.2021.001':
             # position of the virtual camera
             # ALCALA DATASET OF 12.02.2021, AFTERNOON, WITH THE C4
@@ -337,8 +339,8 @@ class GenerateWarping(object):
             rollCorrection =  0.000  + random_Rz
             # the importan one here are:
             # first [x x x x] [y y y y] [....] [....]
-            points_3d = np.array([[14, 14, 120, 120], [26, -26, -26, 26], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
-
+            # points_3d = np.array([[14, 14, 120, 120], [26, -26, -26, 26], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
+            points_3d = np.array([[14, 14, 60, 60], [16, -16, -16, 16], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
         else:
             assert 0, "unknown warping .... check generatewarping"
 

@@ -22,14 +22,15 @@ from miscellaneous.utils import send_telegram_message, send_telegram_picture
 def main(args):
 
     # folders = [folders[1]]
-
-    # execute = 'warping'
-    # execute = 'standard'
-    # execute = 'kitti360'
-    # execute = 'kitti360-warping'
-    execute = 'alcala26012021'   #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
-    # execute = 'alcala.12.02.2021.000'   #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
-    # execute = 'alcala.12.02.2021.001'  #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
+    execute = args.execute
+    if not execute:
+        # execute = 'warping'
+        # execute = 'standard'
+        # execute = 'kitti360'
+        # execute = 'kitti360-warping'
+        execute = 'alcala26012021'   #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
+        # execute = 'alcala.12.02.2021.000'   #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
+        # execute = 'alcala.12.02.2021.001'  #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
 
     # alcala26122012 does not walk os paths! it directly uses a .txt file!
     if execute != 'alcala26012021' and execute != 'alcala.12.02.2021.000' and execute != 'alcala.12.02.2021.001':
@@ -102,7 +103,7 @@ def main(args):
                                                                                                  warpdataset='alcala26012021',
                                                                                                  ignoreAllGivenRandomValues=True),
                                                                                  Rescale((224, 224)),
-                                                                                 WriteDebugInfoOnNewDataset(),
+                                                                                 #WriteDebugInfoOnNewDataset(),
                                                                                  GenerateNewDataset(args.savefolder)]), usePIL=False)
 
     if execute == 'alcala.12.02.2021.000':
@@ -112,10 +113,10 @@ def main(args):
                                                                                                      random_Tx_meters=2.0,
                                                                                                      random_Ty_meters=1.0,
                                                                                                      random_Tz_meters=0.1,
-                                                                                                     warpdataset='alcala-12.02.2021.000'),
-                                                                                     #Mirror(),
+                                                                                                     warpdataset='alcala-12.02.2021.000',
+                                                                                                     ignoreAllGivenRandomValues=True),
                                                                                      Rescale((224, 224)),
-                                                                                     WriteDebugInfoOnNewDataset(),
+                                                                                     #WriteDebugInfoOnNewDataset(),
                                                                                      GenerateNewDataset(args.savefolder)]), usePIL=False)
 
     if execute == 'alcala.12.02.2021.001':
@@ -125,10 +126,10 @@ def main(args):
                                                                                                      random_Tx_meters=2.0,
                                                                                                      random_Ty_meters=1.0,
                                                                                                      random_Tz_meters=0.1,
-                                                                                                     warpdataset='alcala-12.02.2021.001'),
-                                                                                     #Mirror(),
+                                                                                                     warpdataset='alcala-12.02.2021.001',
+                                                                                                     ignoreAllGivenRandomValues=True),
                                                                                      Rescale((224, 224)),
-                                                                                     WriteDebugInfoOnNewDataset(),
+                                                                                     #WriteDebugInfoOnNewDataset(),
                                                                                      GenerateNewDataset(args.savefolder)]), usePIL=False)
 
     if execute == 'standard':
@@ -231,8 +232,7 @@ if __name__ == '__main__':
     # for the 1-b, remember to set the RANDOM values (ex: random_Rx_degrees and so on...) to ZERO
     # parser.add_argument('--savefolder', default="/home/ballardini/DualBiSeNet/alcala-12.02.2021_augmented_warped_1-b", type=str, help='Where to save the new data')
 
-
-
+    parser.add_argument('--execute', type=str, help='Name of the process to execute, see the code')
     parser.add_argument('--augmentation', type=int, default=50, help='How many files generate for each of the BEVs')
     parser.add_argument('--workers', type=int, default=0, help='How many workers for the dataloader')
     parser.add_argument('--telegram', action='store_true', help='Send info through Telegram')
