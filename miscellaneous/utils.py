@@ -662,9 +662,36 @@ def mahalanobis_testing(args, model, dataloader_test, covariances):
         return conf_matrix, acc
 
 
-def get_all_embeddings(dataset, model):
-    tester = testers.BaseTester()
-    return tester.get_all_embeddings(dataset, model)
+def get_all_embeddings(dataloader, model):
+    """
+    https://kevinmusgrave.github.io/pytorch-metric-learning/testers/#basetester
+
+    ### convenient function from pytorch-metric-learning ###
+    def get_all_embeddings(dataset, model):
+        tester = testers.BaseTester()
+        return tester.get_all_embeddings(dataset, model)
+
+    :param dataloader: the dataloader to use
+    :param model: the model to use
+    :return:
+    """
+
+    tester = testers.BaseTester(normalize_embeddings=False, data_and_label_getter=embbeding_getter)
+    return tester.get_all_embeddings(dataloader.dataset, model)
+
+
+def embbeding_getter(sample):
+    """
+
+    A function that takes the output of your dataset's __getitem__ function, and returns a tuple of (data, labels).
+    If None, then it is assumed that __getitem__ returns (data, labels).
+
+    :param sample: will be the output of the getitem from our dataloader
+    :return: tuple (data, labels)
+    """
+
+    result = (sample['data'], sample['label'])
+    return result
 
 
 def gt_validation(output, gt_list, criterion=None):
@@ -750,7 +777,7 @@ def acc_triplet_score(args, out_anchor, out_positive, out_negative):
 
 
 def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/tmp',
-            overwrite_i_dont_care=False, extract_field_from_path = -1):
+                  overwrite_i_dont_care=False, extract_field_from_path=-1):
     '''
 
     This function is called from the labelling-script and similar scripts.
@@ -844,8 +871,8 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
             # check for sequence. if the current frame number is not the previous+1, then we have a new sequence.
             # we need to enter here also if we're analyzing the last frame, or we will lost ALL the frames in the last
             # sequence of the folder
-            if not (prev_frame_class is None or (frame_class == prev_frame_class)) or (frame_filename == files[i][-1])\
-                    or (current_frame_number != prev_frame_number+1):
+            if not (prev_frame_class is None or (frame_class == prev_frame_class)) or (frame_filename == files[i][-1]) \
+                    or (current_frame_number != prev_frame_number + 1):
 
                 # if we're in the last frame, we need to re-check if the last frame belongs to the sequence again
                 if frame_filename == files[i][-1]:
@@ -853,7 +880,7 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
                         current_sequence_frames = current_sequence_frames + 1
                         current_sequence_filenames.append(frame_filename)
                 else:
-                    if (frame_class == prev_frame_class) and (current_frame_number == prev_frame_number+1):
+                    if (frame_class == prev_frame_class) and (current_frame_number == prev_frame_number + 1):
                         current_sequence_filenames.append(frame_filename)
 
                 if prev_frame_class == 0:
@@ -929,7 +956,6 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
         split_train_val_test = np.array(np.split(tosplit, [int(len(tosplit) * 0.7), int(len(tosplit) * 0.9)]),
                                         dtype="object").tolist()
 
-
         # and append those lists for each of the train/val/test sets ; don't forget to add also the label at the end
         # so the file will have namefile;label
 
@@ -991,7 +1017,8 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
 
     print("Maybe you want to create the symbolic links....")
 
-    print('while read line; do folder=$(echo $line | cut -d \'/\' -f 1); filenamewithpath=$(echo $line | cut --d \';\' -f 1); filename=$(echo $filenamewithpath | cut --d \'/\' -f 2); echo mkdir -p test/$folder; echo ln -s ../../$filenamewithpath test/$folder/$filename ; done < test_list.txt')
+    print(
+        'while read line; do folder=$(echo $line | cut -d \'/\' -f 1); filenamewithpath=$(echo $line | cut --d \';\' -f 1); filename=$(echo $filenamewithpath | cut --d \'/\' -f 2); echo mkdir -p test/$folder; echo ln -s ../../$filenamewithpath test/$folder/$filename ; done < test_list.txt')
 
 
 def tokenize(text, token_list=['/', '_', ';'], split=True):
@@ -1001,6 +1028,7 @@ def tokenize(text, token_list=['/', '_', ';'], split=True):
     if split:
         text_ = text_.split('.')
     return text_
+
 
 def getFrameNumber(extract_field_from_path, frame_filename):
     try:
