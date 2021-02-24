@@ -38,7 +38,7 @@ class Resnet18(torch.nn.Module):
         feature4 = self.layer4(feature3)
         embedding = self.avgpool(feature4)
         if self.embeddings:
-            return embedding
+            return embedding.squeeze()
         else:
             prediction = self.fc(embedding)
             return prediction
