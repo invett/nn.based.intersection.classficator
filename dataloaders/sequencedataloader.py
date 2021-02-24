@@ -167,13 +167,13 @@ class kitti360(AbstractSequence, Dataset):
         for root, dirs, files in os.walk(path, topdown=False):
             for name in files:
                 # name example: '2013_05_28_drive_0002_sync_0000018453.png'
-                head, ext = os.path.splitext(name)  # name example: '2013_05_28_drive_0002_sync_0000018453.png'
+                head, ext = os.path.splitext(name)
                 if (ext == '.png') and (root.split('/')[-1] == 'left'):
                     # sequence example: 2013_05_28_drive_0002_sync
                     sequence = '_'.join(name.split('_')[0:6])  # kitti360-augusto
                     # sequence = '_'.join(name.split('_')[0:1])  # alcala26.01.21
 
-                    # frame example:_0000018453.png
+                    # frame example: 0000018453.png
                     frame = name.split('_')[-1]
 
                     # label example: 2 (from the folder name)

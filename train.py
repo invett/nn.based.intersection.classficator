@@ -414,7 +414,8 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                                                  distance=SNRDistance(normalize_embeddings=args.normalize),
                                                  reducer=reducer)
             if args.miner:
-                miner = miners.TripletMarginMiner(margin=args.margin * 2.0, type_of_triplets=args.TripletMarginMinerType,
+                miner = miners.TripletMarginMiner(margin=args.margin * 2.0,
+                                                  type_of_triplets=args.TripletMarginMinerType,
                                                   distance=SNRDistance(normalize_embeddings=args.normalize))
             else:
                 miner = None
@@ -425,7 +426,8 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                                                  distance=LpDistance(p=args.p, normalize_embeddings=args.normalize),
                                                  reducer=reducer)
             if args.miner:
-                miner = miners.TripletMarginMiner(margin=args.margin * 2.0, type_of_triplets=args.TripletMarginMinerType,
+                miner = miners.TripletMarginMiner(margin=args.margin * 2.0,
+                                                  type_of_triplets=args.TripletMarginMinerType,
                                                   distance=LpDistance(p=args.p, normalize_embeddings=args.normalize))
             else:
                 miner = None
@@ -436,7 +438,8 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                                                  distance=CosineSimilarity(),
                                                  reducer=reducer)
             if args.miner:
-                miner = miners.TripletMarginMiner(margin=args.margin * 2.0, type_of_triplets=args.TripletMarginMinerType,
+                miner = miners.TripletMarginMiner(margin=args.margin * 2.0,
+                                                  type_of_triplets=args.TripletMarginMinerType,
                                                   distance=CosineSimilarity())
             else:
                 miner = None
@@ -742,7 +745,8 @@ def main(args, model=None):
             test_path = args.dataset_test  # Path to test dataset
         else:
             assert os.path.isfile(os.path.join(args.dataset, 'train/train_list.txt')), "Error in train dataset"
-            assert os.path.isfile(os.path.join(args.dataset, 'validation/validation_list.txt')), "Error in validation dataset"
+            assert os.path.isfile(
+                os.path.join(args.dataset, 'validation/validation_list.txt')), "Error in validation dataset"
             assert os.path.isfile(os.path.join(args.dataset, 'test/test_list.txt')), "Error in test dataset"
             train_path = os.path.join(args.dataset, 'train/train_list.txt')
             val_path = os.path.join(args.dataset, 'validation/validation_list.txt')
@@ -801,7 +805,7 @@ def main(args, model=None):
     # Transforms for Three-dimensional images (The DA was made offline)
     threedimensional_transfomrs = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
 
-    if args.train or (args.test and args.triplet):
+    if args.train or (args.test and (args.triplet or args.metric)):
 
         if not args.nowandb and args.train:  # if nowandb flag was set, skip
             if args.wandb_resume:
@@ -899,7 +903,6 @@ def main(args, model=None):
             val_dataset = alcala26012021(val_path, transform=rgb_image_test_transforms, decimateStep=args.decimate)
 
             train_dataset = alcala26012021(train_path, transform=rgb_image_train_transforms, decimateStep=args.decimate)
-
 
         else:
             raise Exception("Dataloader not found")
