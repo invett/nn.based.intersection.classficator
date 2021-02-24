@@ -676,11 +676,11 @@ def get_all_embeddings(dataloader, model):
     :return:
     """
 
-    tester = testers.BaseTester(normalize_embeddings=False, data_and_label_getter=embbeding_getter)
+    tester = testers.BaseTester(normalize_embeddings=False, data_and_label_getter=image_getter)
     return tester.get_all_embeddings(dataloader.dataset, model)
 
 
-def embbeding_getter(sample):
+def image_getter(sample):
     """
 
     A function that takes the output of your dataset's __getitem__ function, and returns a tuple of (data, labels).
