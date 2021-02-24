@@ -102,10 +102,10 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     # load Saved Model
     loadpath = args.load_path
     if os.path.isfile(loadpath):
-        print("=> loading checkpoint '{}'".format(loadpath))
+        print("=> Loading checkpoint '{}' ... ".format(loadpath))
         checkpoint = torch.load(loadpath, map_location='cpu')
         model.load_state_dict(checkpoint['model_state_dict'])
-        print("=> loaded checkpoint '{}'".format(loadpath))
+        print("=> OK! Checkpoint loaded! '{}'".format(loadpath))
     else:
         print("=> no checkpoint found at '{}'".format(loadpath))
 
