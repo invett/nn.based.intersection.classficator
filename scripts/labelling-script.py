@@ -152,6 +152,7 @@ if dataset == 'alcala-26.01.2021':
     # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
     # scale=800:-1 R2_video_0002_camera2_png/%010d.png
     base_folder = '/home/ballardini/Desktop/alcala-26.01.2021/'
+    extract_field_from_path = 8
 
     folders = ['161604AA', '161657AA', '161957AA', '162257AA', '162557AA', '162857AA', '163157AA', '163457AA',
                '163757AA', '164057AA', '164357AA', '164657AA', '164957AA', '165257AA', '165557AA', '165857AA',
@@ -161,8 +162,27 @@ if dataset == 'alcala-26.01.2021':
                '181358AA', '181658AA', '181958AA', '182258AA', '182558AA', '182858AA', '183158AA', '183458AA',
                '183758AA', '184058AA', '184358AA', '184658AA']
 
-    csv_filename = "alcala-26.01.2021.csv"
-    pickle_filename = 'alcala-26.01.2021.pickle'
+    pickle_filenames = ['161604AA.pickle', '161657AA.pickle', '161957AA.pickle', '162257AA.pickle', '162557AA.pickle',
+                        '162857AA.pickle', '163157AA.pickle', '163457AA.pickle', '163757AA.pickle', '164057AA.pickle',
+                        '164357AA.pickle', '164657AA.pickle', '164957AA.pickle', '165257AA.pickle', '165557AA.pickle',
+                        '165857AA.pickle', '170157AA.pickle', '170457AA.pickle', '170757AA.pickle', '171057AA.pickle',
+                        '171357AA.pickle', '171657AA.pickle', '171957AA.pickle', '172257AA.pickle', '172557AA.pickle',
+                        '172857AA.pickle', '173158AA.pickle', '173457AA.pickle', '173757AA.pickle', '174057AA.pickle',
+                        '174357AA.pickle', '174657AA.pickle', '174957AA.pickle', '175258AA.pickle', '175557AA.pickle',
+                        '175857AA.pickle', '180158AA.pickle', '180458AA.pickle', '180757AA.pickle', '181058AA.pickle',
+                        '181358AA.pickle', '181658AA.pickle', '181958AA.pickle', '182258AA.pickle', '182558AA.pickle',
+                        '182858AA.pickle', '183158AA.pickle', '183458AA.pickle', '183758AA.pickle', '184058AA.pickle',
+                        '184358AA.pickle', '184658AA.pickle']
+
+    csv_filenames = ['161604AA.csv', '161657AA.csv', '161957AA.csv', '162257AA.csv', '162557AA.csv', '162857AA.csv',
+                     '163157AA.csv', '163457AA.csv', '163757AA.csv', '164057AA.csv', '164357AA.csv', '164657AA.csv',
+                     '164957AA.csv', '165257AA.csv', '165557AA.csv', '165857AA.csv', '170157AA.csv', '170457AA.csv',
+                     '170757AA.csv', '171057AA.csv', '171357AA.csv', '171657AA.csv', '171957AA.csv', '172257AA.csv',
+                     '172557AA.csv', '172857AA.csv', '173158AA.csv', '173457AA.csv', '173757AA.csv', '174057AA.csv',
+                     '174357AA.csv', '174657AA.csv', '174957AA.csv', '175258AA.csv', '175557AA.csv', '175857AA.csv',
+                     '180158AA.csv', '180458AA.csv', '180757AA.csv', '181058AA.csv', '181358AA.csv', '181658AA.csv',
+                     '181958AA.csv', '182258AA.csv', '182558AA.csv', '182858AA.csv', '183158AA.csv', '183458AA.csv',
+                     '183758AA.csv', '184058AA.csv', '184358AA.csv', '184658AA.csv']
 
     height = 500
     position1 = (10, 30)
