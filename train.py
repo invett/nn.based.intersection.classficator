@@ -135,8 +135,8 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     elif args.metric:
         train_embeddings, train_labels = get_all_embeddings(dataloader_train, model)
         val_embeddings, val_labels = get_all_embeddings(dataloader_val, model)
-        embeddings = np.stack((np.squeeze(train_embeddings), np.squeeze(val_embeddings)))
-        labels = np.stack((np.squeeze(train_labels), np.squeeze(val_labels)))
+        embeddings = np.vstack((train_embeddings, val_embeddings))
+        labels = np.vstack((train_labels, val_labels))
         if args.test_method == 'svm':
             # Generates svm with the last train
             classifier = svm_generator(args, model, features=embeddings, labels=labels)
@@ -154,12 +154,15 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
 
     if confusion_matrix is not None:
         plt.figure(figsize=(10, 7))
-        title = str(socket.gethostname()) + '\nVALIDATION '
+        title = str(socket.gethostname()) + '\nTEST '
         plt.title(title)
         sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
 
     if args.telegram and confusion_matrix is not None:
-        send_telegram_picture(plt, "VALIDATION" + "\nacc_val: " + str(acc_val) + "\nloss_val: " + str(loss_val))
+        if loss_val is not None:
+            send_telegram_picture(plt, "TEST" + "\nacc_val: " + str(acc_val) + "\nloss_val: " + str(loss_val))
+        else:
+            send_telegram_picture(plt, "TEST" + "\nacc_val: " + str(acc_val))
 
     if not args.nowandb and confusion_matrix is not None:  # if nowandb flag was set, skip
         plt.figure(figsize=(10, 7))
