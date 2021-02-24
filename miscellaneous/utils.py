@@ -581,7 +581,7 @@ def svm_testing(args, model, dataloader_test, classifier):
         model.eval()
 
         for sample in dataloader_test:
-            if args.embedding:
+            if args.embedding or args.metric:
                 data = sample['data']
                 label = sample['label']
 
@@ -633,7 +633,7 @@ def mahalanobis_testing(args, model, dataloader_test, covariances):
         model.eval()
 
         for sample in dataloader_test:
-            if args.embedding:
+            if args.embedding or args.metric:
                 data = sample['data']
                 label = sample['label']
 
