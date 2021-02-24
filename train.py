@@ -129,7 +129,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
             classifier = svm_generator(args, model, dataloader_train=dataloader_train, dataloader_val=dataloader_val)
             confusion_matrix, acc_val = svm_testing(args, model, dataloader_test, classifier)
         elif args.test_method == 'mahalanobis':
-            covariances = covmatrix_generator(args, model, dataloader_train, dataloader_val)
+            covariances = covmatrix_generator(args, model, dataloader_train=dataloader_train, dataloader_val=dataloader_val)
             confusion_matrix, acc_val = mahalanobis_testing(args, model, dataloader_test, covariances)
         else:
             print("=> no test method found")

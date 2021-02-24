@@ -614,19 +614,23 @@ def svm_testing(args, model, dataloader_test, classifier):
 
 def covmatrix_generator(args, model, dataloader_train=None, dataloader_val=None):
     cov_path = args.load_path.replace('.pth', 'cov.sav')
-
-    if not args.metric:
-        features, labels = embb_data(args, model, dataloader_train, dataloader_val)
+    if os.path.isfile(cov_path):
+        print('Covariance matriz already saved in => {}'.format(cov_path))
+        covariances = pickle.load(open(cov_path, 'rb'))
     else:
-        train_embeddings, train_labels = get_all_embeddings(dataloader_train, model)
-        embeddings, val_labels = get_all_embeddings(dataloader_val, model)
-        ures = np.vstack((train_embeddings, val_embeddings))
-        ls = np.vstack((train_labels, val_labels))
-    clusters = {}
-    covariances = {}
-    for lbl in np.unique(labels):
-        clusters[lbl] = features[labels == lbl, :]
-        covariances[lbl] = MinCovDet(random_state=0).fit(clusters[lbl])
+        if not args.metric:
+            features, labels = embb_data(args, model, dataloader_train, dataloader_val)
+        else:
+            train_embeddings, train_labels = get_all_embeddings(dataloader_train, model)
+            val_embeddings, val_labels = get_all_embeddings(dataloader_val, model)
+            features = np.vstack((train_embeddings, val_embeddings))
+            labels = np.vstack((train_labels, val_labels))
+
+        clusters = {}
+        covariances = {}
+        for lbl in np.unique(labels):
+            clusters[lbl] = features[labels == lbl, :]
+            covariances[lbl] = MinCovDet(random_state=0).fit(clusters[lbl])
 
     return covariances
 
