@@ -622,7 +622,7 @@ def covmatrix_generator(args, model, dataloader_train=None, dataloader_val=None,
     return covariances
 
 
-def mahalanovis_testing(args, model, dataloader_test, covariances):
+def mahalanobis_testing(args, model, dataloader_test, covariances):
     print('Start mahalanobis testing')
 
     label_list = []

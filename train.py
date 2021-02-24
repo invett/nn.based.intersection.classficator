@@ -31,7 +31,7 @@ from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromGenerate
     alcala26012021, Sequences_alcala26012021_Dataloader
 from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
-    student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanovis_testing, lstm_network_pass, \
+    student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanobis_testing, lstm_network_pass, \
     get_all_embeddings
 from model.models import Resnet18, Vgg11, LSTM, Resnet50_Coco
 
@@ -124,11 +124,11 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
             # Generates svm with the last train
             classifier = svm_generator(args, model, dataloader_train=dataloader_train, dataloader_val=dataloader_val)
             confusion_matrix, acc_val = svm_testing(args, model, dataloader_test, classifier)
-        elif args.test_method == 'mahalanovis':
+        elif args.test_method == 'mahalanobis':
             covariances = covmatrix_generator(args, model, dataloader_train, dataloader_val)
-            confusion_matrix, acc_val = mahalanovis_testing(args, model, dataloader_test, covariances)
+            confusion_matrix, acc_val = mahalanobis_testing(args, model, dataloader_test, covariances)
         else:
-            print("=> no test methof found")
+            print("=> no test method found")
             exit(-1)
     elif args.metric:
         train_embeddings, train_labels = get_all_embeddings(dataloader_train, model)
@@ -139,9 +139,9 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
             # Generates svm with the last train
             classifier = svm_generator(args, model, features=embeddings, labels=labels)
             confusion_matrix, acc_val = svm_testing(args, model, dataloader_test, classifier)
-        elif args.test_method == 'mahalanovis':
+        elif args.test_method == 'mahalanobis':
             covariances = covmatrix_generator(args, model, features=embeddings, labels=labels)
-            confusion_matrix, acc_val = mahalanovis_testing(args, model, dataloader_test, covariances)
+            confusion_matrix, acc_val = mahalanobis_testing(args, model, dataloader_test, covariances)
         else:
             print("=> no test method found")
             exit(-1)
