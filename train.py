@@ -77,10 +77,12 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
         gt_list = None
 
     # Build model
+    # The embeddings should be returned if we are using Techer/Student or triplet loss
+    return_embeddings = args.embedding or args.triplet or args.metric
     if args.model == 'resnet18':
-        model = Resnet18(pretrained=args.pretrained, embeddings=args.embedding, num_classes=args.num_classes)
+        model = Resnet18(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
     elif args.model == 'vgg11':
-        model = Vgg11(pretrained=args.pretrained, embeddings=args.embedding, num_classes=args.num_classes)
+        model = Vgg11(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
     elif args.model == 'LSTM':
         model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout)
         if args.feature_model == 'resnet18':
