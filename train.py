@@ -61,6 +61,8 @@ def str2bool(v):
 def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save_embeddings=None):
     print('\n<<<<<<<<<<<<<<<<<< START TESTING >>>>>>>>>>>>>>>>>>')
 
+    loss_val = None
+
     if args.embedding:
         criterion = torch.nn.MSELoss(reduction='mean')
     else:
@@ -133,16 +135,12 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
             print("=> no test method found")
             exit(-1)
     elif args.metric:
-        train_embeddings, train_labels = get_all_embeddings(dataloader_train, model)
-        val_embeddings, val_labels = get_all_embeddings(dataloader_val, model)
-        embeddings = np.vstack((train_embeddings, val_embeddings))
-        labels = np.vstack((train_labels, val_labels))
         if args.test_method == 'svm':
             # Generates svm with the last train
-            classifier = svm_generator(args, model, features=embeddings, labels=labels)
+            classifier = svm_generator(args, model, dataloader_train=dataloader_train, dataloader_val=dataloader_val)
             confusion_matrix, acc_val = svm_testing(args, model, dataloader_test, classifier)
         elif args.test_method == 'mahalanobis':
-            covariances = covmatrix_generator(args, model, features=embeddings, labels=labels)
+            covariances = covmatrix_generator(args, model, dataloader_train=dataloader_train, dataloader_val=dataloader_val)
             confusion_matrix, acc_val = mahalanobis_testing(args, model, dataloader_test, covariances)
         else:
             print("=> no test method found")

@@ -489,18 +489,22 @@ def reset_wandb_env():
             del os.environ[k]
 
 
-def svm_generator(args, model, dataloader_train=None, dataloader_val=None, features=None, labels=None):
+def svm_generator(args, model, dataloader_train=None, dataloader_val=None):
     svm_path = args.load_path.replace('.pth', 'svm.sav')
+
     if os.path.isfile(svm_path):
         print('SVM already trained in => {}'.format(svm_path))
         classifier = pickle.load(open(svm_path, 'rb'))
     else:
         print('training SVM classifier\n')
         print('svm model will be saved in : {}\n'.format(svm_path))
-        if dataloader_train is not None and dataloader_val is not None:
+        if not args.metric:
             features, labels = embb_data(args, model, dataloader_train, dataloader_val)
-        elif features is not None and labels is not None:
-            print('Training embeddings already obtained\n')
+        else:
+            train_embeddings, train_labels = get_all_embeddings(dataloader_train, model)
+            val_embeddings, val_labels = get_all_embeddings(dataloader_val, model)
+            features = np.vstack((train_embeddings, val_embeddings))
+            labels = np.vstack((train_labels, val_labels))
         classifier = svm_train(features, labels, mode=args.svm_mode)
         pickle.dump(classifier, open(svm_path, 'wb'))
 
@@ -599,7 +603,7 @@ def svm_testing(args, model, dataloader_test, classifier):
             label_list.append(label.cpu().numpy())
             prediction_list.append(prediction)
 
-        conf_matrix = pd.crosstab(np.array(label_list), np.array(prediction_list), rownames=['Actual'],
+        conf_matrix = pd.crosstab(np.hstack(label_list), np.hstack(prediction_list), rownames=['Actual'],
                                   colnames=['Predicted'],
                                   normalize='index')
         conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6], fill_value=0.0)
@@ -608,11 +612,16 @@ def svm_testing(args, model, dataloader_test, classifier):
         return conf_matrix, acc
 
 
-def covmatrix_generator(args, model, dataloader_train=None, dataloader_val=None, features=None, labels=None):
-    if dataloader_train is not None and dataloader_val is not None:
+def covmatrix_generator(args, model, dataloader_train=None, dataloader_val=None):
+    cov_path = args.load_path.replace('.pth', 'cov.sav')
+
+    if not args.metric:
         features, labels = embb_data(args, model, dataloader_train, dataloader_val)
-    elif features is not None and labels is not None:
-        print('Training embeddings already obtained\n')
+    else:
+        train_embeddings, train_labels = get_all_embeddings(dataloader_train, model)
+        embeddings, val_labels = get_all_embeddings(dataloader_val, model)
+        ures = np.vstack((train_embeddings, val_embeddings))
+        ls = np.vstack((train_labels, val_labels))
     clusters = {}
     covariances = {}
     for lbl in np.unique(labels):
