@@ -1565,6 +1565,8 @@ class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
         self.all_in_ram = all_in_ram
         self.images_in_ram = {}
 
+        # workaround to open lot of files
+        # https://github.com/python-pillow/Pillow/issues/1237
         if self.all_in_ram:
             for img_filename in self.images:
                 img_ = Image.open(img_filename)
