@@ -11,7 +11,7 @@ parameters:
     distribution: categorical
   wandb_group_id:
     values:
-      - Resnet18.warping.1.Alcala_26.12
+      - WORKSHOP.IV21.sweep
     distribution: categorical
   scheduler:
     values:
@@ -39,8 +39,8 @@ parameters:
     distribution: categorical
   dataset:
     values:
-      - ../../DualBiSeNet/alcala-26.01.2021_selected_augmented_warped_1
-      - ../../DualBiSeNet/alcala-12.02.2021_augmented_warped_1
+      - ../../DualBiSeNet/alcala-26.01.2021_selected
+      - ../../DualBiSeNet/alcala-26.01.2021_selected_warped
     distribution: categorical
   batch_size:
     distribution: categorical
@@ -64,6 +64,7 @@ parameters:
   margin:
     max: 5.0
     min: 0.2
+    q: 0.5
     distribution: uniform
   miner:
     values:
@@ -77,6 +78,7 @@ parameters:
   lr:
     max: 0.01
     min: 0.0000025
+    q:   0.00005
     distribution: uniform
   distance_function:
     values:
