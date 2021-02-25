@@ -4,7 +4,13 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
 
 ## TODOs
 - [ ] Make again all kitti360 warpings without mirror
-- [ ] Resnet50/Coco, but using the segmentation? I mean, RGB>SEGMENTED>fc512>LSTM
+- [ ] Training 'kevin' RESNET kitti360/Kitti2011 + TEST: SVM + Mahalanobis + FC
+- [ ] Training LSTM with Kitti360/Kitti2011
+- [ ] Training LSTM with alcala26/alcala12* (¿Solve errors?)
+- [ ] Training LSTM 'Kevin' + TEST: SVM + Mahalanobis
+- [ ] Temporal integration with Resnet Embeddings (¿Method to compare RESNET/LSTM? We can't just compare conf.matrices)
+
+## FUTURISTIC wannabe
 - [ ] CARLA + pix2pixHD https://github.com/NVIDIA/pix2pixHD
 
 ### DATASETS
@@ -110,5 +116,8 @@ sets:
 ### TRAIN LSTM 25.02.2021
 Train of the lstm model respect to the resnet trained on **alcala-26.01.2021** (Same one used in the before test)
 
-- [x] Tested in pycharm with `python train.py --train --num_epochs 500 --wandb_group_id WORKSHOP.I21.sweep.lstm --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped/ --model LSTM --patience 5 --patience_start 25 --dataloader lstmDataloader_alcala26012021 --feature_model resnet18 --feature_detector_path ./trainedmodels/model_de2u0bbr_30.pth --num_workers 8 --batch_size 32 --telegram --weighted --lstm_dropout 0.5 --fc_dropout 0.2 --lr 0.01 --scheduler --scheduler_type ReduceLROnPlateau`
-- [ ] Creating sweep : wandb agent chiringuito/lstm-based-intersection-classficator/p3jbh0ln [LSTM based on RESNET-warping-alcala26 p3jbh0ln](https://wandb.ai/chiringuito/lstm-based-intersection-classficator/sweeps/p3jbh0ln/overview)
+- [x] Tested in pycharm with 
+  - SGD!!! `python train.py --train --num_epochs 500 --wandb_group_id WORKSHOP.I21.sweep.lstm --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped/ --model LSTM --patience 5 --patience_start 25 --dataloader lstmDataloader_alcala26012021 --feature_model resnet18 --feature_detector_path ./trainedmodels/model_de2u0bbr_30.pth --num_workers 8 --batch_size 32 --telegram --weighted --lstm_dropout 0.5 --fc_dropout 0.2 --lr 0.01 --scheduler --scheduler_type ReduceLROnPlateau`
+  - ADAM: [con wandb](https://wandb.ai/chiringuito/lstm-based-intersection-classficator/runs/2qmh4mfn) `python train.py --train --num_epochs 500 --wandb_group_id WORKSHOP.I21.sweep.lstm --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped/ --model LSTM --patience 5--patience_start 25 --dataloader lstmDataloader_alcala26012021 --feature_model resnet18 --feature_detector_path ./trainedmodels/model_de2u0bbr_30.pth --num_workers 4 --batch_size 16 --telegram --weighted --lstm_dropout 0.5 --fc_dropout 0.2 --lr 0.00001 --scheduler --scheduler_type ReduceLROnPlateau --all_in_ram True --optimizer adam` 
+- [ ] Creating sweep muchos errores en esto, no entiendo porque. WARNING: adam needs much smaller LR, 0.01 sgd, 0.0001 for adam
+
