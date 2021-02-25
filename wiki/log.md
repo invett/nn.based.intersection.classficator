@@ -110,5 +110,5 @@ sets:
 ### TRAIN LSTM 25.02.2021
 Train of the lstm model respect to the resnet trained on **alcala-26.01.2021** (Same one used in the before test)
 
-- [ ] Tested in pycharm with `python train.py --train --num_epochs 500 --wandb_group_id WORKSHOP.I21.sweep.lstm --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped/ --model LSTM --patience 5 --patience_start 25 --dataloader lstmDataloader_alcala26012021 --feature_model resnet18 --feature_detector_path ./trainedmodels/model_de2u0bbr_30.pth --num_workers 8 --batch_size 32 --telegram --weighted --lstm_dropout 0.5 --fc_dropout 0.2 --lr 0.01 --scheduler --scheduler_type ReduceLROnPlateau`
-- [ ] Creating sweep : wandb agent chiringuito/lstm-based-intersection-classficator/p3jbh0ln
+- [x] Tested in pycharm with `python train.py --train --num_epochs 500 --wandb_group_id WORKSHOP.I21.sweep.lstm --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped/ --model LSTM --patience 5 --patience_start 25 --dataloader lstmDataloader_alcala26012021 --feature_model resnet18 --feature_detector_path ./trainedmodels/model_de2u0bbr_30.pth --num_workers 8 --batch_size 32 --telegram --weighted --lstm_dropout 0.5 --fc_dropout 0.2 --lr 0.01 --scheduler --scheduler_type ReduceLROnPlateau`
+- [ ] Creating sweep : wandb agent chiringuito/lstm-based-intersection-classficator/p3jbh0ln [LSTM based on RESNET-warping-alcala26 p3jbh0ln](https://wandb.ai/chiringuito/lstm-based-intersection-classficator/sweeps/p3jbh0ln/overview)
