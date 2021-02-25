@@ -1614,7 +1614,10 @@ class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
             if self.all_in_ram:
                 image = self.images_in_ram[path].copy()
             else:
-                image = Image.open(path)
+                # image = Image.open(path)
+                img_ = Image.open(path)
+                image = img_.copy()
+                img_.close()
 
             if not self.usePIL:
                 # copy to avoid warnings from pytorch, or bad edits ...
