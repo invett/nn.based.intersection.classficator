@@ -492,8 +492,11 @@ def reset_wandb_env():
 def svm_generator(args, model, dataloader_train=None, dataloader_val=None):
     if args.svm_mode == 'Linear':
         svm_path = args.load_path.replace('.pth', '.lsvm.sav')
-    else:
+    elif args.svm_mode == 'ovo':
         svm_path = args.load_path.replace('.pth', '.osvm.sav')
+    else:
+        print("The SVM mode is not implemented: " + args.svm_mode)
+        exit(1)
 
     if os.path.isfile(svm_path):
         print('SVM already trained in => {}'.format(svm_path))
