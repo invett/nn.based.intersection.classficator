@@ -491,9 +491,9 @@ def reset_wandb_env():
 
 def svm_generator(args, model, dataloader_train=None, dataloader_val=None):
     if args.svm_mode == 'Linear':
-        svm_path = args.load_path.replace('.pth', 'Lsvm.sav')
+        svm_path = args.load_path.replace('.pth', '.lsvm.sav')
     else:
-        svm_path = args.load_path.replace('.pth', 'Osvm.sav')
+        svm_path = args.load_path.replace('.pth', '.osvm.sav')
 
     if os.path.isfile(svm_path):
         print('SVM already trained in => {}'.format(svm_path))
@@ -619,7 +619,7 @@ def svm_testing(args, model, dataloader_test, classifier):
 
 
 def covmatrix_generator(args, model, dataloader_train=None, dataloader_val=None):
-    cov_path = args.load_path.replace('.pth', 'cov.sav')
+    cov_path = args.load_path.replace('.pth', '.cov.sav')
     if os.path.isfile(cov_path):
         print('Covariance matriz already saved in => {}'.format(cov_path))
         covariances = pickle.load(open(cov_path, 'rb'))
