@@ -1532,7 +1532,7 @@ class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
 
     """
 
-    def __init__(self, path_filename=None, transform=None, usePIL=True, isSequence=True):
+    def __init__(self, path_filename=None, transform=None, usePIL=True, isSequence=True, all_in_ram=True):
         """
 
                 THIS IS THE DATALOADER USES the split files generated with labelling-script.py
@@ -1562,6 +1562,8 @@ class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
         sequences, last_seq = self.__get_sequences('', self.images, last_seq, sequences)
 
         self.sequences = sequences
+        self.all_in_ram = all_in_ram
+        self.images_in_ram = {}
 
     def __len__(self):
         return len(self.sequences)
@@ -1601,7 +1603,12 @@ class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
             #     print('Error in file: {}\n'.format(path))
             #     print('Sequence labels are not consistents')
             #     exit(-1)
-            image = Image.open(path)
+            if self.all_in_ram:
+                if path not in self.images_in_ram:
+                    self.images_in_ram[path] = Image.open(path)
+                image = self.images_in_ram[path]
+            else:
+                image = Image.open(path)
 
             if not self.usePIL:
                 # copy to avoid warnings from pytorch, or bad edits ...
