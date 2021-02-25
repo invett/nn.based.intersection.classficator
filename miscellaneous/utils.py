@@ -490,7 +490,10 @@ def reset_wandb_env():
 
 
 def svm_generator(args, model, dataloader_train=None, dataloader_val=None):
-    svm_path = args.load_path.replace('.pth', 'svm.sav')
+    if args.svm_mode == 'Linear':
+        svm_path = args.load_path.replace('.pth', 'Lsvm.sav')
+    else:
+        svm_path = args.load_path.replace('.pth', 'Osvm.sav')
 
     if os.path.isfile(svm_path):
         print('SVM already trained in => {}'.format(svm_path))
