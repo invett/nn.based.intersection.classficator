@@ -66,13 +66,45 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
             - [x] [compassionate-admirer-437](https://wandb.ai/chiringuito/lstm-based-intersection-classficator/runs/8qduw5og)
                 `python train.py --batch_size=64 --dataloader alcala26012021 --decimate 2 --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_augmented_warped_1 --distance_function pairwise --p 2 --lr 0.005 --margin 5 --metric --miner --model resnet18 --normalize --num_epochs 2000 --num_workers 4 --optimizer adam --patience=5 --patience_start=50 --pretrained --telegram --train --wandb_group_id Resnet_Alcala_26 --weighted`
               
-            - [ ] Prepare a sweep
-
+            - [x] Prepare a sweep: [Sweep RESNET alcala26 - 3oqjl27d](https://wandb.ai/chiringuito/lstm-based-intersection-classficator/sweeps/3oqjl27d)
+                
         - OUR metric learning
             - [ ]  []()
                 `python train.py --train --embedding --batch_size=64 --lr=0.005 --optimizer adam --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_augmented_warped_1 --num_epoch 2000 --validation_step 5 --telegram --patience 2 --patience_start 50 --dataloader alcala26012021 --decimate 2 --model resnet18 --weighted --lossfunction MSE --centroids_path ./trainedmodels/teacher/all_embeddings_matrix.txt --wandb_group_id Resnet_Alcala_26 --nowandb`
 
 
 
+### TEST RESNET 25.02.2021 
+Test of trained resnet trained on **alcala-26.01.2021** with SVM and MAHALANOBIS with respect to the following testing 
+sets:
+
+- `../../DualBiSeNet/alcala-26.01.2021_selected_warped/test/test_list.txt`
+- `../../DualBiSeNet/alcala-12.02.2021_warped/test.seq.120445AA.122302AA/seq.120445AA.122302AA.test_list.txt`
+- `../../DualBiSeNet/alcala-12.02.2021_warped/test.seq.164002AA.165810AA/seq.164002AA.165810AA.test_list.txt`
+
+#### SVM
+- [x] Lineal
+    - [x] alcala-26
+      `python train.py --load_path ./trainedmodels/model_de2u0bbr_30.pth --test_method svm --svm_mode Linear --dataloader alcala26012021 --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped/train/train_list.txt --dataset_val ../../DualBiSeNet/alcala-26.01.2021_selected_warped/validation/validation_list.txt --dataset_test ../../DualBiSeNet/alcala-26.01.2021_selected_warped/test/test_list.txt --nowandb --metric=True --telegram --test=True`
+    - [x] alcala-12 | 120445AA.122302AA | 000 sequence, focus, espartales
+      `python train.py --load_path ./trainedmodels/model_de2u0bbr_30.pth --test_method svm --svm_mode Linear --dataloader alcala26012021 --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped/train/train_list.txt --dataset_val ../../DualBiSeNet/alcala-26.01.2021_selected_warped/validation/validation_list.txt --dataset_test ../../DualBiSeNet/alcala-12.02.2021_warped/test.seq.120445AA.122302AA/seq.120445AA.122302AA.test_list.txt --nowandb --metric=True --telegram --test=True`
+    - [x] alcala-12 | 164002AA.165810AA | 000 sequence, focus, padres alvaro
+      `python train.py --load_path ./trainedmodels/model_de2u0bbr_30.pth --test_method svm --svm_mode Linear --dataloader alcala26012021 --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped/train/train_list.txt --dataset_val ../../DualBiSeNet/alcala-26.01.2021_selected_warped/validation/validation_list.txt --dataset_test ../../DualBiSeNet/alcala-12.02.2021_warped/test.seq.164002AA.165810AA/seq.164002AA.165810AA.test_list.txt --nowandb --metric=True --telegram --test=True`
+  
+- [x] ovo
+    - [x] alcala-26
+      `python train.py --load_path ./trainedmodels/model_de2u0bbr_30.pth --test_method svm --svm_mode ovo --dataloader alcala26012021 --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped/train/train_list.txt --dataset_val ../../DualBiSeNet/alcala-26.01.2021_selected_warped/validation/validation_list.txt --dataset_test ../../DualBiSeNet/alcala-26.01.2021_selected_warped/test/test_list.txt --nowandb --metric=True --telegram --test=True`
+    - [x] alcala-12 | 120445AA.122302AA | 000 sequence, focus, espartales
+      `python train.py --load_path ./trainedmodels/model_de2u0bbr_30.pth --test_method svm --svm_mode ovo --dataloader alcala26012021 --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped/train/train_list.txt --dataset_val ../../DualBiSeNet/alcala-26.01.2021_selected_warped/validation/validation_list.txt --dataset_test ../../DualBiSeNet/alcala-12.02.2021_warped/test.seq.120445AA.122302AA/seq.120445AA.122302AA.test_list.txt --nowandb --metric=True --telegram --test=True`
+    - [x] alcala-12 | 164002AA.165810AA | 000 sequence, focus, padres alvaro
+      `python train.py --load_path ./trainedmodels/model_de2u0bbr_30.pth --test_method svm --svm_mode ovo --dataloader alcala26012021 --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped/train/train_list.txt --dataset_val ../../DualBiSeNet/alcala-26.01.2021_selected_warped/validation/validation_list.txt --dataset_test ../../DualBiSeNet/alcala-12.02.2021_warped/test.seq.164002AA.165810AA/seq.164002AA.165810AA.test_list.txt --nowandb --metric=True --telegram --test=True`
+    
+#### Mahalanobis
+- [x] alcala-26
+  `python train.py --load_path ./trainedmodels/model_de2u0bbr_30.pth --test_method mahalanobis --dataloader alcala26012021 --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped/train/train_list.txt --dataset_val ../../DualBiSeNet/alcala-26.01.2021_selected_warped/validation/validation_list.txt --dataset_test ../../DualBiSeNet/alcala-26.01.2021_selected_warped/test/test_list.txt --nowandb --metric=True --telegram --test=True`
+- [x] alcala-12 | 120445AA.122302AA | 000 sequence, focus, espartales
+  `python train.py --load_path ./trainedmodels/model_de2u0bbr_30.pth --test_method mahalanobis --dataloader alcala26012021 --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped/train/train_list.txt --dataset_val ../../DualBiSeNet/alcala-26.01.2021_selected_warped/validation/validation_list.txt --dataset_test ../../DualBiSeNet/alcala-12.02.2021_warped/test.seq.120445AA.122302AA/seq.120445AA.122302AA.test_list.txt --nowandb --metric=True --telegram --test=True`
+- [x] alcala-12 | 164002AA.165810AA | 000 sequence, focus, padres alvaro
+  `python train.py --load_path ./trainedmodels/model_de2u0bbr_30.pth --test_method mahalanobis --dataloader alcala26012021 --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped/train/train_list.txt --dataset_val ../../DualBiSeNet/alcala-26.01.2021_selected_warped/validation/validation_list.txt --dataset_test ../../DualBiSeNet/alcala-12.02.2021_warped/test.seq.164002AA.165810AA/seq.164002AA.165810AA.test_list.txt --nowandb --metric=True --telegram --test=True`
 
 

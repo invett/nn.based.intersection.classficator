@@ -901,9 +901,9 @@ def main(args, model=None):
 
         elif args.dataloader == 'lstmDataloader_alcala26012021':
             val_dataset = Sequences_alcala26012021_Dataloader(val_path, transform=rgb_image_train_transforms,
-                                                              all_in_ram=True)
+                                                              all_in_ram=args.all_in_ram)
             train_dataset = Sequences_alcala26012021_Dataloader(train_path, transform=rgb_image_train_transforms,
-                                                                all_in_ram=True)
+                                                                all_in_ram=args.all_in_ram)
 
         elif args.dataloader == 'alcala26012021':
             val_dataset = alcala26012021(val_path, transform=rgb_image_test_transforms, decimateStep=args.decimate)
@@ -1260,6 +1260,9 @@ if __name__ == '__main__':
                                  'triplet_BOO', 'triplet_ROO', 'triplet_ROO_360', 'triplet_3DOO_360', 'Kitti360',
                                  'Kitti360_3D', 'alcala26012021', 'lstmDataloader_alcala26012021'],
                         help='One of the supported datasets')
+
+    parser.add_argument('--all_in_ram', type=str2bool, nargs='?', const=True, default=False,
+                        help='Whether to keep images in RAM or not')
 
     args = parser.parse_args()
 
