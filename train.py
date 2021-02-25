@@ -900,8 +900,10 @@ def main(args, model=None):
             train_dataset = Kitti2011_RGB(train_path, transform=rgb_image_train_transforms)
 
         elif args.dataloader == 'lstmDataloader_alcala26012021':
-            val_dataset = Sequences_alcala26012021_Dataloader(val_path, transform=rgb_image_train_transforms)
-            train_dataset = Sequences_alcala26012021_Dataloader(train_path, transform=rgb_image_train_transforms)
+            val_dataset = Sequences_alcala26012021_Dataloader(val_path, transform=rgb_image_train_transforms,
+                                                              all_in_ram=True)
+            train_dataset = Sequences_alcala26012021_Dataloader(train_path, transform=rgb_image_train_transforms,
+                                                                all_in_ram=True)
 
         elif args.dataloader == 'alcala26012021':
             val_dataset = alcala26012021(val_path, transform=rgb_image_test_transforms, decimateStep=args.decimate)

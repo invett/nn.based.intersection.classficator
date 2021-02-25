@@ -1532,7 +1532,7 @@ class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
 
     """
 
-    def __init__(self, path_filename=None, transform=None, usePIL=True, isSequence=True, all_in_ram=True):
+    def __init__(self, path_filename=None, transform=None, usePIL=True, isSequence=True, all_in_ram=False):
         """
 
                 THIS IS THE DATALOADER USES the split files generated with labelling-script.py
@@ -1564,6 +1564,12 @@ class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
         self.sequences = sequences
         self.all_in_ram = all_in_ram
         self.images_in_ram = {}
+
+        if self.all_in_ram:
+            for img_filename in self.images:
+                img_ = Image.open(img_filename)
+                self.images_in_ram[img_filename] = img_.copy()
+                img_.close()
 
     def __len__(self):
         return len(self.sequences)
