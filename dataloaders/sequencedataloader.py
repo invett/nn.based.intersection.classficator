@@ -1612,7 +1612,7 @@ class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
             #     print('Sequence labels are not consistents')
             #     exit(-1)
             if self.all_in_ram:
-                image = self.images_in_ram[path]
+                image = self.images_in_ram[path].copy()
             else:
                 image = Image.open(path)
 
