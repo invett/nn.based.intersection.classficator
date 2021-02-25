@@ -584,6 +584,8 @@ def svm_testing(args, model, dataloader_test, classifier):
     with torch.no_grad():
         model.eval()
 
+        all_output = []
+
         for sample in dataloader_test:
             if args.embedding or args.metric:
                 data = sample['data']
@@ -597,6 +599,7 @@ def svm_testing(args, model, dataloader_test, classifier):
                 data = data.cuda()
 
             output = model(data)  # --> (1 x 512)
+            all_output.append(output.cpu().numpy())
             dec = classifier.decision_function(output.cpu().numpy())
             prediction = np.argmax(dec, axis=1)
 
@@ -628,9 +631,14 @@ def covmatrix_generator(args, model, dataloader_train=None, dataloader_val=None)
 
         clusters = {}
         covariances = {}
+        print(datetime.datetime.now())
         for lbl in np.unique(labels):
-            clusters[lbl] = features[labels == lbl, :]
+            print(datetime.datetime.now())
+            clusters[lbl] = features[(labels == lbl).squeeze(), :]
             covariances[lbl] = MinCovDet(random_state=0).fit(clusters[lbl])
+        print(datetime.datetime.now())
+
+        pickle.dump(covariances, open(cov_path, 'wb'))
 
     return covariances
 
@@ -644,7 +652,6 @@ def mahalanobis_testing(args, model, dataloader_test, covariances):
 
     with torch.no_grad():
         model.eval()
-
         for sample in dataloader_test:
             if args.embedding or args.metric:
                 data = sample['data']
@@ -657,20 +664,23 @@ def mahalanobis_testing(args, model, dataloader_test, covariances):
             if torch.cuda.is_available() and args.use_gpu:
                 data = data.cuda()
 
-            output = model(data)  # --> (1 x 512)
+            output = model(data).cpu().numpy()  # --> (BATCH x 512)
+            distance_list = []
             for lbl in range(7):
                 dist = covariances[lbl].mahalanobis(output)
-                distance_list.append(dist.item())
-            prediction = np.argmin(np.array(distance_list))
+                #distance_list.append(dist.item())
+                distance_list.append(dist)
+            #prediction = np.argmin(np.array(distance_list))
+            prediction = np.argmin(distance_list, axis=0) #i want 64 labels, given from 7x64
 
-            label_list.append(label)
+            label_list.append(label.cpu().numpy())
             prediction_list.append(prediction)
 
-        conf_matrix = pd.crosstab(np.array(label_list), np.array(prediction_list), rownames=['Actual'],
+        conf_matrix = pd.crosstab(np.hstack(label_list), np.hstack(prediction_list), rownames=['Actual'],
                                   colnames=['Predicted'],
                                   normalize='index')
         conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6], fill_value=0.0)
-        acc = accuracy_score(np.array(label_list), np.array(prediction_list))
+        acc = accuracy_score(np.hstack(label_list), np.hstack(prediction_list))
         print('Accuracy for test : %f\n' % acc)
         return conf_matrix, acc
 
