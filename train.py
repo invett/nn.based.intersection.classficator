@@ -63,6 +63,8 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
 
     loss_val = None
 
+    loss_val = None
+
     if args.embedding:
         criterion = torch.nn.MSELoss(reduction='mean')
     else:
