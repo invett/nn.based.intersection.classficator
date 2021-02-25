@@ -152,7 +152,8 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
 
     if confusion_matrix is not None:
         plt.figure(figsize=(10, 7))
-        title = str(socket.gethostname()) + '\nTEST ' + args.test_method + '\n' + args.dataset_test
+        title = str(
+            socket.gethostname()) + '\nTEST ' + args.test_method + '-' + args.svm_mode + '\n' + args.dataset_test
         plt.title(title)
         sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
 
