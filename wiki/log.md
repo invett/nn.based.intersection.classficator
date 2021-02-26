@@ -121,3 +121,10 @@ Train of the lstm model respect to the resnet trained on **alcala-26.01.2021** (
   - ADAM: [con wandb](https://wandb.ai/chiringuito/lstm-based-intersection-classficator/runs/2qmh4mfn) `python train.py --train --num_epochs 500 --wandb_group_id WORKSHOP.I21.sweep.lstm --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped/ --model LSTM --patience 5--patience_start 25 --dataloader lstmDataloader_alcala26012021 --feature_model resnet18 --feature_detector_path ./trainedmodels/model_de2u0bbr_30.pth --num_workers 4 --batch_size 16 --telegram --weighted --lstm_dropout 0.5 --fc_dropout 0.2 --lr 0.00001 --scheduler --scheduler_type ReduceLROnPlateau --all_in_ram True --optimizer adam` 
 - [ ] Creating sweep muchos errores en esto, no entiendo porque. WARNING: adam needs much smaller LR, 0.01 sgd, 0.0001 for adam
 
+
+### LSTM + Kevin
+The idea is to exploit the trained RESNET, then the train is made as follows:
+    - Select 3 sequences (to create a triplet) with different typologies, like: anchor (type-0), positive (type-0), negative (type-6)
+    - Take the output of the LSTM (256 embedding size) and use the metrics (cosine/snr/etc) to create the loss 
+
+
