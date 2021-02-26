@@ -1,19 +1,14 @@
-import os
-
 import torch
 from torchvision import models
 
 
 class Resnet18(torch.nn.Module):
 
-    def __init__(self, pretrained=True, embeddings=False, num_classes=None, freeze=False):
+    def __init__(self, pretrained=True, embeddings=False, num_classes=None):
         super().__init__()
         self.embeddings = embeddings
 
         model = models.resnet18(pretrained=pretrained)
-        if freeze:
-            for param in model.parameters():
-                param.requires_grad = False
 
         self.conv1 = model.conv1
         self.bn1 = model.bn1
@@ -46,14 +41,10 @@ class Resnet18(torch.nn.Module):
 
 class Vgg11(torch.nn.Module):
 
-    def __init__(self, pretrained=True, embeddings=False, num_classes=None, freeze=False):
+    def __init__(self, pretrained=True, embeddings=False, num_classes=None):
         super().__init__()
         model = models.vgg11(pretrained=pretrained)
         self.embeddings = embeddings
-
-        if freeze:
-            for param in model.parameters():
-                param.requires_grad = False
 
         self.features = model.features
         self.avgpool = model.avgpool
@@ -75,18 +66,24 @@ class Vgg11(torch.nn.Module):
 
 class LSTM(torch.nn.Module):
 
-    def __init__(self, num_classes, lstm_dropout, fc_dropout, input_size=512):
+    def __init__(self, num_classes, lstm_dropout, fc_dropout, embeddings=False, num_layers=2, input_size=512,
+                 hidden_size=256):
         super().__init__()
 
-        self.lstm = torch.nn.LSTM(input_size=input_size, hidden_size=256, num_layers=2, batch_first=True,
-                                  dropout=lstm_dropout)
-        self.fc = torch.nn.Linear(256, num_classes)
-        self.drop = torch.nn.Dropout(p=fc_dropout)
+        self.embeddings = embeddings
+        self.lstm = torch.nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers,
+                                  batch_first=True, dropout=lstm_dropout)
+        if not embeddings:
+            self.fc = torch.nn.Linear(hidden_size, num_classes)
+            self.drop = torch.nn.Dropout(p=fc_dropout)
 
     def forward(self, data):
-        output, (hn, _) = self.lstm(data)  # --> hn shape (layers x batch x 256)
-        last_hidden = hn[-1]  # -->(batch, 256)
-        prediction = self.fc(self.drop(last_hidden))
+        output, (hn, _) = self.lstm(data)  # --> hn shape (layers x batch x hidden)
+        last_hidden = hn[-1]  # -->(batch, hidden)
+        if not self.embeddings:
+            prediction = self.fc(self.drop(last_hidden)).squeeze()
+        else:
+            prediction = last_hidden.squeeze()
 
         return prediction
 
@@ -109,7 +106,7 @@ class Resnet50_Coco(torch.nn.Module):  # Resnet50 trained in coco segmentation d
 
     def forward(self, data):
         x = self.encoder(data)
-        x = self.avgpool(x['out']) # Selecting the results for the 4th layer
+        x = self.avgpool(x['out'])  # Selecting the results for the 4th layer
         if self.embeddings_size == 512:
             embedding = self.fc(x.squeeze())
         else:

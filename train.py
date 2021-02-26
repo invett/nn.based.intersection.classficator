@@ -31,9 +31,8 @@ from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromGenerate
     alcala26012021, Sequences_alcala26012021_Dataloader
 from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
-    student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanobis_testing, lstm_network_pass, \
-    get_all_embeddings
-from model.models import Resnet18, Vgg11, LSTM, Resnet50_Coco
+    student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanobis_testing, lstm_network_pass
+from model.models import Resnet18, Vgg11, LSTM
 
 
 def str2bool(v):
@@ -86,7 +85,8 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     elif args.model == 'vgg11':
         model = Vgg11(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
     elif args.model == 'LSTM':
-        model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout)
+        model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.lstm_embedding,
+                     num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
         if args.feature_model == 'resnet18':
             feature_extractor_model = Resnet18(pretrained=False, embeddings=True, num_classes=args.num_classes)
         if args.feature_model == 'vgg11':
@@ -129,7 +129,8 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
             classifier = svm_generator(args, model, dataloader_train=dataloader_train, dataloader_val=dataloader_val)
             confusion_matrix, acc_val = svm_testing(args, model, dataloader_test, classifier)
         elif args.test_method == 'mahalanobis':
-            covariances = covmatrix_generator(args, model, dataloader_train=dataloader_train, dataloader_val=dataloader_val)
+            covariances = covmatrix_generator(args, model, dataloader_train=dataloader_train,
+                                              dataloader_val=dataloader_val)
             confusion_matrix, acc_val = mahalanobis_testing(args, model, dataloader_test, covariances)
         else:
             print("=> no test method found")
@@ -140,7 +141,8 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
             classifier = svm_generator(args, model, dataloader_train=dataloader_train, dataloader_val=dataloader_val)
             confusion_matrix, acc_val = svm_testing(args, model, dataloader_test, classifier)
         elif args.test_method == 'mahalanobis':
-            covariances = covmatrix_generator(args, model, dataloader_train=dataloader_train, dataloader_val=dataloader_val)
+            covariances = covmatrix_generator(args, model, dataloader_train=dataloader_train,
+                                              dataloader_val=dataloader_val)
             confusion_matrix, acc_val = mahalanobis_testing(args, model, dataloader_test, covariances)
         else:
             print("=> no test method found")
@@ -941,16 +943,13 @@ def main(args, model=None):
                 model = Resnet18(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
             elif args.model == 'vgg11':
                 model = Vgg11(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
-            elif args.model == 'resnet50_coco':
-                model = Resnet50_Coco(embeddings_size=512)
             elif args.model == 'LSTM':
-                model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, input_size=args.lstm_input)
+                model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.lstm_embedding,
+                             num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
                 if args.feature_model == 'resnet18':
                     feature_extractor_model = Resnet18(pretrained=False, embeddings=True, num_classes=args.num_classes)
                 if args.feature_model == 'vgg11':
                     feature_extractor_model = Vgg11(pretrained=False, embeddings=True, num_classes=args.num_classes)
-                if args.feature_model == 'resnet50_coco':
-                    feature_extractor_model = Resnet50_Coco(embeddings_size=args.lstm_input)
 
                 # load saved feature extractor model
                 if args.feature_detector_path is not None and os.path.isfile(args.feature_detector_path):
