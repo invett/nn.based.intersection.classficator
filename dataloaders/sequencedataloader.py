@@ -1688,7 +1688,7 @@ class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
 
     @staticmethod
     # TODO unused function here
-    def __get_label(self, path):
+    def __get_label(path):
         head, tail = os.path.split(path)
         head, _ = os.path.split(head)
         gt_path = os.path.join(head, 'frames_topology.txt')
