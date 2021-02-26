@@ -80,12 +80,13 @@ class LSTM(torch.nn.Module):
     def forward(self, data):
         output, (hn, _) = self.lstm(data)  # --> hn shape (layers x batch x hidden)
         last_hidden = hn[-1]  # -->(batch, hidden)
+
         if not self.embeddings:
             prediction = self.fc(self.drop(last_hidden)).squeeze()
         else:
             prediction = last_hidden.squeeze()
 
-        return prediction
+        return prediction, output
 
 
 class Resnet50_Coco(torch.nn.Module):  # Resnet50 trained in coco segmentation dataset

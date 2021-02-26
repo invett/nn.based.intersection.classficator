@@ -439,23 +439,24 @@ def lstm_network_pass(args, batch, criterion, model, lstm, miner=None, acc_metri
     packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
                                                batch_first=True)  # --> (Batch x Max_seq_len x 512)
 
-    result = lstm(packed_padded_batch)
+    prediction, output = lstm(packed_padded_batch)
+    # Output contains a packet sequence with the prediction in each timestamp
 
     if args.metric:
         if miner is not None:
-            hard_pairs = miner(result, label)
-            loss = criterion(result, label, hard_pairs)
+            hard_pairs = miner(prediction, label)
+            loss = criterion(prediction, label, hard_pairs)
         else:
-            loss = criterion(result, label)
+            loss = criterion(prediction, label)
 
         # acc is not a value is a dict
-        acc = acc_metric.get_accuracy(result.detach().cpu().numpy(),
-                                      result.detach().cpu().numpy(), label.cpu().numpy(),
+        acc = acc_metric.get_accuracy(prediction.detach().cpu().numpy(),
+                                      prediction.detach().cpu().numpy(), label.cpu().numpy(),
                                       label.cpu().numpy(), embeddings_come_from_same_source=True)
     else:
-        loss = criterion(result, label)
+        loss = criterion(prediction, label)
 
-        predict = torch.argmax(result, 1)
+        predict = torch.argmax(prediction, 1)
         label = label.cpu().numpy()
         predict = predict.cpu().numpy()
 
@@ -687,10 +688,10 @@ def mahalanobis_testing(args, model, dataloader_test, covariances):
             distance_list = []
             for lbl in range(7):
                 dist = covariances[lbl].mahalanobis(output)
-                #distance_list.append(dist.item())
+                # distance_list.append(dist.item())
                 distance_list.append(dist)
-            #prediction = np.argmin(np.array(distance_list))
-            prediction = np.argmin(distance_list, axis=0) #i want 64 labels, given from 7x64
+            # prediction = np.argmin(np.array(distance_list))
+            prediction = np.argmin(distance_list, axis=0)  # i want 64 labels, given from 7x64
 
             label_list.append(label.cpu().numpy())
             prediction_list.append(prediction)
