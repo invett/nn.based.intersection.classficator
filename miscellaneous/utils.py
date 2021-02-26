@@ -423,9 +423,10 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
     return acc, loss, label, predict, embedding
 
 
-def lstm_network_pass(batch, criterion, model, lstm):
+def lstm_network_pass(args, batch, criterion, model, lstm, miner=None, acc_metric=None):
     seq_list = []
     len_list = []
+    predict = None
     label = torch.tensor([int(i['label']) for i in batch]).cuda()  # Unpack label values
 
     with torch.no_grad():
@@ -440,13 +441,25 @@ def lstm_network_pass(batch, criterion, model, lstm):
 
     result = lstm(packed_padded_batch)
 
-    loss = criterion(result, label)
+    if args.metric:
+        if miner is not None:
+            hard_pairs = miner(result, label)
+            loss = criterion(result, label, hard_pairs)
+        else:
+            loss = criterion(result, label)
 
-    predict = torch.argmax(result, 1)
-    label = label.cpu().numpy()
-    predict = predict.cpu().numpy()
+        # acc is not a value is a dict
+        acc = acc_metric.get_accuracy(result.detach().cpu().numpy(),
+                                      result.detach().cpu().numpy(), label.cpu().numpy(),
+                                      label.cpu().numpy(), embeddings_come_from_same_source=True)
+    else:
+        loss = criterion(result, label)
 
-    acc = accuracy_score(label, predict)
+        predict = torch.argmax(result, 1)
+        label = label.cpu().numpy()
+        predict = predict.cpu().numpy()
+
+        acc = accuracy_score(label, predict)
 
     return acc, loss, label, predict
 

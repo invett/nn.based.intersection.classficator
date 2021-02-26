@@ -1,5 +1,4 @@
 import argparse
-import argparse
 import multiprocessing
 import os
 import socket  # to get the machine name
@@ -85,7 +84,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     elif args.model == 'vgg11':
         model = Vgg11(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
     elif args.model == 'LSTM':
-        model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.lstm_embedding,
+        model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
                      num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
         if args.feature_model == 'resnet18':
             feature_extractor_model = Resnet18(pretrained=False, embeddings=True, num_classes=args.num_classes)
@@ -121,8 +120,11 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
 
     # Start testing
     if args.model == 'LSTM':
-        confusion_matrix, acc_val, loss_val = validation(args, feature_extractor_model, criterion, dataloader_test,
-                                                         LSTM=model)
+        if not args.metric:
+            confusion_matrix, acc_val, loss_val = validation(args, feature_extractor_model, criterion, dataloader_test,
+                                                             LSTM=model)
+        else:
+            pass  # TODO SVM and Mahalanobis for LSTM Testing
     elif args.triplet:
         if args.test_method == 'svm':
             # Generates svm with the last train
@@ -223,7 +225,11 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
 
             if args.model == 'LSTM':
                 LSTM.eval()
-                acc, loss, label, predict = lstm_network_pass(sample, criterion, model, LSTM)
+                if args.metric:
+                    acc, loss, _, _ = lstm_network_pass(sample, criterion, model, LSTM, miner=miner,
+                                                        acc_metric=acc_metric)
+                else:
+                    acc, loss, label, predict = lstm_network_pass(sample, criterion, model, LSTM)
             else:
                 model.eval()
                 acc, loss, label, predict, embedding = student_network_pass(args, sample, criterion, model,
@@ -505,7 +511,11 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
 
         for sample in dataloader_train:
             if args.model == 'LSTM':
-                acc, loss, _, _ = lstm_network_pass(sample, criterion, model, LSTM)
+                if args.metric:
+                    acc, loss, _, _ = lstm_network_pass(sample, criterion, model, LSTM, miner=miner,
+                                                        acc_metric=acc_metric)
+                else:
+                    acc, loss, _, _ = lstm_network_pass(sample, criterion, model, LSTM)
             else:
                 acc, loss, _, _, _ = student_network_pass(args, sample, criterion, model, gt_list=gt_list,
                                                           weights_param=weights, miner=miner, acc_metric=acc_metric)
@@ -944,7 +954,7 @@ def main(args, model=None):
             elif args.model == 'vgg11':
                 model = Vgg11(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
             elif args.model == 'LSTM':
-                model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.lstm_embedding,
+                model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
                              num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
                 if args.feature_model == 'resnet18':
                     feature_extractor_model = Resnet18(pretrained=False, embeddings=True, num_classes=args.num_classes)
@@ -1237,6 +1247,10 @@ if __name__ == '__main__':
     parser.add_argument('--lstm_dropout', type=float, default=0.0, help='Lstm dropout between layers')
     parser.add_argument('--fc_dropout', type=float, default=0.0, help='fc dropout between layers')
     parser.add_argument('--lstm_input', type=int, default=512, help='size of the embbedings for lstm')
+    parser.add_argument('--lstm_hidden', type=int, default=256, help='size of the hidden layers for lstm')
+    parser.add_argument('--lstm_layers', type=int, default=2, help='number of layers for lstm')
+    parser.add_argument('--lstm_embeddings', type=str2bool, nargs='?', const=True, default=False,
+                        help='train the lstm with metric learning')
     parser.add_argument('--normalize', type=str2bool, nargs='?', const=True, default=False,
                         help='normalize embeddings in metric learning')
 
