@@ -433,7 +433,7 @@ def lstm_network_pass(args, batch, criterion, model, lstm, miner=None, acc_metri
         for sequence in batch:
             seq_tensor = model(torch.stack(sequence['sequence']).cuda())
             seq_list.append(seq_tensor.squeeze())
-            len_list.append(len(sequence))
+            len_list.append(len(sequence)) #TODO check if here appears the INT NUMBER == sequence length
 
     padded_batch = pad_sequence(seq_list, batch_first=True)
     packed_padded_batch = pack_padded_sequence(padded_batch, len_list,

@@ -221,19 +221,23 @@ class GenerateWarping(object):
 
         # KITTI camera matrix handle
         if cameramatrix is None:
-            self.K = np.array([[9.786977e+02, 0.000000e+00, 6.900000e+02, 0.000000e+00],
-                               [0.000000e+00, 9.717435e+02, 2.497222e+02, 0.000000e+00],
-                               [0.000000e+00, 0.000000e+00, 1.000000e+00, 0.000000e+00]], dtype=np.float64)
+            if warpdataset == 'kitti' or warpdataset == 'KITTI-ROAD-WARPING':
+                self.K = np.array([[9.786977e+02, 0.000000e+00, 6.900000e+02, 0.000000e+00],
+                                   [0.000000e+00, 9.717435e+02, 2.497222e+02, 0.000000e+00],
+                                   [0.000000e+00, 0.000000e+00, 1.000000e+00, 0.000000e+00]], dtype=np.float64)
 
-            # kitti 360 P_rect_00
-            self.K = np.array([[552.554261, 0.00000000, 682.049453, 0.000000],
-                               [0.00000000, 552.554261, 238.769549, 0.000000],
-                               [0.00000000, 0.00000000, 1.00000000, 0.000000]], dtype=np.float64)
+            elif warpdataset == 'kitti360':
+                # kitti 360 P_rect_00
+                self.K = np.array([[552.554261, 0.00000000, 682.049453, 0.000000],
+                                   [0.00000000, 552.554261, 238.769549, 0.000000],
+                                   [0.00000000, 0.00000000, 1.00000000, 0.000000]], dtype=np.float64)
 
-            # sj7 star
-            self.K = np.array([[300.000000, 0.00000000, 800.0 / 2., 0.000000],
-                               [0.00000000, 300.000000, 450.0 / 2., 0.000000],
-                               [0.00000000, 0.00000000, 1.00000000, 0.000000]], dtype=np.float64)
+            elif (warpdataset == 'alcala26012021') or (warpdataset == 'alcala26012021') or (
+                    warpdataset == 'alcala-12.02.2021.000') or warpdataset == 'alcala-12.02.2021.001':
+                # sj7 star
+                self.K = np.array([[300.000000, 0.00000000, 800.0 / 2., 0.000000],
+                                   [0.00000000, 300.000000, 450.0 / 2., 0.000000],
+                                   [0.00000000, 0.00000000, 1.00000000, 0.000000]], dtype=np.float64)
         else:
             self.K = cameramatrix
 
@@ -281,7 +285,18 @@ class GenerateWarping(object):
             random_Ty = np.random.uniform(-self.random_Ty_meters, self.random_Ty_meters)
             random_Tz = np.random.uniform(-self.random_Tz_meters, self.random_Tz_meters)
 
-        if self.warpdataset == 'kitti':
+        if self.warpdataset == 'KITTI-ROAD-WARPING':
+            ## don't know why the other 'kitti' does not work .. lets redo this here
+            dx = 8 + random_Tx
+            dy = 0 + random_Ty
+            dz = 2.0 + random_Tz
+            pitchCorrection = 0.084 + random_Rx
+            yawCorrection = 0.09 + random_Ry
+            rollCorrection = 0.0 + random_Rz
+            # the importan one here are:
+            # first [x x x x] [y y y y] [....] [....]
+            points_3d = np.array([[16, 16, 80, 80], [16, -16, -16, 16], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
+        elif self.warpdataset == 'kitti':
             # position of the virtual camera -- standard kitti
             dx = 6 + random_Tx
             dy = 0 + random_Ty

@@ -89,6 +89,7 @@ class alcala26012021(AbstractSequence, Dataset):
     def __getitem__(self, idx):
         # Select file subset
         imagepath = self.images[idx]
+        # print(imagepath)
         image = Image.open(imagepath)
 
         label = int(self.labels[idx])
@@ -303,7 +304,7 @@ class TestDataset(Dataset):
         INSTEAD WE CAN DO WAY BETTER GENERATING ON-THE-FLY THE BEVs.
 
         THIS WAS DONE WITH <fromAANETandDualBisenet> DATALOADER, BUT IT DRASTICALLY DECREASES THE SPEED OF THE PROCESS.
-        FOR THESE REASON THEN WE MADE AN "AUGMENTED" OFFLINE DATASET WITH A NEW DATALOADER, <fromGeneratedDataset>
+        FOR THIS REASON WE MADE AN "AUGMENTED" OFFLINE DATASET WITH A NEW DATALOADER, <fromGeneratedDataset>
 
         Args:
             root_dir (string): Directory with all the images.
