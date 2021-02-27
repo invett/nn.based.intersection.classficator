@@ -111,7 +111,11 @@ class alcala26012021(AbstractSequence, Dataset):
             if "path" in transformed:
                 print("Saving image in ", transformed['path'])
 
-                dataset_path = os.path.join(transformed['path'], imagepath.split('/')[-2])
+                if 'KITTI-ROAD' in imagepath:
+                    dataset_path = os.path.split(imagepath)[0].replace('KITTI-ROAD', os.path.split(transformed['path'])[1])
+                else:
+                    dataset_path = os.path.join(transformed['path'], imagepath.split('/')[-2])
+
                 if not os.path.isdir(dataset_path):
                     os.makedirs(dataset_path)
                 base_file_star = os.path.splitext(os.path.split(imagepath)[1])[0]
