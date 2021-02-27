@@ -109,12 +109,13 @@ class alcala26012021(AbstractSequence, Dataset):
 
             # save the image if needed, ie, we have the path inserted with the "fake-transform".
             if "path" in transformed:
-                print("Saving image in ", transformed['path'])
 
                 if 'KITTI-ROAD' in imagepath:
                     dataset_path = os.path.split(imagepath)[0].replace('KITTI-ROAD', os.path.split(transformed['path'])[1])
                 else:
                     dataset_path = os.path.join(transformed['path'], imagepath.split('/')[-2])
+
+                print("Saving image in ", dataset_path)
 
                 if not os.path.isdir(dataset_path):
                     os.makedirs(dataset_path)
