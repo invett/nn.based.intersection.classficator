@@ -19,7 +19,7 @@ import torch
 from sklearn.covariance import MinCovDet
 from sklearn.metrics import accuracy_score
 from torch import nn
-from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence
+from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence, pad_packed_sequence
 
 
 def PrintException():
@@ -427,7 +427,7 @@ def lstm_network_pass(args, batch, criterion, model, lstm, miner=None, acc_metri
     seq_list = []
     len_list = []
     predict = None
-    label = torch.tensor([int(i['label']) for i in batch]).cuda()  # Unpack label values
+    label = torch.tensor([int(sequence['label']) for sequence in batch]).cuda()  # Unpack label values
 
     with torch.no_grad():
         for sequence in batch:
@@ -440,7 +440,10 @@ def lstm_network_pass(args, batch, criterion, model, lstm, miner=None, acc_metri
                                                batch_first=True)  # --> (Batch x Max_seq_len x 512)
 
     prediction, output = lstm(packed_padded_batch)
-    # Output contains a packet sequence with the prediction in each timestamp
+    # Output contains a packed sequence with the prediction in each timestamp --> (seq_len x batch x hidden_size)
+    # Prediction contains the prediction in the last timestamp --> (batch x hidden_size)
+
+    output, lens_output = pad_packed_sequence(output, batch_first=True)
 
     if args.metric:
         if miner is not None:
@@ -503,7 +506,7 @@ def reset_wandb_env():
             del os.environ[k]
 
 
-def svm_generator(args, model, dataloader_train=None, dataloader_val=None):
+def svm_generator(args, model, dataloader_train=None, dataloader_val=None, LSTM=None):
     if args.svm_mode == 'Linear':
         svm_path = args.load_path.replace('.pth', '.lsvm.sav')
     elif args.svm_mode == 'ovo':
@@ -519,12 +522,16 @@ def svm_generator(args, model, dataloader_train=None, dataloader_val=None):
         print('training SVM classifier\n')
         print('svm model will be saved in : {}\n'.format(svm_path))
         if not args.metric:
-            features, labels = embb_data(args, model, dataloader_train, dataloader_val)
+            if LSTM is None:
+                features, labels = embb_data(args, model, dataloader_train, dataloader_val)
+            else:
+                features, labels = embb_data_lstm(args, model, dataloader_train, dataloader_val, LSTM=LSTM)
         else:
             train_embeddings, train_labels = get_all_embeddings(dataloader_train, model)
             val_embeddings, val_labels = get_all_embeddings(dataloader_val, model)
             features = np.vstack((train_embeddings, val_embeddings))
             labels = np.vstack((train_labels, val_labels))
+
         classifier = svm_train(features, labels, mode=args.svm_mode)
         pickle.dump(classifier, open(svm_path, 'wb'))
 
@@ -595,6 +602,62 @@ def embb_data(args, model, dataloader_train, dataloader_val, save=False):
     return embeddingRecord, labelRecord
 
 
+def embb_data_lstm(args, model, dataloader_train, dataloader_val, LSTM=None):
+    embeddingRecord = []
+    labelRecord = []
+
+    LSTM.eval()
+
+    with torch.no_grad():
+        for batch in dataloader_train:
+            seq_list = []
+            len_list = []
+            label_list = []
+            for sequence in batch:
+                seq_tensor = model(torch.stack(sequence['sequence']).cuda())
+                seq_list.append(seq_tensor.squeeze())
+                len_list.append(len(sequence))
+                label_list.append(int(sequence['label']))
+
+            padded_batch = pad_sequence(seq_list, batch_first=True)
+            packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
+                                                       batch_first=True)  # --> (Batch x Max_seq_len x 512)
+
+            prediction, output = LSTM(packed_padded_batch)
+            # Output contains a packed sequence with the prediction in each timestamp --> (seq_len x batch x hidden_size)
+            # Prediction contains the prediction in the last timestamp --> (batch x hidden_size)
+
+            output, lens_output = pad_packed_sequence(output, batch_first=True)  ## que hacer con output??
+
+            embeddingRecord.append(prediction.cpu().numpy())
+            labelRecord.append(np.array(label_list))
+
+        for batch in dataloader_val:
+            seq_list = []
+            len_list = []
+            label_list = []
+            for sequence in batch:
+                seq_tensor = model(torch.stack(sequence['sequence']).cuda())
+                seq_list.append(seq_tensor.squeeze())
+                len_list.append(len(sequence))
+                label_list.append(sequence['sequence'])
+
+            padded_batch = pad_sequence(seq_list, batch_first=True)
+            packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
+                                                       batch_first=True)  # --> (Batch x Max_seq_len x 512)
+
+            prediction, output = LSTM(packed_padded_batch)
+            # Output contains a packed sequence with the prediction in each timestamp --> (seq_len x batch x hidden_size)
+            # Prediction contains the prediction in the last timestamp --> (batch x hidden_size)
+
+            output, lens_output = pad_packed_sequence(output, batch_first=True)  ## que hacer con output??
+
+            embeddingRecord.append(prediction.cpu().numpy())
+            labelRecord.append(np.array(label_list))
+
+    return np.hstack(embeddingRecord), np.hstack(labelRecord)
+
+
 def svm_testing(args, model, dataloader_test, classifier):
     print('Start svm testing')
 
@@ -635,6 +698,48 @@ def svm_testing(args, model, dataloader_test, classifier):
         return conf_matrix, acc
 
 
+def svm_testing_lstm(args, model, dataloader_test, classifier, LSTM):
+    prediction_list = []
+    label_list = []
+
+    LSTM.eval()
+
+    with torch.no_grad():
+        for batch in dataloader_test:
+            seq_list = []
+            len_list = []
+            label_list = []
+            for sequence in batch:
+                seq_tensor = model(torch.stack(sequence['sequence']).cuda())
+                seq_list.append(seq_tensor.squeeze())
+                len_list.append(len(sequence))
+                label_list.append(int(sequence['label']))
+
+            padded_batch = pad_sequence(seq_list, batch_first=True)
+            packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
+                                                       batch_first=True)  # --> (Batch x Max_seq_len x 512)
+
+            prediction, output = LSTM(packed_padded_batch)
+            # Output contains a packed sequence with the prediction in each timestamp --> (seq_len x batch x hidden_size)
+            # Prediction contains the prediction in the last timestamp --> (batch x hidden_size)
+
+            output, lens_output = pad_packed_sequence(output, batch_first=True)
+
+            dec = classifier.decision_function(prediction.cpu().numpy())
+            prediction = np.argmax(dec, axis=1)
+
+            prediction_list.append(prediction)
+            label_list.append(np.array(label_list))
+
+    conf_matrix = pd.crosstab(np.hstack(label_list), np.hstack(prediction_list), rownames=['Actual'],
+                              colnames=['Predicted'],
+                              normalize='index')
+    conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6], fill_value=0.0)
+    acc = accuracy_score(np.hstack(label_list), np.hstack(prediction_list))
+    print('Accuracy for test : %f\n' % acc)
+    return conf_matrix, acc
+
+
 def covmatrix_generator(args, model, dataloader_train=None, dataloader_val=None):
     cov_path = args.load_path.replace('.pth', '.cov.sav')
     if os.path.isfile(cov_path):
@@ -668,7 +773,6 @@ def mahalanobis_testing(args, model, dataloader_test, covariances):
 
     label_list = []
     prediction_list = []
-    distance_list = []
 
     with torch.no_grad():
         model.eval()

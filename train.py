@@ -124,7 +124,11 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
             confusion_matrix, acc_val, loss_val = validation(args, feature_extractor_model, criterion, dataloader_test,
                                                              LSTM=model)
         else:
-            pass  # TODO SVM and Mahalanobis for LSTM Testing
+            if args.test_method == 'svm':
+                classifier = svm_generator(args, feature_extractor_model, dataloader_train=dataloader_train,
+                                           dataloader_val=dataloader_val, LSTM=model)
+                confusion_matrix, acc_val = svm_testing(args, feature_extractor_model, dataloader_test, classifier, LSTM=model)
+
     elif args.triplet:
         if args.test_method == 'svm':
             # Generates svm with the last train
