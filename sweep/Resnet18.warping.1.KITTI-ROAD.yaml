@@ -1,0 +1,108 @@
+program: train.py
+method: random
+metric:
+  name: Val/MAPR
+parameters:
+  train:
+    distribution: categorical
+    values:
+      - "true"
+  metric:
+    values:
+      - "true"
+    distribution: categorical
+  wandb_group_id:
+    values:
+      - WORKSHOP.IV21.sweep.KITTI-ROAD
+    distribution: categorical
+  scheduler:
+    values:
+      - "true"
+    distribution: categorical
+  scheduler_type:
+    values:
+      - ReduceLROnPlateau
+    distribution: categorical
+  num_workers:
+    values:
+    - 8
+    distribution: categorical
+  pretrained:
+    values:
+      - "true"
+    distribution: categorical
+  num_epochs:
+    values:
+    - 500
+    distribution: categorical
+  dataloader:
+    values:
+      - alcala26012021
+    distribution: categorical
+  dataset:
+    values:
+      - ../../DualBiSeNet/KITTI-ROAD
+      - ../../DualBiSeNet/KITTI-ROAD_warped
+    distribution: categorical
+  batch_size:
+    distribution: categorical
+    values:
+    - 128
+    - 64
+    - 32
+  optimizer:
+    values:
+      - adamW
+      - adam
+    distribution: categorical
+  weighted:
+    values:
+      - "true"
+    distribution: categorical
+  decimate:
+    max: 2
+    min: 1
+    distribution: int_uniform
+  margin:
+    max: 5.0
+    min: 0.2
+    q: 0.5
+    distribution: q_uniform
+  miner:
+    values:
+      - "true"
+      - "false"
+    distribution: categorical
+  TripletMarginMinerType:
+    values:
+      - "all"
+      - "hard"
+  lr:
+    max: 0.01
+    min: 0.0000025
+    q:   0.00005
+    distribution: q_uniform
+  distance_function:
+    values:
+      - SNR
+      - pairwise
+      - cosine
+    distribution: categorical
+  # p afecta solo 'pairwise', es L1 o L2
+  p:
+    values:
+    - 2.0
+    - 1.0
+    distribution: categorical
+  telegram:
+    distribution: categorical
+    values:
+      - "true"
+  patience:
+    distribution: categorical
+    values:
+      - 5
+  patience_start:
+    distribution: categorical
+    values:
+      - 30
