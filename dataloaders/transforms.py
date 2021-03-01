@@ -309,15 +309,16 @@ class GenerateWarping(object):
             points_3d = np.array([[16, 16, 120, 120], [16, -16, -16, 16], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
         elif self.warpdataset == 'kitti360':
             # position of the virtual camera -- standard kitti 360
-            dx = 15   + random_Tx
+            dx = 11   + random_Tx
             dy = 0    + random_Ty
-            dz = 1.5  + random_Tz
-            pitchCorrection = 0.1   + random_Rx  # 0.29 deg 0.005rad feasible
-            yawCorrection = -0.055  + random_Ry
+            dz = 2.0  + random_Tz
+            pitchCorrection = 0.11   + random_Rx  # 0.29 deg 0.005rad feasible
+            yawCorrection = -0.085  + random_Ry
             rollCorrection = 0.000  + random_Rz
             # the importan one here are:
             # first [x x x x] [y y y y] [....] [....]
-            points_3d = np.array([[16, 16, 120, 120], [16, -16, -16, 16], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
+            #old --- points_3d = np.array([[16, 16, 120, 120], [16, -16, -16, 16], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
+            points_3d = np.array([[16, 16, 80, 80], [16, -16, -16, 16], [0, 0, 0, 0], [1, 1, 1, 1]], dtype=np.float64)
         elif self.warpdataset == 'alcala26012021':
             # position of the virtual camera -- standard kitti 360
             dx = 12   + random_Tx  # position of the camera: distance

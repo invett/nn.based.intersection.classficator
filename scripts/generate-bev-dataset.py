@@ -24,18 +24,18 @@ def main(args):
     # folders = [folders[1]]
     execute = args.execute
     if not execute:
-        execute = 'KITTI-ROAD-WARPING'
+        # execute = 'KITTI-ROAD-WARPING'
         # execute = 'warping'
         # execute = 'standard'
         # execute = 'kitti360'
-        # execute = 'kitti360-warping'
+        execute = 'kitti360-warping'
         # execute = 'alcala26012021'   #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
         # execute = 'alcala.12.02.2021.000'   #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
         # execute = 'alcala.12.02.2021.001'  #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
 
     # alcala26122012 does not walk os paths! it directly uses a .txt file!
     if execute != 'alcala26012021' and execute != 'alcala.12.02.2021.000' and execute != 'alcala.12.02.2021.001' and \
-            execute != 'KITTI-ROAD-WARPING':
+            execute != 'KITTI-ROAD-WARPING' and execute != 'kitti360-warping':
         folders = np.array([os.path.join(args.rootfolder, folder) for folder in sorted(os.listdir(args.rootfolder)) if
                             os.path.isdir(os.path.join(args.rootfolder, folder))])
 
@@ -43,19 +43,34 @@ def main(args):
         '''
         in the warping, moving the camera doesn't make sense i think ... better to make standard image augmentation
         '''
-        dataset = fromAANETandDualBisenet360(folders, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.29,
-                                                                                                    random_Ry_degrees=0.0,
-                                                                                                    random_Rz_degrees=0.0,
-                                                                                                    random_Tx_meters=0.0,
-                                                                                                    random_Ty_meters=0.0,
-                                                                                                    random_Tz_meters=0.0,
-                                                                                                    warpdataset='kitti360'),
-                                                                                    Mirror(),
-                                                                                    Rescale((224, 224)),
-                                                                                    #WriteDebugInfoOnNewDataset(),
-                                                                                    GenerateNewDataset(args.savefolder)]
-                                                                                   ),
-                                             distance=args.distance_from_intersection)
+
+        # PREVIOUS ATTEMPTS ..
+        # dataset = fromAANETandDualBisenet360(folders, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.29,
+        #                                                                                             random_Ry_degrees=0.0,
+        #                                                                                             random_Rz_degrees=0.0,
+        #                                                                                             random_Tx_meters=0.0,
+        #                                                                                             random_Ty_meters=0.0,
+        #                                                                                             random_Tz_meters=0.0,
+        #                                                                                             warpdataset='kitti360'),
+        #                                                                             Mirror(),
+        #                                                                             Rescale((224, 224)),
+        #                                                                             #WriteDebugInfoOnNewDataset(),
+        #                                                                             GenerateNewDataset(args.savefolder)]
+        #                                                                            ),
+        #                                      distance=args.distance_from_intersection)
+
+        # NOW DO THE SAME BUT WITH THE TXT FILES
+        dataset = alcala26012021(path_filename=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
+                                                                                                     random_Ry_degrees=0.5,
+                                                                                                     random_Rz_degrees=0.5,
+                                                                                                     random_Tx_meters=2.0,
+                                                                                                     random_Ty_meters=1.0,
+                                                                                                     random_Tz_meters=0.1,
+                                                                                                     warpdataset='kitti360',
+                                                                                                     ignoreAllGivenRandomValues=True),
+                                                                                     Rescale((224, 224)),
+                                                                                     #WriteDebugInfoOnNewDataset(),
+                                                                                     GenerateNewDataset(args.savefolder)]), usePIL=False)
 
     if execute == 'kitti360':
         dataset = fromAANETandDualBisenet360(folders, transform=transforms.Compose([#Normalize(),
@@ -172,9 +187,11 @@ def main(args):
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=args.workers)
 
     #USE THIS TO SELECT ONE SINGLE IMAGE AND VERIFY THE WARPING
+    # to see the path of the original image, enable # print(imagepath) in line def __getitem__(self, idx):
+    # on file sequencedataloader.py
     # for i in range(1):
-    #     # sample = dataloader.dataset.__getitem__(2030)
-    #     sample = dataloader.dataset.__getitem__(2013+i)
+    #     sample = dataloader.dataset.__getitem__(0)
+    #     # sample = dataloader.dataset.__getitem__(2013+i)
     #     data = sample['data']
     #     label = sample['label']
     #     a = plt.figure()

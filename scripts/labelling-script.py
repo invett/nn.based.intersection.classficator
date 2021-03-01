@@ -39,11 +39,11 @@ from miscellaneous.utils import split_dataset
 
 # datasets: KITTI360 | ALCALA | OXFORD | KITTI-ROAD
 # dataset = 'KITTI-ROAD'
-# dataset = 'KITTI360'
+dataset = 'KITTI360'
 # dataset = 'ALCALA'
 # dataset = 'AQP'
 # dataset = 'alcala-26.01.2021'
-dataset = 'alcala-12.02.2021'
+# dataset = 'alcala-12.02.2021'
 
 # definitions, will be specialized later .. but just to avoid warnings
 resizeme = 0
