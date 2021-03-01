@@ -112,6 +112,8 @@ class alcala26012021(AbstractSequence, Dataset):
 
                 if 'KITTI-ROAD' in imagepath:
                     dataset_path = os.path.split(imagepath)[0].replace('KITTI-ROAD', os.path.split(transformed['path'])[1])
+                elif 'KITTI-360' in imagepath:
+                    dataset_path = os.path.split(imagepath)[0].replace('KITTI-360', os.path.split(transformed['path'])[1])
                 else:
                     dataset_path = os.path.join(transformed['path'], imagepath.split('/')[-2])
 
