@@ -37,13 +37,20 @@ parameters:
     distribution: categorical
   dataloader:
     values:
-      - alcala26012021
+      - txt_dataloader
     distribution: categorical
   dataset:
-    values:
-      - ../../DualBiSeNet/KITTI-ROAD
-      - ../../DualBiSeNet/KITTI-ROAD_warped
     distribution: categorical
+    values:
+      - ../../DualBiSeNet/KITTI-ROAD_warped/train.prefix/prefix_train_list.txt
+  dataset_test:
+    distribution: categorical
+    values:
+      - ../../DualBiSeNet/KITTI-ROAD_warped/test.prefix/prefix_test_list.txt
+  dataset_val:
+    distribution: categorical
+    values:
+      - ../../DualBiSeNet/KITTI-ROAD_warped/validation.prefix/prefix_validation_list.txt
   batch_size:
     distribution: categorical
     values:
@@ -58,14 +65,17 @@ parameters:
   weighted:
     values:
       - "true"
+  weight_tensor:
     distribution: categorical
+    values:
+      - Kitti2011
   decimate:
     max: 2
     min: 1
     distribution: int_uniform
   margin:
     max: 5.0
-    min: 0.2
+    min: 0.5
     q: 0.5
     distribution: q_uniform
   miner:
