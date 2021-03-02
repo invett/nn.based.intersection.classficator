@@ -165,7 +165,7 @@ c_lambda = 10
 crit_repeats = 5
 device = 'cuda'
 
-n_classes = 10
+n_classes = 7
 
 transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,)), ])
 
