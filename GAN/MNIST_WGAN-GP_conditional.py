@@ -1,8 +1,6 @@
-#!/usr/bin/env python
-
 import torch
 from torch import nn
-from tqdm.auto import tqdm
+import tqdm
 from torchvision import transforms
 from torchvision.datasets import MNIST
 from torchvision.utils import make_grid
@@ -166,6 +164,7 @@ crit_repeats = 5
 device = 'cuda'
 
 n_classes = 7
+dataset_shape = (3, 224, 224)
 
 transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,)), ])
 
@@ -185,7 +184,8 @@ rgb_image_test_transforms = transforms.Compose([transforms.Resize((224, 224)), t
                                                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
 
 # sandra dataloader = DataLoader(MNIST('.', download=False, transform=transform), batch_size=batch_size, shuffle=True)
-dataloader = txt_dataloader(train_path, transform=rgb_image_train_transforms, decimateStep=decimate)
+train_dataset = txt_dataloader(train_path, transform=rgb_image_train_transforms, decimateStep=decimate)
+dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=True)
 
 
 def get_input_dimensions(z_dim, mnist_shape, n_classes):
@@ -206,13 +206,13 @@ def get_input_dimensions(z_dim, mnist_shape, n_classes):
     return generator_input_dim, discriminator_im_chan
 
 
-generator_input_dim, discriminator_im_chan = get_input_dimensions(z_dim, mnist_shape, n_classes)
+#generator_input_dim, discriminator_im_chan = get_input_dimensions(z_dim, mnist_shape, n_classes)
+generator_input_dim, discriminator_im_chan = get_input_dimensions(z_dim, dataset_shape, n_classes)
 
-gen = Generator(input_dim=generator_input_dim).to(device)
+gen = Generator(input_dim=generator_input_dim, im_chan=3).to(device)
 gen_opt = torch.optim.Adam(gen.parameters(), lr=lr)
 disc = Discriminator(im_chan=discriminator_im_chan).to(device)
 disc_opt = torch.optim.Adam(disc.parameters(), lr=lr)
-
 
 def weights_init(m):
     if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
@@ -315,13 +315,21 @@ disc_fake_pred = False
 disc_real_pred = False
 
 for epoch in range(n_epochs):
-    for real, labels in tqdm(dataloader):
+
+    tq = tqdm.tqdm(total=len(dataloader) * batch_size)
+    tq.set_description('epoch %d, lr %.e' % (epoch, lr))
+
+    #for real, labels in dataloader:
+    for sample in dataloader:
+        real = sample['data']
+        labels = sample['label']
+
         cur_batch_size = len(real)
         real = real.to(device)
 
         one_hot_labels = get_one_hot_labels(labels.to(device), n_classes)
         image_one_hot_labels = one_hot_labels[:, :, None, None]
-        image_one_hot_labels = image_one_hot_labels.repeat(1, 1, mnist_shape[1], mnist_shape[2])
+        image_one_hot_labels = image_one_hot_labels.repeat(1, 1, dataset_shape[1], dataset_shape[2])
 
         mean_iteration_disc_loss = 0
         for _ in range(crit_repeats):
