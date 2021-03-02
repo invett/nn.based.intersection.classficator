@@ -27,7 +27,7 @@ from torch.utils.data import DataLoader
 import wandb
 from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromGeneratedDataset, \
     triplet_BOO, triplet_OBB, kitti360, Kitti2011_RGB, triplet_ROO, triplet_ROO_360, \
-    alcala26012021, Sequences_alcala26012021_Dataloader
+    lstm_txt_dataloader, txt_dataloader
 from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanobis_testing, lstm_network_pass
@@ -127,7 +127,8 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
             if args.test_method == 'svm':
                 classifier = svm_generator(args, feature_extractor_model, dataloader_train=dataloader_train,
                                            dataloader_val=dataloader_val, LSTM=model)
-                confusion_matrix, acc_val = svm_testing(args, feature_extractor_model, dataloader_test, classifier, LSTM=model)
+                confusion_matrix, acc_val = svm_testing(args, feature_extractor_model, dataloader_test, classifier,
+                                                        LSTM=model)
 
     elif args.triplet:
         if args.test_method == 'svm':
@@ -230,10 +231,10 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
             if args.model == 'LSTM':
                 LSTM.eval()
                 if args.metric:
-                    acc, loss, _, _ = lstm_network_pass(sample, criterion, model, LSTM, miner=miner,
+                    acc, loss, _, _ = lstm_network_pass(args, sample, criterion, model, LSTM, miner=miner,
                                                         acc_metric=acc_metric)
                 else:
-                    acc, loss, label, predict = lstm_network_pass(sample, criterion, model, LSTM)
+                    acc, loss, label, predict = lstm_network_pass(args, sample, criterion, model, LSTM)
             else:
                 model.eval()
                 acc, loss, label, predict, embedding = student_network_pass(args, sample, criterion, model,
@@ -323,11 +324,11 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         acc_metric = None  # No nedd of metric acc
         # Build loss criterion
         if args.weighted:
-            if args.dataloader == 'Kitti360':
+            if args.weight_tensor == 'Kitti360':
                 weights = [0.99, 1.01, 0.98, 0.99, 1.05, 0.98, 0.99]
-            elif args.dataloader == 'alcala26012021':
+            elif args.weight_tensor == 'Alcala':
                 weights = [0.89, 1.13, 1.09, 1.05, 0.93, 1.06, 0.86]
-            else:
+            elif args.weight_tensor == 'Kitti2011':
                 weights = [1.06, 1.11, 1.12, 0.98, 0.99, 0.96, 0.78]
 
             if args.lossfunction == 'SmoothL1':
@@ -359,11 +360,11 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         acc_metric = None  # No nedd of metric acc
         # Build loss criterion
         if args.weighted:
-            if args.dataloader == 'Kitti360':
+            if args.weight_tensor == 'Kitti360':
                 weights = [0.99, 1.01, 0.98, 0.99, 1.05, 0.98, 0.99]
-            elif args.dataloader == 'alcala26012021':
+            elif args.weight_tensor == 'Alcala':
                 weights = [0.89, 1.13, 1.09, 1.05, 0.93, 1.06, 0.86]
-            else:
+            elif args.weight_tensor == 'Kitti2011':
                 weights = [1.06, 1.11, 1.12, 0.98, 0.99, 0.96, 0.78]
 
             if args.distance_function == 'pairwise':
@@ -405,15 +406,14 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         # Accuracy calculator for metric learning
         acc_metric = AccuracyCalculator(exclude=('AMI', 'NMI'))
         # Accuracy metrics for metric learning
-
         if args.weighted:
-            if args.dataloader == 'Kitti360' or 'kitti360' in args.dataset:
+            if args.weight_tensor == 'Kitti360':
                 weights = [0.99, 1.01, 0.98, 0.99, 1.05, 0.98, 0.99]
                 class_weights = torch.FloatTensor(weights).cuda()
-            elif args.dataloader == 'alcala26012021' or args.dataloader == 'lstmDataloader_alcala26012021':
+            elif args.weight_tensor == 'Alcala':
                 weights = [0.89, 1.13, 1.09, 1.05, 0.93, 1.06, 0.86]
                 class_weights = torch.FloatTensor(weights).cuda()
-            else:
+            elif args.weight_tensor == 'Kitti2011':
                 weights = [1.06, 1.11, 1.12, 0.98, 0.99, 0.96, 0.78]
                 class_weights = torch.FloatTensor(weights).cuda()
             reducer = reducers.ClassWeightedReducer(class_weights)
@@ -464,18 +464,16 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         gt_list = None  # No need of centroids
         miner = None  # No need of miner
         if args.weighted:
-            if args.dataloader == 'Kitti360' or 'kitti360' in args.dataset:
+            if args.weight_tensor == 'Kitti360':
                 weights = [0.99, 1.01, 0.98, 0.99, 1.05, 0.98, 0.99]
                 class_weights = torch.FloatTensor(weights).cuda()
-                criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
-            elif args.dataloader == 'alcala26012021' or args.dataloader == 'lstmDataloader_alcala26012021':
+            elif args.weight_tensor == 'Alcala':
                 weights = [0.89, 1.13, 1.09, 1.05, 0.93, 1.06, 0.86]
                 class_weights = torch.FloatTensor(weights).cuda()
-                criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
-            else:
+            elif args.weight_tensor == 'Kitti2011':
                 weights = [1.06, 1.11, 1.12, 0.98, 0.99, 0.96, 0.78]
                 class_weights = torch.FloatTensor(weights).cuda()
-                criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
+            criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
         else:
             weights = None
             if args.lossfunction == 'focal':
@@ -516,10 +514,10 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         for sample in dataloader_train:
             if args.model == 'LSTM':
                 if args.metric:
-                    acc, loss, _, _ = lstm_network_pass(sample, criterion, model, LSTM, miner=miner,
+                    acc, loss, _, _ = lstm_network_pass(args, sample, criterion, model, LSTM, miner=miner,
                                                         acc_metric=acc_metric)
                 else:
-                    acc, loss, _, _ = lstm_network_pass(sample, criterion, model, LSTM)
+                    acc, loss, _, _ = lstm_network_pass(args, sample, criterion, model, LSTM)
             else:
                 acc, loss, _, _, _ = student_network_pass(args, sample, criterion, model, gt_list=gt_list,
                                                           weights_param=weights, miner=miner, acc_metric=acc_metric)
@@ -747,7 +745,7 @@ def main(args, model=None):
     data_path = args.dataset
 
     # TODO: ALVARO! Esto es lo que queria editar un poco para que quede claro cuando se usa uno y el otro, a lo mejor no con if elif else pero simples if..
-    if args.dataloader == 'lstmDataloader_alcala26012021' or args.dataloader == 'alcala26012021':
+    if args.dataloader == 'lstm_txt_dataloader' or args.dataloader == 'txt_dataloader':
 
         # args.dataset          >>> *always used*
         #                           it acts as dataset_train in the case you want
@@ -840,7 +838,7 @@ def main(args, model=None):
 
         # The dataloaders that not use Kitti360 uses list-like inputs
         if '360' not in args.dataloader and (
-                args.dataloader != 'lstmDataloader_alcala26012021' and args.dataloader != 'alcala26012021'):
+                args.dataloader != 'lstm_txt_dataloader' and args.dataloader != 'txt_dataloader'):
             train_path = np.array(train_path)
             val_path = np.array([val_path])
 
@@ -915,16 +913,16 @@ def main(args, model=None):
 
             train_dataset = Kitti2011_RGB(train_path, transform=rgb_image_train_transforms)
 
-        elif args.dataloader == 'lstmDataloader_alcala26012021':
-            val_dataset = Sequences_alcala26012021_Dataloader(val_path, transform=rgb_image_train_transforms,
-                                                              all_in_ram=args.all_in_ram)
-            train_dataset = Sequences_alcala26012021_Dataloader(train_path, transform=rgb_image_train_transforms,
-                                                                all_in_ram=args.all_in_ram)
+        elif args.dataloader == 'lstm_txt_dataloader':
+            val_dataset = lstm_txt_dataloader(val_path, transform=rgb_image_train_transforms,
+                                              all_in_ram=args.all_in_ram)
+            train_dataset = lstm_txt_dataloader(train_path, transform=rgb_image_train_transforms,
+                                                all_in_ram=args.all_in_ram)
 
-        elif args.dataloader == 'alcala26012021':
-            val_dataset = alcala26012021(val_path, transform=rgb_image_test_transforms, decimateStep=args.decimate)
+        elif args.dataloader == 'txt_dataloader':
+            val_dataset = txt_dataloader(val_path, transform=rgb_image_test_transforms, decimateStep=args.decimate)
 
-            train_dataset = alcala26012021(train_path, transform=rgb_image_train_transforms, decimateStep=args.decimate)
+            train_dataset = txt_dataloader(train_path, transform=rgb_image_train_transforms, decimateStep=args.decimate)
 
         else:
             raise Exception("Dataloader not found")
@@ -1121,11 +1119,11 @@ def main(args, model=None):
             test_dataset = triplet_BOO([test_path], args.distance, canonical=True,
                                        transform_osm=osmTransforms, transform_bev=threedimensional_transfomrs)
 
-        elif args.dataloader == 'lstmDataloader_alcala26012021':
-            test_dataset = Sequences_alcala26012021_Dataloader(test_path, transform=rgb_image_test_transforms)
+        elif args.dataloader == 'lstm_txt_dataloader':
+            test_dataset = lstm_txt_dataloader(test_path, transform=rgb_image_test_transforms)
 
-        elif args.dataloader == 'alcala26012021':
-            test_dataset = alcala26012021(test_path, transform=rgb_image_test_transforms)
+        elif args.dataloader == 'txt_dataloader':
+            test_dataset = txt_dataloader(test_path, transform=rgb_image_test_transforms)
 
         if test_dataset.getIsSequence():
             dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
@@ -1238,6 +1236,7 @@ if __name__ == '__main__':
     parser.add_argument('--distance', type=float, default=20.0, help='Distance from the cross')
 
     parser.add_argument('--weighted', type=str2bool, nargs='?', const=True, default=False, help='Weighted losses')
+    parser.add_argument('--weight_tensor', type=str, default=None, choices=['Alcala', 'Kitti360', 'Kitti2011'])
     parser.add_argument('--miner', type=str2bool, nargs='?', const=True, default=False,
                         help='miner for metric learning')
     parser.add_argument('--TripletMarginMinerType', type=str, default='all', choices=['all', 'hard'])
@@ -1275,7 +1274,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataloader', type=str, default='generatedDataset',
                         choices=['fromAANETandDualBisenet', 'generatedDataset', 'Kitti2011_RGB', 'triplet_OBB',
                                  'triplet_BOO', 'triplet_ROO', 'triplet_ROO_360', 'triplet_3DOO_360', 'Kitti360',
-                                 'Kitti360_3D', 'alcala26012021', 'lstmDataloader_alcala26012021'],
+                                 'Kitti360_3D', 'txt_dataloader', 'lstm_txt_dataloader'],
                         help='One of the supported datasets')
 
     parser.add_argument('--all_in_ram', type=str2bool, nargs='?', const=True, default=False,
@@ -1305,6 +1304,10 @@ if __name__ == '__main__':
     if args.weighted and args.nonzero:
         print("weighted and nonzero reducers selected")
         print("both reduction methods are not compatible")
+        exit(-1)
+
+    if args.weighted and args.weight_tensor is None:
+        print("Weighted tensor should be selected for weighted training")
         exit(-1)
 
     # Ensure there's a _ at the end of the prefix

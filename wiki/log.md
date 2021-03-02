@@ -96,7 +96,7 @@ sets:
       `python train.py --load_path ./trainedmodels/model_de2u0bbr_30.pth --test_method svm --svm_mode Linear --dataloader alcala26012021 --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped/train/train_list.txt --dataset_val ../../DualBiSeNet/alcala-26.01.2021_selected_warped/validation/validation_list.txt --dataset_test ../../DualBiSeNet/alcala-12.02.2021_warped/test.seq.120445AA.122302AA/seq.120445AA.122302AA.test_list.txt --nowandb --metric=True --telegram --test=True`
     - [x] alcala-12 | 164002AA.165810AA | 000 sequence, focus, padres alvaro
       `python train.py --load_path ./trainedmodels/model_de2u0bbr_30.pth --test_method svm --svm_mode Linear --dataloader alcala26012021 --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped/train/train_list.txt --dataset_val ../../DualBiSeNet/alcala-26.01.2021_selected_warped/validation/validation_list.txt --dataset_test ../../DualBiSeNet/alcala-12.02.2021_warped/test.seq.164002AA.165810AA/seq.164002AA.165810AA.test_list.txt --nowandb --metric=True --telegram --test=True`
-  
+    
 - [x] ovo
     - [x] alcala-26
       `python train.py --load_path ./trainedmodels/model_de2u0bbr_30.pth --test_method svm --svm_mode ovo --dataloader alcala26012021 --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped/train/train_list.txt --dataset_val ../../DualBiSeNet/alcala-26.01.2021_selected_warped/validation/validation_list.txt --dataset_test ../../DualBiSeNet/alcala-26.01.2021_selected_warped/test/test_list.txt --nowandb --metric=True --telegram --test=True`
@@ -112,6 +112,34 @@ sets:
   `python train.py --load_path ./trainedmodels/model_de2u0bbr_30.pth --test_method mahalanobis --dataloader alcala26012021 --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped/train/train_list.txt --dataset_val ../../DualBiSeNet/alcala-26.01.2021_selected_warped/validation/validation_list.txt --dataset_test ../../DualBiSeNet/alcala-12.02.2021_warped/test.seq.120445AA.122302AA/seq.120445AA.122302AA.test_list.txt --nowandb --metric=True --telegram --test=True`
 - [x] alcala-12 | 164002AA.165810AA | 000 sequence, focus, padres alvaro
   `python train.py --load_path ./trainedmodels/model_de2u0bbr_30.pth --test_method mahalanobis --dataloader alcala26012021 --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped/train/train_list.txt --dataset_val ../../DualBiSeNet/alcala-26.01.2021_selected_warped/validation/validation_list.txt --dataset_test ../../DualBiSeNet/alcala-12.02.2021_warped/test.seq.164002AA.165810AA/seq.164002AA.165810AA.test_list.txt --nowandb --metric=True --telegram --test=True`
+
+### TEST RESNET 02.03.2021 
+Test of trained resnet trained on **Kitti360** with SVM and MAHALANOBIS with respect to the following testing 
+sets:
+
+- `../../DualBiSeNet/KITTI-360_warped/train.prefix/prefix_train_list.txt `
+- `../../DualBiSeNet/KITTI-360_warped/validation.prefix/prefix_validation_list.txt `
+- `../../DualBiSeNet/KITTI-360_warped/test.prefix/prefix_test_list.txt`
+
+#### SVM
+- [x] Lineal
+    - [x] Kitti360
+      `python train.py --test --load_path ./trainedmodels/model_12fuzxzd_55.pth --test_method svm --svm_mode Linear --dataloader alcala26012021 --dataset ../../DualBiSeNet/KITTI-360_warped/train.prefix/prefix_train_list.txt --dataset_val ../../DualBiSeNet/KITTI-360_warped/validation.prefix/prefix_validation_list.txt --dataset_test ../../DualBiSeNet/KITTI-360_warped/test.prefix/prefix_test_list.txt --nowandb --metric --telegram`
+    - [x] Kitti2011
+      `python train.py --test --load_path ./trainedmodels/model_12fuzxzd_55.pth --test_method svm --svm_mode Linear --dataloader alcala26012021 --dataset ../../DualBiSeNet/KITTI-360_warped/train.prefix/prefix_train_list.txt --dataset_val ../../DualBiSeNet/KITTI-360_warped/validation.prefix/prefix_validation_list.txt --dataset_test ../../DualBiSeNet/KITTI-ROAD_warped/prefix_all.txt --nowandb --metric --telegram`
+    
+- [x] ovo
+    - [x] Kitti360
+      `python train.py --test --load_path ./trainedmodels/model_12fuzxzd_55.pth --test_method svm --svm_mode ovo --dataloader alcala26012021 --dataset ../../DualBiSeNet/KITTI-360_warped/train.prefix/prefix_train_list.txt --dataset_val ../../DualBiSeNet/KITTI-360_warped/validation.prefix/prefix_validation_list.txt --dataset_test ../../DualBiSeNet/KITTI-360_warped/test.prefix/prefix_test_list.txt --nowandb --metric --telegram`
+    - [x] Kitti2011
+      `python train.py --test --load_path ./trainedmodels/model_12fuzxzd_55.pth --test_method svm --svm_mode ovo --dataloader alcala26012021 --dataset ../../DualBiSeNet/KITTI-360_warped/train.prefix/prefix_train_list.txt --dataset_val ../../DualBiSeNet/KITTI-360_warped/validation.prefix/prefix_validation_list.txt --dataset_test ../../DualBiSeNet/KITTI-ROAD_warped/prefix_all.txt --nowandb --metric --telegram`
+    
+#### Mahalanobis
+- [x] Kitti360
+  `python train.py --test --load_path ./trainedmodels/model_12fuzxzd_55.pth --test_method mahalanobis --dataloader alcala26012021 --dataset ../../DualBiSeNet/KITTI-360_warped/train.prefix/prefix_train_list.txt --dataset_val ../../DualBiSeNet/KITTI-360_warped/validation.prefix/prefix_validation_list.txt --dataset_test ../../DualBiSeNet/KITTI-360_warped/test.prefix/prefix_test_list.txt --nowandb --metric --telegram`
+- [x] Kitti2011
+  `python train.py --test --load_path ./trainedmodels/model_12fuzxzd_55.pth --test_method mahalanobis --dataloader alcala26012021 --dataset ../../DualBiSeNet/KITTI-360_warped/train.prefix/prefix_train_list.txt --dataset_val ../../DualBiSeNet/KITTI-360_warped/validation.prefix/prefix_validation_list.txt --dataset_test ../../DualBiSeNet/KITTI-ROAD_warped/prefix_all.txt --nowandb --metric --telegram`
+
 
 ### TRAIN LSTM 25.02.2021
 Train of the lstm model respect to the resnet trained on **alcala-26.01.2021** (Same one used in the before test)
