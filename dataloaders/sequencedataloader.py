@@ -31,7 +31,7 @@ class AbstractSequence:
         return self.isSequence
 
 
-class alcala26012021(AbstractSequence, Dataset):
+class txt_dataloader(AbstractSequence, Dataset):
     def __init__(self, path_filename=None, transform=None, usePIL=True, isSequence=False, decimateStep=1):
         """
 
@@ -1523,7 +1523,7 @@ class fromAANETandDualBisenet360(Dataset):
         return bev_with_new_label
 
 
-class Sequences_alcala26012021_Dataloader(alcala26012021, Dataset):
+class lstm_txt_dataloader(txt_dataloader, Dataset):
     """
 
     This dataloader is intended to be used with just a "filename" passed, containing the list of
