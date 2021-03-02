@@ -3,7 +3,7 @@
 Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdownguide.org/cheat-sheet/)
 
 ## TODOs
-- [ ] Make again all kitti360 warpings without mirror
+- [x] Make again all kitti360 warpings without mirror
 - [ ] Training 'kevin' RESNET kitti360/Kitti2011 + TEST: SVM + Mahalanobis + FC
 - [ ] Training LSTM with Kitti360/Kitti2011
 - [ ] Training LSTM with alcala26/alcala12* (¿Solve errors?)
@@ -23,7 +23,7 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
     
 - [ ] Kitti360 actualization
 
-    - [ ] Warpings No mirror
+    - [x] Warpings No mirror
     - [ ] Stereo + Lidar --> 3D-Mask 
 
 ## Log
