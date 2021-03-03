@@ -431,13 +431,13 @@ def lstm_network_pass(args, batch, criterion, model, lstm, miner=None, acc_metri
 
     with torch.no_grad():
         for sequence in batch:
-            seq_tensor = model(torch.stack(sequence['sequence']).cuda())
+            seq_tensor = model(torch.stack(sequence['sequence']).cuda())  # return--> (img_seq x 512)
             seq_list.append(seq_tensor.squeeze())
             len_list.append(len(sequence['sequence']))
 
     padded_batch = pad_sequence(seq_list, batch_first=True)
     packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
-                                               batch_first=True)  # --> (Batch x Max_seq_len x 512)
+                                               batch_first=True, enforce_sorted=False)  # --> (Batch x Max_seq_len x 512)
 
     prediction, output = lstm(packed_padded_batch)
     # Output contains a packed sequence with the prediction in each timestamp --> (seq_len x batch x hidden_size)
