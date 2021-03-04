@@ -184,7 +184,7 @@ transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5
 
 decimate = 1
 
-train_path = '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected_warpe/prefix_all.txt'
+train_path = '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected_warped/prefix_all.txt'
 
 rgb_image_train_transforms = transforms.Compose(
     [transforms.Resize((224, 224)), transforms.RandomAffine(15, translate=(0.0, 0.1), shear=(-5, 5)),
