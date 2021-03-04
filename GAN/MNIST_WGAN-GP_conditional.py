@@ -11,6 +11,7 @@ from dataloaders.sequencedataloader import txt_dataloader
 
 # from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
 # import math
+from miscellaneous.utils import send_telegram_picture, send_telegram_message
 
 torch.manual_seed(0)
 
@@ -72,10 +73,12 @@ class Generator(nn.Module):
                       (affects activation and batchnorm)
         '''
         if not final_layer:
-            return nn.Sequential(nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding),
-                                 nn.BatchNorm2d(output_channels), nn.ReLU(inplace=True))
+            return nn.Sequential(
+                nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding),
+                nn.BatchNorm2d(output_channels), nn.ReLU(inplace=True))
         else:
-            return nn.Sequential(nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding), nn.Tanh())
+            return nn.Sequential(
+                nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding), nn.Tanh())
 
     def forward(self, noise):
         '''
@@ -323,6 +326,8 @@ real_image_and_labels = False
 disc_fake_pred = False
 disc_real_pred = False
 
+send_telegram_message("Starting GAN training")
+
 for epoch in range(n_epochs):
 
     tq = tqdm.tqdm(total=len(dataloader) * batch_size)
@@ -395,6 +400,11 @@ for epoch in range(n_epochs):
                      torch.Tensor(discriminator_losses[:num_examples]).view(-1, step_bins).mean(1),
                      label="Discriminator Loss")
             plt.legend()
-            plt.show()
+            send_telegram_picture(plt,
+                                  "Step: " + str(cur_step) +
+                                  "\nGenerator loss: " + str(gen_mean) +
+                                  "\nDiscriminator loss: " + str(disc_mean))
 
         cur_step += 1
+
+send_telegram_message("GAN training finished")

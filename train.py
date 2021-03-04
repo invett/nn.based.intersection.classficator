@@ -755,7 +755,6 @@ def main(args, model=None):
         # args.dataset_val      >>> path to the folder
         # args.dataset_test     >>> path to the folder
 
-        # ALCALA
         if os.path.isfile(args.dataset) and os.path.isfile(args.dataset_val) and os.path.isfile(
                 args.dataset_test):
             train_path = args.dataset  # Path to train dataset

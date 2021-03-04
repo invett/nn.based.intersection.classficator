@@ -156,3 +156,5 @@ The idea is to exploit the trained RESNET, then the train is made as follows:
     - Take the output of the LSTM (256 embedding size) and use the metrics (cosine/snr/etc) to create the loss 
 
 
+
+
