@@ -26,7 +26,7 @@ def show_tensor_images(image_tensor, num_images=25, nrow=5, show=False, type='Fa
     image_tensor = (image_tensor + 1) / 2
     image_unflat = image_tensor.detach().cpu()
     image_grid = make_grid(image_unflat[:num_images], nrow=nrow)
-    plt.imshow((image_grid.permute(1, 2, 0).squeeze() * 255).astype(np.uint8))
+    plt.imshow((image_grid.permute(1, 2, 0).squeeze() * 255))
     send_telegram_picture(plt, "Type: " + str(type))
     if show:
         plt.show()
