@@ -189,6 +189,7 @@ class WGANGP(LightningModule):
         '''
         return torch.randn(n_samples, input_dim, device=device)
     
+    
     def get_one_hot_labels(labels, n_classes):
         '''
         Function for creating one-hot vectors for the labels.
@@ -202,12 +203,10 @@ class WGANGP(LightningModule):
     def combine_vectors(x, y):
         combined = (torch.cat((x.float(), y.float()), 1))
         return combined
-
-
     
 
     def training_step(self, batch, batch_idx, optimizer_idx):
-        imgs, _ = batch
+        imgs, labels = batch
 
         # sample noise
         z = torch.randn(imgs.shape[0], self.latent_dim)
