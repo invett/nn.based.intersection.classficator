@@ -7,9 +7,12 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision.utils import make_grid
 
+import numpy as np
+
+import warnings
+warnings.filterwarnings("ignore")
+
 from dataloaders.sequencedataloader import txt_dataloader
-# from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
-# import math
 from miscellaneous.utils import send_telegram_picture, send_telegram_message
 
 torch.manual_seed(0)
@@ -23,10 +26,11 @@ def show_tensor_images(image_tensor, num_images=25, nrow=5, show=False, type='Fa
     image_tensor = (image_tensor + 1) / 2
     image_unflat = image_tensor.detach().cpu()
     image_grid = make_grid(image_unflat[:num_images], nrow=nrow)
-    plt.imshow(image_grid.permute(1, 2, 0).squeeze())
+    plt.imshow((image_grid.permute(1, 2, 0).squeeze() * 255).astype(np.uint8))
     send_telegram_picture(plt, "Type: " + str(type))
     if show:
         plt.show()
+    plt.close()
 
 
 def make_grad_hook():
@@ -404,6 +408,7 @@ for epoch in range(n_epochs):
                                   "Step: " + str(cur_step) +
                                   "\nGenerator loss: " + str(gen_mean) +
                                   "\nDiscriminator loss: " + str(disc_mean))
+            plt.close()
 
         cur_step += 1
     tq.update(cur_batch_size)
