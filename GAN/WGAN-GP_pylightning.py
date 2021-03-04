@@ -18,33 +18,16 @@ from torch.utils.data import DataLoader
 from pytorch_lightning.core import LightningModule
 from pytorch_lightning.trainer import Trainer
 
+from torchvision.datasets import MNIST
+from dataloaders.sequencedataloader import txt_dataloader
+from miscellaneous.utils import send_telegram_picture, send_telegram_message
+
 
 class Generator(nn.Module):
     def __init__(self, input_dim=10, im_chan=1, hidden_dim=64):
         super(Generator, self).__init__()
         self.input_dim = input_dim
 
-        def make_gen_block(self, input_channels, output_channels, kernel_size=3, stride=2, padding=0, final_layer=False):
-            '''
-            Function to return a sequence of operations corresponding to a generator block of DCGAN;
-            a transposed convolution, a batchnorm (except in the final layer), and an activation.
-            Parameters:
-                input_channels: how many channels the input feature representation has
-                output_channels: how many channels the output feature representation should have
-                kernel_size: the size of each convolutional filter, equivalent to (kernel_size, kernel_size)
-                stride: the stride of the convolution
-                final_layer: a boolean, true if it is the final layer and false otherwise 
-                          (affects activation and batchnorm)
-            '''
-            if not final_layer:
-                return nn.Sequential(
-                    nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding),
-                    nn.BatchNorm2d(output_channels), nn.ReLU(inplace=True))
-            else:
-                return nn.Sequential(
-                    nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding), nn.Tanh())
-        
-        
         nn.Sequential(self.make_gen_block(input_dim, hidden_dim * 2),
                       self.make_gen_block(hidden_dim * 2, hidden_dim * 4, kernel_size=4, stride=1),
                       self.make_gen_block(hidden_dim * 4, hidden_dim * 8),
@@ -53,23 +36,45 @@ class Generator(nn.Module):
                       self.make_gen_block(hidden_dim * 2, hidden_dim, kernel_size=4, padding=1),
                       self.make_gen_block(hidden_dim, im_chan, kernel_size=4, padding=1, final_layer=True))
 
+    def make_gen_block(self, input_channels, output_channels, kernel_size=3, stride=2, padding=0,
+                       final_layer=False):
+        """
+        Function to return a sequence of operations corresponding to a generator block of DCGAN;
+        a transposed convolution, a batchnorm (except in the final layer), and an activation.
+        Parameters:
+            input_channels: how many channels the input feature representation has
+            output_channels: how many channels the output feature representation should have
+            kernel_size: the size of each convolutional filter, equivalent to (kernel_size, kernel_size)
+            stride: the stride of the convolution
+            final_layer: a boolean, true if it is the final layer and false otherwise
+                      (affects activation and batchnorm)
+            padding: padding...
+        """
+        if not final_layer:
+            return nn.Sequential(
+                nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding),
+                nn.BatchNorm2d(output_channels), nn.ReLU(inplace=True))
+        else:
+            return nn.Sequential(
+                nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding),
+                nn.Tanh())
 
     def forward(self, noise):
-        '''
+        """
         Function for completing a forward pass of the generator: Given a noise tensor, 
         returns generated images.
         Parameters:
             noise: a noise tensor with dimensions (n_samples, input_dim)
-        '''
+        """
         x = noise.view(len(noise), self.input_dim, 1, 1)
         return self.gen(x)
 
 
-
 class Discriminator(nn.Module):
-    '''
+    """
     Discriminator Class
-    '''
+    """
+
     def __init__(self, im_chan=1, hidden_dim=64):
         super(Discriminator, self).__init__()
         self.disc = nn.Sequential(self.make_disc_block(im_chan, hidden_dim, kernel_size=4),
@@ -82,7 +87,7 @@ class Discriminator(nn.Module):
                                   self.make_disc_block(hidden_dim, 1, kernel_size=4, padding=1, final_layer=True))
 
     def make_disc_block(self, input_channels, output_channels, kernel_size=3, stride=2, padding=0, final_layer=False):
-        '''
+        """
         Function to return a sequence of operations corresponding to a discriminator block of the DCGAN; 
         a convolution, a batchnorm (except in the final layer), and an activation (except in the final layer).
         Parameters:
@@ -92,7 +97,7 @@ class Discriminator(nn.Module):
             stride: the stride of the convolution
             final_layer: a boolean, true if it is the final layer and false otherwise 
                       (affects activation and batchnorm)
-        '''
+        """
         if not final_layer:
             return nn.Sequential(nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding),
                                  nn.BatchNorm2d(output_channels), nn.LeakyReLU(0.2, inplace=True))
@@ -100,23 +105,19 @@ class Discriminator(nn.Module):
             return nn.Sequential(nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding))
 
     def forward(self, image):
-        '''
+        """
         Function for completing a forward pass of the discriminator: Given an image tensor, 
         returns a 1-dimension tensor representing fake/real.
         Parameters:
             image: a flattened image tensor with dimension (im_chan)
-        '''
+        """
         disc_pred = self.disc(image)
         return disc_pred.view(len(disc_pred), -1)
 
 
 class WGANGP(LightningModule):
 
-    def __init__(self,
-                 latent_dim: int = 100,
-                 lr: float = 0.0002,
-                 b1: float = 0.5,
-                 b2: float = 0.999,
+    def __init__(self, latent_dim: int = 100, lr: float = 0.0002, b1: float = 0.5, b2: float = 0.999,
                  batch_size: int = 64, **kwargs):
         super().__init__()
         self.save_hyperparameters()
@@ -126,19 +127,20 @@ class WGANGP(LightningModule):
         self.b1 = b1
         self.b2 = b2
         self.batch_size = batch_size
+        self.dataloader_choice = kwargs['dataloader']
 
         # networks
         image_shape = (3, 224, 224)
         im_chan = 3
         self.generator = Generator(input_dim=latent_dim, im_chan=3)
         self.discriminator = Discriminator(im_chan)
-        self.generator.apply(weights_init)
-        self.discriminator.apply(weights_init)
+        self.generator.apply(self.weights_init)
+        self.discriminator.apply(self.weights_init)
         self.validation_z = torch.randn(8, self.latent_dim)
 
         self.example_input_array = torch.zeros(2, self.latent_dim)
-    
-    def weights_init(m):
+
+    def weights_init(self, m):
         if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
             torch.nn.init.normal_(m.weight, 0.0, 0.02)
         if isinstance(m, nn.BatchNorm2d):
@@ -169,7 +171,6 @@ class WGANGP(LightningModule):
         gradients = gradients.view(gradients.size(0), -1).to(self.device)
         gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
         return gradient_penalty
-    
 
     def training_step(self, batch, batch_idx, optimizer_idx):
         imgs, _ = batch
@@ -199,11 +200,7 @@ class WGANGP(LightningModule):
             # adversarial loss is binary cross-entropy
             g_loss = -torch.mean(self.discriminator(self(z)))
             tqdm_dict = {'g_loss': g_loss}
-            output = OrderedDict({
-                'loss': g_loss,
-                'progress_bar': tqdm_dict,
-                'log': tqdm_dict
-            })
+            output = OrderedDict({'loss': g_loss, 'progress_bar': tqdm_dict, 'log': tqdm_dict})
             return output
 
         # train discriminator
@@ -221,11 +218,7 @@ class WGANGP(LightningModule):
             d_loss = -torch.mean(real_validity) + torch.mean(fake_validity) + lambda_gp * gradient_penalty
 
             tqdm_dict = {'d_loss': d_loss}
-            output = OrderedDict({
-                'loss': d_loss,
-                'progress_bar': tqdm_dict,
-                'log': tqdm_dict
-            })
+            output = OrderedDict({'loss': d_loss, 'progress_bar': tqdm_dict, 'log': tqdm_dict})
             return output
 
     def configure_optimizers(self):
@@ -237,18 +230,24 @@ class WGANGP(LightningModule):
 
         opt_g = torch.optim.Adam(self.generator.parameters(), lr=lr, betas=(b1, b2))
         opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr, betas=(b1, b2))
-        return (
-            {'optimizer': opt_g, 'frequency': 1},
-            {'optimizer': opt_d, 'frequency': n_critic}
-        )
+        return ({'optimizer': opt_g, 'frequency': 1}, {'optimizer': opt_d, 'frequency': n_critic})
 
     def train_dataloader(self):
-        transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize([0.5], [0.5]),
-        ])
-        dataset = MNIST(os.getcwd(), train=True, download=True, transform=transform)  
-        return DataLoader(dataset, batch_size=self.batch_size)
+        if self.dataloader_choice == 'MNIST':
+            transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.5], [0.5]), ])
+            dataset = MNIST(os.getcwd(), train=True, download=True, transform=transform)
+            return DataLoader(dataset, batch_size=self.batch_size)
+
+        if self.dataloader_choice == 'txt_dataloader':
+            train_path = '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected_warped/prefix_all.txt'
+
+            rgb_image_test_transforms = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(),
+                                                            transforms.Normalize((0.485, 0.456, 0.406),
+                                                                                 (0.229, 0.224, 0.225))])
+
+            dataset_ = txt_dataloader(train_path, transform=rgb_image_test_transforms)
+            dataloader_ = DataLoader(dataset_, batch_size=self.batch_size, shuffle=True, num_workers=8, drop_last=True)
+            return dataloader_
 
     def on_epoch_end(self):
         z = self.validation_z.to(self.device)
@@ -283,12 +282,14 @@ if __name__ == '__main__':
     parser.add_argument("--gpus", type=int, default=1, help="number of GPUs")
     parser.add_argument("--batch_size", type=int, default=128, help="size of the batches")
     parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
-    parser.add_argument("--b1", type=float, default=0.5,
-                        help="adam: decay of first order momentum of gradient")
-    parser.add_argument("--b2", type=float, default=0.999,
-                        help="adam: decay of first order momentum of gradient")
-    parser.add_argument("--latent_dim", type=int, default=100,
-                        help="dimensionality of the latent space")
+    parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
+    parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
+    parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
+    parser.add_argument('--dataloader', type=str, default='txt_dataloader',
+                        choices=['fromAANETandDualBisenet', 'generatedDataset', 'Kitti2011_RGB', 'triplet_OBB',
+                                 'triplet_BOO', 'triplet_ROO', 'triplet_ROO_360', 'triplet_3DOO_360', 'Kitti360',
+                                 'Kitti360_3D', 'txt_dataloader', 'lstm_txt_dataloader', 'MNIST'],
+                        help='One of the supported datasets')
 
     hparams = parser.parse_args()
 
