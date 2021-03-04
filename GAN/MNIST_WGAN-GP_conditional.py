@@ -1,14 +1,13 @@
-import torch
-from torch import nn
-import tqdm
-from torchvision import transforms
-from torchvision.datasets import MNIST
-from torchvision.utils import make_grid
-from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
+import torch
 import torch.nn.functional as F
-from dataloaders.sequencedataloader import txt_dataloader
+import tqdm
+from torch import nn
+from torch.utils.data import DataLoader
+from torchvision import transforms
+from torchvision.utils import make_grid
 
+from dataloaders.sequencedataloader import txt_dataloader
 # from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
 # import math
 from miscellaneous.utils import send_telegram_picture, send_telegram_message
@@ -16,7 +15,7 @@ from miscellaneous.utils import send_telegram_picture, send_telegram_message
 torch.manual_seed(0)
 
 
-def show_tensor_images(image_tensor, num_images=25, size=(1, 28, 28), nrow=5, show=True):
+def show_tensor_images(image_tensor, num_images=25, nrow=5, show=False, type='Fake'):
     '''
     Function for visualizing images: Given a tensor of images, number of images, and
     size per image, plots and prints the images in an uniform grid.
@@ -25,6 +24,7 @@ def show_tensor_images(image_tensor, num_images=25, size=(1, 28, 28), nrow=5, sh
     image_unflat = image_tensor.detach().cpu()
     image_grid = make_grid(image_unflat[:num_images], nrow=nrow)
     plt.imshow(image_grid.permute(1, 2, 0).squeeze())
+    send_telegram_picture(plt, "Type: " + str(type))
     if show:
         plt.show()
 
@@ -184,7 +184,7 @@ transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5
 
 decimate = 1
 
-train_path = '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected/prefix_all.txt'
+train_path = '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected_warpe/prefix_all.txt'
 
 rgb_image_train_transforms = transforms.Compose(
     [transforms.Resize((224, 224)), transforms.RandomAffine(15, translate=(0.0, 0.1), shear=(-5, 5)),
@@ -195,7 +195,7 @@ rgb_image_test_transforms = transforms.Compose([transforms.Resize((224, 224)), t
                                                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
 
 # sandra dataloader = DataLoader(MNIST('.', download=False, transform=transform), batch_size=batch_size, shuffle=True)
-train_dataset = txt_dataloader(train_path, transform=rgb_image_train_transforms, decimateStep=decimate)
+train_dataset = txt_dataloader(train_path, transform=rgb_image_test_transforms, decimateStep=decimate)
 dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=True)
 
 
@@ -389,8 +389,8 @@ for epoch in range(n_epochs):
             gen_mean = sum(generator_losses[-display_step:]) / display_step
             disc_mean = sum(discriminator_losses[-display_step:]) / display_step
             print(f"Step {cur_step}: Generator loss: {gen_mean}, discriminator loss: {disc_mean}")
-            show_tensor_images(fake)
-            show_tensor_images(real)
+            show_tensor_images(fake, type='Fake')
+            show_tensor_images(real, type='True')
             step_bins = 20
             x_axis = sorted([i * step_bins for i in range(len(generator_losses) // step_bins)] * step_bins)
             num_examples = (len(generator_losses) // step_bins) * step_bins
@@ -406,5 +406,6 @@ for epoch in range(n_epochs):
                                   "\nDiscriminator loss: " + str(disc_mean))
 
         cur_step += 1
+    tq.update(cur_batch_size)
 
 send_telegram_message("GAN training finished")
