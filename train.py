@@ -1276,7 +1276,7 @@ if __name__ == '__main__':
                                  'Kitti360_3D', 'txt_dataloader', 'lstm_txt_dataloader'],
                         help='One of the supported datasets')
 
-    parser.add_argument('--all_in_ram', type=str2bool, nargs='?', const=True, default=False,
+    parser.add_argument('--all_in_ram', type=str2bool, nargs='?', const=True, default=True,
                         help='Whether to keep images in RAM or not')
 
     args = parser.parse_args()
