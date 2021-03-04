@@ -277,10 +277,10 @@ def get_crit_loss(crit_fake_pred, crit_real_pred, gp, c_lambda):
 
 
 n_epochs = 1000
-z_dim = 64
+z_dim = 128
 display_step = 150
-batch_size = 128
-lr = 0.0002
+batch_size = 64
+lr = 0.0005
 beta_1 = 0.5
 beta_2 = 0.999
 c_lambda = 10
