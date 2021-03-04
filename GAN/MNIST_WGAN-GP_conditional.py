@@ -10,6 +10,7 @@ from torchvision.utils import make_grid
 import numpy as np
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 from dataloaders.sequencedataloader import txt_dataloader
@@ -167,42 +168,6 @@ def combine_vectors(x, y):
     return combined
 
 
-n_epochs = 100
-z_dim = 64
-display_step = 50
-batch_size = 128
-lr = 0.0002
-beta_1 = 0.5
-beta_2 = 0.999
-c_lambda = 10
-crit_repeats = 5
-device = 'cuda'
-
-n_classes = 7
-dataset_shape = (3, 224, 224)
-
-transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,)), ])
-
-#######################################################################################################################
-# generative chiringuito
-
-decimate = 1
-
-train_path = '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected_warped/prefix_all.txt'
-
-rgb_image_train_transforms = transforms.Compose(
-    [transforms.Resize((224, 224)), transforms.RandomAffine(15, translate=(0.0, 0.1), shear=(-5, 5)),
-     transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5), transforms.ToTensor(),
-     transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
-
-rgb_image_test_transforms = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(),
-                                                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
-
-# sandra dataloader = DataLoader(MNIST('.', download=False, transform=transform), batch_size=batch_size, shuffle=True)
-train_dataset = txt_dataloader(train_path, transform=rgb_image_test_transforms, decimateStep=decimate)
-dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=True)
-
-
 def get_input_dimensions(z_dim, shape, n_classes):
     '''
     Function for getting the size of the conditional input dimensions 
@@ -221,25 +186,12 @@ def get_input_dimensions(z_dim, shape, n_classes):
     return generator_input_dim, discriminator_im_chan
 
 
-# generator_input_dim, discriminator_im_chan = get_input_dimensions(z_dim, mnist_shape, n_classes)
-generator_input_dim, discriminator_im_chan = get_input_dimensions(z_dim, dataset_shape, n_classes)
-
-gen = Generator(input_dim=generator_input_dim, im_chan=3).to(device)
-gen_opt = torch.optim.Adam(gen.parameters(), lr=lr)
-disc = Discriminator(im_chan=discriminator_im_chan).to(device)
-disc_opt = torch.optim.Adam(disc.parameters(), lr=lr)
-
-
 def weights_init(m):
     if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
         torch.nn.init.normal_(m.weight, 0.0, 0.02)
     if isinstance(m, nn.BatchNorm2d):
         torch.nn.init.normal_(m.weight, 0.0, 0.02)
         torch.nn.init.constant_(m.bias, 0)
-
-
-gen = gen.apply(weights_init)
-disc = disc.apply(weights_init)
 
 
 #### GRADIENT PENALTY ######
@@ -320,6 +272,52 @@ def get_crit_loss(crit_fake_pred, crit_real_pred, gp, c_lambda):
     return crit_loss
 
 
+#######################################################################################################################
+##### Main ####
+
+
+n_epochs = 1000
+z_dim = 64
+display_step = 150
+batch_size = 128
+lr = 0.0002
+beta_1 = 0.5
+beta_2 = 0.999
+c_lambda = 10
+crit_repeats = 5
+device = 'cuda'
+
+n_classes = 7
+dataset_shape = (3, 224, 224)
+
+generator_input_dim, discriminator_im_chan = get_input_dimensions(z_dim, dataset_shape, n_classes)
+
+gen = Generator(input_dim=generator_input_dim, im_chan=3).to(device)
+gen_opt = torch.optim.Adam(gen.parameters(), lr=lr)
+disc = Discriminator(im_chan=discriminator_im_chan).to(device)
+disc_opt = torch.optim.Adam(disc.parameters(), lr=lr)
+
+gen = gen.apply(weights_init)
+disc = disc.apply(weights_init)
+
+#######################################################################################################################
+# generative chiringuito
+
+decimate = 1
+
+train_path = '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected_warped/prefix_all.txt'
+
+rgb_image_train_transforms = transforms.Compose(
+    [transforms.Resize((224, 224)), transforms.RandomAffine(15, translate=(0.0, 0.1), shear=(-5, 5)),
+     transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5), transforms.ToTensor(),
+     transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
+
+rgb_image_test_transforms = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(),
+                                                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
+
+train_dataset = txt_dataloader(train_path, transform=rgb_image_test_transforms, decimateStep=decimate)
+dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=True)
+
 cur_step = 0
 generator_losses = []
 discriminator_losses = []
@@ -392,7 +390,6 @@ for epoch in range(n_epochs):
         if cur_step % display_step == 0 and cur_step > 0:
             gen_mean = sum(generator_losses[-display_step:]) / display_step
             disc_mean = sum(discriminator_losses[-display_step:]) / display_step
-            print(f"Step {cur_step}: Generator loss: {gen_mean}, discriminator loss: {disc_mean}")
             show_tensor_images(fake, type='Fake')
             show_tensor_images(real, type='True')
             step_bins = 20
@@ -411,6 +408,6 @@ for epoch in range(n_epochs):
             plt.close()
 
         cur_step += 1
-    tq.update(cur_batch_size)
+        tq.update(cur_batch_size)
 
 send_telegram_message("GAN training finished")
