@@ -8,7 +8,7 @@ import time
 import torchvision.transforms as transforms
 from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror, GenerateNewDataset, \
     WriteDebugInfoOnNewDataset, GenerateWarping
-from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromAANETandDualBisenet360, alcala26012021
+from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromAANETandDualBisenet360, txt_dataloader
 import matplotlib.pyplot as plt
 from miscellaneous.utils import send_telegram_message, send_telegram_picture
 
@@ -60,7 +60,7 @@ def main(args):
         #                                      distance=args.distance_from_intersection)
 
         # NOW DO THE SAME BUT WITH THE TXT FILES
-        dataset = alcala26012021(path_filename=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
+        dataset = txt_dataloader(path_filename=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
                                                                                                      random_Ry_degrees=0.5,
                                                                                                      random_Rz_degrees=0.5,
                                                                                                      random_Tx_meters=2.0,
@@ -111,7 +111,7 @@ def main(args):
                                           distance=args.distance_from_intersection)
 
     if execute == 'alcala26012021':
-        dataset = alcala26012021(path_filename=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
+        dataset = txt_dataloader(path_filename=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
                                                                                                  random_Ry_degrees=0.0, #0.2,
                                                                                                  random_Rz_degrees=0.0, #0.2,
                                                                                                  random_Tx_meters =0.0, #2.0,
@@ -124,7 +124,7 @@ def main(args):
                                                                                  GenerateNewDataset(args.savefolder)]), usePIL=False)
 
     if execute == 'alcala.12.02.2021.000':
-        dataset = alcala26012021(path_filename=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
+        dataset = txt_dataloader(path_filename=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
                                                                                                      random_Ry_degrees=0.5,
                                                                                                      random_Rz_degrees=0.5,
                                                                                                      random_Tx_meters=2.0,
@@ -137,7 +137,7 @@ def main(args):
                                                                                      GenerateNewDataset(args.savefolder)]), usePIL=False)
 
     if execute == 'alcala.12.02.2021.001':
-        dataset = alcala26012021(path_filename=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
+        dataset = txt_dataloader(path_filename=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
                                                                                                      random_Ry_degrees=0.5,
                                                                                                      random_Rz_degrees=0.5,
                                                                                                      random_Tx_meters=2.0,
@@ -151,7 +151,7 @@ def main(args):
 
     if execute == 'KITTI-ROAD-WARPING':
         # this dataloader, uses the .txt files. Specify inside warpdataset the warping you need.
-        dataset = alcala26012021(path_filename=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
+        dataset = txt_dataloader(path_filename=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
                                                                                                      random_Ry_degrees=0.5,
                                                                                                      random_Rz_degrees=0.5,
                                                                                                      random_Tx_meters=2.0,

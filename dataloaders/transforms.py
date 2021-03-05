@@ -20,11 +20,13 @@ class GenerateNewDataset(object):
     path passed as parameter
     """
 
-    def __init__(self, path):
+    def __init__(self, path, save=True):
         self.path = path
+        self.save = save  # this is used to disable this 'fake-transform' even if present...
 
     def __call__(self, sample):
-        sample['path'] = self.path
+        if self.save:
+            sample['path'] = self.path
         return sample
 
 
