@@ -279,7 +279,7 @@ class WGANGP(LightningModule):
         a = (to_max - to_min) / (from_max - from_min)
         b = to_max - a * from_max
         data_ = np.array([(a * x + b) for x in data])
-        label = 'GAN - SINGLE IMAGE'
+        label = 'GAN - SINGLE IMAGE\ncurrent epoch: ' + str(self.current_epoch)
         a = plt.figure()
         plt.imshow(data_)
         send_telegram_picture(a, label)
@@ -294,7 +294,7 @@ class WGANGP(LightningModule):
         a = (to_max - to_min) / (from_max - from_min)
         b = to_max - a * from_max
         data_ = np.array([(a * x + b) for x in data])
-        label = 'GAN - GRID'
+        label = 'GAN - GRID\ncurrent epoch: ' + str(self.current_epoch)
         a = plt.figure()
         plt.imshow(data_)
         send_telegram_picture(a, label)
