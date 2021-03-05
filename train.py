@@ -31,7 +31,7 @@ from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromGenerate
 from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanobis_testing, lstm_network_pass
-from model.models import Resnet18, Vgg11, LSTM
+from model.models import Resnet18, Vgg11, LSTM, Freezed_Resnet
 
 
 def str2bool(v):
@@ -954,6 +954,8 @@ def main(args, model=None):
                 model = Resnet18(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
             elif args.model == 'vgg11':
                 model = Vgg11(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
+            elif args.model == 'freezed_resnet':
+                model = Freezed_Resnet(args.feature_detector_path, args.num_classes)
             elif args.model == 'LSTM':
                 model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
                              num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)

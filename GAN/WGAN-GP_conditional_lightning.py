@@ -1,5 +1,4 @@
 """
-To run this template just do:
 python wgan_gp.py
 After a few epochs, launch TensorBoard to see the images being generated at every batch:
 tensorboard --logdir default
@@ -134,9 +133,9 @@ class WGANGP(LightningModule):
         self.batch_size = batch_size
 
         # networks
-        image_shape = (3, 224, 224)
+        self.image_shape = (3, 224, 224)
         im_chan = 3
-        n_classes = 7
+        self.n_classes = 7
         generator_input_dim = latent_dim + n_classes
         discriminator_im_chan = im_chan + n_classes
         self.generator = Generator(input_dim=generator_input_dim, im_chan=3)
@@ -178,19 +177,7 @@ class WGANGP(LightningModule):
         gradients = gradients.view(gradients.size(0), -1).to(self.device)
         gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
         return gradient_penalty
-
-    
-    def get_noise(n_samples, input_dim, device='cpu'):
-        '''
-        Function for creating noise vectors: Given the dimensions (n_samples, input_dim)
-        creates a tensor of that shape filled with random numbers from the normal distribution.
-        Parameters:
-            n_samples: the number of samples to generate, a scalar
-            input_dim: the dimension of the input vector, a scalar
-            device: the device type
-        '''
-        return torch.randn(n_samples, input_dim, device=device)
-    
+  
     
     def get_one_hot_labels(labels, n_classes):
         '''
@@ -208,20 +195,25 @@ class WGANGP(LightningModule):
     
 
     def training_step(self, batch, batch_idx, optimizer_idx):
-        imgs, labels = batch
+        real, labels = batch
 
         # sample noise
-        z = torch.randn(imgs.shape[0], self.latent_dim)
-        z = z.type_as(imgs)
-
+        z = torch.randn(real.shape[0], self.latent_dim)
+        z = z.type_as(real)
+        
+        one_hot_labels = self.get_one_hot_labels(labels, self.n_classes)
+        image_one_hot_labels = one_hot_labels[:, :, None, None]
+        image_one_hot_labels = image_one_hot_labels.repeat(1, 1, self.image_shape[1], self.image_shape[2])
         lambda_gp = 10
 
         # train generator
         if optimizer_idx == 0:
-
+            # concatenate noise and labels
+            noise_and_labels = self.combine_vectors(z, one_hot_labels)
             # generate images
-            self.generated_imgs = self(z)
-
+            self.generated_imgs = self(noise_and_labels)
+            fake_image_and_labels = self.combine_vectors(self.generated_imgs, image_one_hot_labels)
+            
             # log sampled images
             sample_imgs = self.generated_imgs[:6]
             grid = torchvision.utils.make_grid(sample_imgs)
@@ -233,7 +225,7 @@ class WGANGP(LightningModule):
             valid = valid.type_as(imgs)
 
             # adversarial loss is binary cross-entropy
-            g_loss = -torch.mean(self.discriminator(self(z)))
+            g_loss = -torch.mean(self.discriminator(fake_image_and_labels)
             tqdm_dict = {'g_loss': g_loss}
             output = OrderedDict({
                 'loss': g_loss,
@@ -245,14 +237,17 @@ class WGANGP(LightningModule):
         # train discriminator
         # Measure discriminator's ability to classify real from generated samples
         elif optimizer_idx == 1:
-            fake_imgs = self(z)
-
+            noise_and_labels = self.combine_vectors(z, one_hot_labels)
+            #generate images
+            fake_imgs = self(noise_and_labels)
+            fake_image_and_labels = self.combine_vectors(fake_imgs, image_one_hot_labels)
+            real_image_and_labels = combine_vectors(real, image_one_hot_labels)
             # Real images
-            real_validity = self.discriminator(imgs)
+            real_validity = self.discriminator(real_image_and_labels)
             # Fake images
-            fake_validity = self.discriminator(fake_imgs)
+            fake_validity = self.discriminator(fake_image_and_labels)
             # Gradient penalty
-            gradient_penalty = self.compute_gradient_penalty(imgs.data, fake_imgs.data)
+            gradient_penalty = self.compute_gradient_penalty(real.data, fake_imgs.data)
             # Adversarial loss
             d_loss = -torch.mean(real_validity) + torch.mean(fake_validity) + lambda_gp * gradient_penalty
 

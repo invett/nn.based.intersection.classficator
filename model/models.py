@@ -1,3 +1,5 @@
+import os
+
 import torch
 from torchvision import models
 
@@ -64,10 +66,29 @@ class Vgg11(torch.nn.Module):
         return prediction
 
 
-class freezed_resnet(Resnet18, torch.nn.Module):
-    def __init__(self, num_classes=None):
-        super().__init__(embeddings=True)
+class Freezed_Resnet(Resnet18, torch.nn.Module):
+    def __init__(self, load_path, num_classes):
+        Resnet18.__init__(embeddings=True)
+        self.load_model(Resnet18, load_path)
+        self.fc = torch.nn.Linear(512, num_classes)
 
+    def forward(self, data):
+        feature = Resnet18.forward(data)
+        prediction = self.fc(feature)
+
+        return prediction
+
+    def load_model(Resnet18, load_path):
+        if os.path.isfile(load_path):
+            print("=> loading checkpoint '{}'".format(load_path))
+            checkpoint = torch.load(load_path, map_location='cpu')
+            Resnet18.load_state_dict(checkpoint['model_state_dict'])
+            print("=> loaded checkpoint {}".format(load_path))
+        else:
+            print("=> no checkpoint found at {}".format(load_path))
+
+        for param in Resnet18.parameters():
+            param.requires_grad = False
 
 
 class LSTM(torch.nn.Module):
