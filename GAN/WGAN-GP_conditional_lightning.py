@@ -49,13 +49,15 @@ class Generator(nn.Module):
                     nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding), nn.Tanh())
         
         
-        nn.Sequential(self.make_gen_block(input_dim, hidden_dim * 2),
+        self.gen = nn.Sequential(
+                      self.make_gen_block(input_dim, hidden_dim * 2),
                       self.make_gen_block(hidden_dim * 2, hidden_dim * 4, kernel_size=4, stride=1),
                       self.make_gen_block(hidden_dim * 4, hidden_dim * 8),
                       self.make_gen_block(hidden_dim * 8, hidden_dim * 4, kernel_size=4),
                       self.make_gen_block(hidden_dim * 4, hidden_dim * 2, kernel_size=4, padding=1),
                       self.make_gen_block(hidden_dim * 2, hidden_dim, kernel_size=4, padding=1),
-                      self.make_gen_block(hidden_dim, im_chan, kernel_size=4, padding=1, final_layer=True))
+                      self.make_gen_block(hidden_dim, im_chan, kernel_size=4, padding=1, final_layer=True)
+                   )
 
 
     def forward(self, noise):
