@@ -190,8 +190,6 @@ class WGANGP(LightningModule):
 
         lambda_gp = 10
 
-        print('zio   : ' + str(optimizer_idx))
-
         # train generator
         if optimizer_idx == 0:
 
@@ -256,7 +254,7 @@ class WGANGP(LightningModule):
                                                             transforms.Normalize((0.485, 0.456, 0.406),
                                                                                  (0.229, 0.224, 0.225))])
 
-            dataset_ = txt_dataloader(train_path, transform=rgb_image_test_transforms, decimateStep=10)
+            dataset_ = txt_dataloader(train_path, transform=rgb_image_test_transforms)
             dataloader_ = DataLoader(dataset_, batch_size=self.batch_size, shuffle=True, num_workers=8, drop_last=True)
             return dataloader_
 
