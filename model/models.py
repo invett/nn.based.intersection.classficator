@@ -64,6 +64,12 @@ class Vgg11(torch.nn.Module):
         return prediction
 
 
+class freezed_resnet(Resnet18, torch.nn.Module):
+    def __init__(self, num_classes=None):
+        super().__init__(embeddings=True)
+
+
+
 class LSTM(torch.nn.Module):
 
     def __init__(self, num_classes, lstm_dropout, fc_dropout, embeddings=False, num_layers=2, input_size=512,
