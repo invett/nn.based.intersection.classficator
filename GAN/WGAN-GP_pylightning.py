@@ -17,6 +17,8 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from pytorch_lightning.core import LightningModule
 from pytorch_lightning.trainer import Trainer
+import kornia
+import matplotlib.pyplot as plt
 
 from torchvision.datasets import MNIST
 from dataloaders.sequencedataloader import txt_dataloader
@@ -138,7 +140,7 @@ class WGANGP(LightningModule):
         self.discriminator = Discriminator(im_chan)
         self.generator.apply(self.weights_init)
         self.discriminator.apply(self.weights_init)
-        self.validation_z = torch.randn(8, self.latent_dim)
+        self.validation_z = torch.randn(9, self.latent_dim)
 
         self.example_input_array = torch.zeros(2, self.latent_dim)
 
@@ -175,13 +177,20 @@ class WGANGP(LightningModule):
         return gradient_penalty
 
     def training_step(self, batch, batch_idx, optimizer_idx):
-        imgs, _ = batch
+        if self.dataloader_choice == 'MNIST':
+            imgs, _ = batch
+        elif self.dataloader_choice == 'txt_dataloader':
+            imgs = batch['data']
+        else:
+            return -1
 
         # sample noise
         z = torch.randn(imgs.shape[0], self.latent_dim)
         z = z.type_as(imgs)
 
         lambda_gp = 10
+
+        print('zio   : ' + str(optimizer_idx))
 
         # train generator
         if optimizer_idx == 0:
@@ -224,7 +233,7 @@ class WGANGP(LightningModule):
             return output
 
     def configure_optimizers(self):
-        n_critic = 5
+        n_critic = 5  # how often the DISCRIMINATOR will be called, every 5 times the iteration of the GENERATOR
 
         lr = self.lr
         b1 = self.b1
@@ -247,7 +256,7 @@ class WGANGP(LightningModule):
                                                             transforms.Normalize((0.485, 0.456, 0.406),
                                                                                  (0.229, 0.224, 0.225))])
 
-            dataset_ = txt_dataloader(train_path, transform=rgb_image_test_transforms)
+            dataset_ = txt_dataloader(train_path, transform=rgb_image_test_transforms, decimateStep=10)
             dataloader_ = DataLoader(dataset_, batch_size=self.batch_size, shuffle=True, num_workers=8, drop_last=True)
             return dataloader_
 
@@ -256,7 +265,44 @@ class WGANGP(LightningModule):
 
         # log sampled images
         sample_imgs = self(z)
-        grid = torchvision.utils.make_grid(sample_imgs)
+
+        # image_tensor = (image_tensor + 1) / 2
+        # image_unflat = image_tensor.detach().cpu()
+        # image_grid = make_grid(image_unflat[:num_images], nrow=nrow)
+
+        grid = torchvision.utils.make_grid(sample_imgs, nrow=3)
+
+        # send single image
+        data = kornia.tensor_to_image(sample_imgs[0])  # will be between -1 and 1
+        from_max = 1.0
+        from_min = -1.0
+        to_max = 1.
+        to_min = 0.
+        a = (to_max - to_min) / (from_max - from_min)
+        b = to_max - a * from_max
+        data_ = np.array([(a * x + b) for x in data])
+        label = 'GAN - SINGLE IMAGE'
+        a = plt.figure()
+        plt.imshow(data_)
+        send_telegram_picture(a, label)
+        plt.close('all')
+
+        # send grid
+        data = kornia.tensor_to_image(grid)  # will be between -1 and 1
+        from_max = 1.0
+        from_min = -1.0
+        to_max = 1.
+        to_min = 0.
+        a = (to_max - to_min) / (from_max - from_min)
+        b = to_max - a * from_max
+        data_ = np.array([(a * x + b) for x in data])
+        label = 'GAN - GRID'
+        a = plt.figure()
+        plt.imshow(data_)
+        send_telegram_picture(a, label)
+        plt.close('all')
+
+
         self.logger.experiment.add_image('generated_images', grid, self.current_epoch)
 
 
