@@ -4,12 +4,12 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
 
 ## TODOs
 - [x] Make again all kitti360 warpings without mirror
-- [ ] Training 'kevin' RESNET kitti360/Kitti2011 + TEST: SVM + Mahalanobis + FC
-- [ ] Training LSTM with Kitti360/Kitti2011
-- [ ] Training LSTM with alcala26/alcala12* (¿Solve errors?)
+- [ ] Training 'kevin' RESNET kitti360/Kitti2011 + TEST: SVM + Mahalanobis + FC (Pending fully conected)
+- [x] Training LSTM with Kitti360/Kitti2011
+- [x] Training LSTM with alcala26/alcala12
 - [ ] Training LSTM 'Kevin' + TEST: SVM + Mahalanobis
 - [ ] Temporal integration with Resnet Embeddings (¿Method to compare RESNET/LSTM? We can't just compare conf.matrices)
-- [ ] Integracion temporal de los resultados directos de la Resnet. HMM
+- [ ] Kitti360/Kitti2011 Segmentation masks
 
 ## FUTURISTIC wannabe
 - [ ] CARLA + pix2pixHD https://github.com/NVIDIA/pix2pixHD
