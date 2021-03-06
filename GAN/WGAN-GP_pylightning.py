@@ -134,6 +134,9 @@ class WGANGP(LightningModule):
 
         self.opt_g_frequency = kwargs['opt_g_frequency']
         self.opt_d_frequency = kwargs['opt_d_frequency']
+        self.precision = kwargs['precision']  ## actually, it's not used, but with this we can debug in telegram routine
+        self.decimate = kwargs['decimate']
+        self.nowandb = kwargs['nowandb']
 
         # networks
         image_shape = (3, 224, 224)
@@ -254,7 +257,7 @@ class WGANGP(LightningModule):
                                                             transforms.Normalize((0.485, 0.456, 0.406),
                                                                                  (0.229, 0.224, 0.225))])
 
-            dataset_ = txt_dataloader(train_path, transform=rgb_image_test_transforms)
+            dataset_ = txt_dataloader(train_path, transform=rgb_image_test_transforms, decimateStep=self.decimate)
             dataloader_ = DataLoader(dataset_, batch_size=self.batch_size, shuffle=True, num_workers=8, drop_last=True)
             return dataloader_
 
@@ -268,10 +271,9 @@ class WGANGP(LightningModule):
         # image_unflat = image_tensor.detach().cpu()
         # image_grid = make_grid(image_unflat[:num_images], nrow=nrow)
 
-        grid = torchvision.utils.make_grid(sample_imgs, nrow=3)
+        # send single image .. ensure 32bit images for telegram, otherwise BUMMM
+        data = kornia.tensor_to_image(sample_imgs[0]).astype(np.float32)  # will be between -1 and 1
 
-        # send single image
-        data = kornia.tensor_to_image(sample_imgs[0])  # will be between -1 and 1
         from_max = 1.0
         from_min = -1.0
         to_max = 1.
@@ -286,7 +288,8 @@ class WGANGP(LightningModule):
         plt.close('all')
 
         # send grid
-        data = kornia.tensor_to_image(grid)  # will be between -1 and 1
+        grid = torchvision.utils.make_grid(sample_imgs, nrow=3)
+        data = kornia.tensor_to_image(grid).astype(np.float32)   # will be between -1 and 1
         from_max = 1.0
         from_min = -1.0
         to_max = 1.
@@ -300,26 +303,26 @@ class WGANGP(LightningModule):
         send_telegram_picture(a, label)
         plt.close('all')
 
-        # send grid
-        data = kornia.tensor_to_image(grid)  # will be between -1 and 1
-        from_max = 1.0
-        from_min = -1.0
-        to_max = 1.
-        to_min = 0.
-        a = (to_max - to_min) / (from_max - from_min)
-        b = to_max - a * from_max
-        data_ = np.array([(a * x + b) for x in data])
-        label = 'GAN - GRID\ncurrent epoch: ' + str(self.current_epoch)
-        a = plt.figure()
-        plt.imshow(data_)
-        self.trainer.logger.experiment.log({"current grid": wandb.Image(plt, caption=f"Epoch:{self.current_epoch}")})
-        plt.close('all')
+        # send grid to wandb
+        if not self.nowandb:
+            data = kornia.tensor_to_image(grid).astype(np.float32)   # will be between -1 and 1
+            from_max = 1.0
+            from_min = -1.0
+            to_max = 1.
+            to_min = 0.
+            a = (to_max - to_min) / (from_max - from_min)
+            b = to_max - a * from_max
+            data_ = np.array([(a * x + b) for x in data])
+            label = 'GAN - GRID\ncurrent epoch: ' + str(self.current_epoch)
+            a = plt.figure()
+            plt.imshow(data_)
+            self.trainer.logger.experiment.log({"current grid": wandb.Image(plt, caption=f"Epoch:{self.current_epoch}")})
+            plt.close('all')
 
         # self.logger.experiment.add_image('generated_images', grid, self.current_epoch)
 
 
 def main(args: Namespace) -> None:
-
     # keep track of parameters in logs
     print(args)
 
@@ -341,9 +344,10 @@ def main(args: Namespace) -> None:
     if not args.nowandb:
         run = wandb.init(project='GAN')
         wandb_logger = WandbLogger(project='GAN', entity='chiringuito', group=group_id, job_type="training")
-        trainer = Trainer(gpus=args.gpus, logger=wandb_logger, weights_summary='full',precision=16, profiler=True)
+        trainer = Trainer(gpus=args.gpus, logger=wandb_logger, weights_summary='full', precision=args.precision,
+                          profiler=True)
     else:
-        trainer = Trainer(gpus=args.gpus, weights_summary='full',precision=16, profiler=True)
+        trainer = Trainer(gpus=args.gpus, weights_summary='full', precision=args.precision, profiler=True)
 
     # ------------------------
     # 3 START TRAINING
@@ -369,7 +373,9 @@ if __name__ == '__main__':
 
     parser.add_argument('--wandb_group_id', type=str, help='Set group id for the wandb experiment')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
-
+    parser.add_argument("--precision", type=int, default=32, help="32 or 16 bit precision", choices=[32, 16])
+    parser.add_argument('--decimate', type=int, default=1, help='How much of the points will remain after '
+                                                                'decimation')
     hparams = parser.parse_args()
 
     main(hparams)
