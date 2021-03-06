@@ -443,7 +443,7 @@ def lstm_network_pass(args, batch, criterion, model, lstm, miner=None, acc_metri
     # Output contains a packed sequence with the prediction in each timestamp --> (seq_len x batch x hidden_size)
     # Prediction contains the prediction in the last timestamp --> (batch x hidden_size)
 
-    output, lens_output = pad_packed_sequence(output, batch_first=True)
+    # output, lens_output = pad_packed_sequence(output, batch_first=True)
 
     if args.metric:
         if miner is not None:

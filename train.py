@@ -230,11 +230,8 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
 
             if args.model == 'LSTM':
                 LSTM.eval()
-                if args.metric:
-                    acc, loss, _, _ = lstm_network_pass(args, sample, criterion, model, LSTM, miner=miner,
-                                                        acc_metric=acc_metric)
-                else:
-                    acc, loss, label, predict = lstm_network_pass(args, sample, criterion, model, LSTM)
+                acc, loss, _, _ = lstm_network_pass(args, sample, criterion, model, LSTM, miner=miner,
+                                                    acc_metric=acc_metric)
             else:
                 model.eval()
                 acc, loss, label, predict, embedding = student_network_pass(args, sample, criterion, model,
@@ -513,11 +510,8 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
 
         for sample in dataloader_train:
             if args.model == 'LSTM':
-                if args.metric:
-                    acc, loss, _, _ = lstm_network_pass(args, sample, criterion, model, LSTM, miner=miner,
-                                                        acc_metric=acc_metric)
-                else:
-                    acc, loss, _, _ = lstm_network_pass(args, sample, criterion, model, LSTM)
+                acc, loss, _, _ = lstm_network_pass(args, sample, criterion, model, LSTM, miner=miner,
+                                                    acc_metric=acc_metric)
             else:
                 acc, loss, _, _, _ = student_network_pass(args, sample, criterion, model, gt_list=gt_list,
                                                           weights_param=weights, miner=miner, acc_metric=acc_metric)
@@ -584,7 +578,8 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
 
         if epoch % args.validation_step == 0:
             if args.model == 'LSTM':
-                confusion_matrix, acc_val, loss_val = validation(args, model, criterion, dataloader_val, LSTM=LSTM)
+                confusion_matrix, acc_val, loss_val = validation(args, model, criterion, dataloader_val, LSTM=LSTM,
+                                                                 miner=miner, acc_metric=acc_metric)
                 LSTM.train()
             else:
                 confusion_matrix, acc_val, loss_val = validation(args, model, criterion, dataloader_val,
