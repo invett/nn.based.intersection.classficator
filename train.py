@@ -460,6 +460,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
     else:
         gt_list = None  # No need of centroids
         miner = None  # No need of miner
+        acc_metric = None
         if args.weighted:
             if args.weight_tensor == 'Kitti360':
                 weights = [0.99, 1.01, 0.98, 0.99, 1.05, 0.98, 0.99]
