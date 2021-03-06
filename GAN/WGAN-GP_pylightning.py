@@ -16,7 +16,7 @@ import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from pytorch_lightning.core import LightningModule
-from pytorch_lightning import loggers as pl_loggers
+from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.trainer import Trainer
 import kornia
 import matplotlib.pyplot as plt
@@ -25,24 +25,23 @@ from torchvision.datasets import MNIST
 from dataloaders.sequencedataloader import txt_dataloader
 from miscellaneous.utils import send_telegram_picture, send_telegram_message
 
+import wandb
+
 
 class Generator(nn.Module):
     def __init__(self, input_dim=10, im_chan=1, hidden_dim=64):
         super(Generator, self).__init__()
         self.input_dim = input_dim
 
-        self.gen =  nn.Sequential(
-                          self.make_gen_block(input_dim, hidden_dim * 2),
-                          self.make_gen_block(hidden_dim * 2, hidden_dim * 4, kernel_size=4, stride=1),
-                          self.make_gen_block(hidden_dim * 4, hidden_dim * 8),
-                          self.make_gen_block(hidden_dim * 8, hidden_dim * 4, kernel_size=4),
-                          self.make_gen_block(hidden_dim * 4, hidden_dim * 2, kernel_size=4, padding=1),
-                          self.make_gen_block(hidden_dim * 2, hidden_dim, kernel_size=4, padding=1),
-                          self.make_gen_block(hidden_dim, im_chan, kernel_size=4, padding=1, final_layer=True)
-                      )
+        self.gen = nn.Sequential(self.make_gen_block(input_dim, hidden_dim * 2),
+                                 self.make_gen_block(hidden_dim * 2, hidden_dim * 4, kernel_size=4, stride=1),
+                                 self.make_gen_block(hidden_dim * 4, hidden_dim * 8),
+                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 4, kernel_size=4),
+                                 self.make_gen_block(hidden_dim * 4, hidden_dim * 2, kernel_size=4, padding=1),
+                                 self.make_gen_block(hidden_dim * 2, hidden_dim, kernel_size=4, padding=1),
+                                 self.make_gen_block(hidden_dim, im_chan, kernel_size=4, padding=1, final_layer=True))
 
-    def make_gen_block(self, input_channels, output_channels, kernel_size=3, stride=2, padding=0,
-                       final_layer=False):
+    def make_gen_block(self, input_channels, output_channels, kernel_size=3, stride=2, padding=0, final_layer=False):
         """
         Function to return a sequence of operations corresponding to a generator block of DCGAN;
         a transposed convolution, a batchnorm (except in the final layer), and an activation.
@@ -61,8 +60,7 @@ class Generator(nn.Module):
                 nn.BatchNorm2d(output_channels), nn.ReLU(inplace=True))
         else:
             return nn.Sequential(
-                nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding),
-                nn.Tanh())
+                nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding), nn.Tanh())
 
     def forward(self, noise):
         """
@@ -134,6 +132,9 @@ class WGANGP(LightningModule):
         self.batch_size = batch_size
         self.dataloader_choice = kwargs['dataloader']
 
+        self.opt_g_frequency = kwargs['opt_g_frequency']
+        self.opt_d_frequency = kwargs['opt_d_frequency']
+
         # networks
         image_shape = (3, 224, 224)
         im_chan = 3
@@ -165,14 +166,9 @@ class WGANGP(LightningModule):
         d_interpolates = self.discriminator(interpolates)
         fake = torch.Tensor(real_samples.shape[0], 1).fill_(1.0).to(self.device)
         # Get gradient w.r.t. interpolates
-        gradients = torch.autograd.grad(
-            outputs=d_interpolates,
-            inputs=interpolates,
-            grad_outputs=fake,
-            create_graph=True,
-            retain_graph=True,
-            only_inputs=True,
-        )[0]
+        gradients = \
+            torch.autograd.grad(outputs=d_interpolates, inputs=interpolates, grad_outputs=fake, create_graph=True,
+                                retain_graph=True, only_inputs=True, )[0]
         gradients = gradients.view(gradients.size(0), -1).to(self.device)
         gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
         return gradient_penalty
@@ -200,7 +196,7 @@ class WGANGP(LightningModule):
             # log sampled images
             sample_imgs = self.generated_imgs[:6]
             grid = torchvision.utils.make_grid(sample_imgs)
-            #self.logger.experiment.add_image('generated_images', grid, 0)
+            # self.logger.experiment.add_image('generated_images', grid, 0)
 
             # ground truth result (ie: all fake)
             # put on GPU because we created this tensor inside training_loop
@@ -209,12 +205,12 @@ class WGANGP(LightningModule):
 
             # adversarial loss is binary cross-entropy
             g_loss = -torch.mean(self.discriminator(self(z)))
-            #tqdm_dict = {'g_loss': g_loss}
-            #output = OrderedDict({'loss': g_loss, 'progress_bar': tqdm_dict, 'log': tqdm_dict})
-            #return output
-            self.log("g_loss": g_loss, on_step=False, on_epoch=True)
+            # tqdm_dict = {'g_loss': g_loss}
+            # output = OrderedDict({'loss': g_loss, 'progress_bar': tqdm_dict, 'log': tqdm_dict})
+            # return output
+            self.log('g_loss', g_loss, on_step=False, on_epoch=True)
             return g_loss
-            
+
 
         # train discriminator
         # Measure discriminator's ability to classify real from generated samples
@@ -230,19 +226,18 @@ class WGANGP(LightningModule):
             # Adversarial loss
             d_loss = -torch.mean(real_validity) + torch.mean(fake_validity) + lambda_gp * gradient_penalty
 
-            self.log("d_loss": d_loss, on_step=False, on_epoch=True)
+            self.log('d_loss', d_loss, on_step=False, on_epoch=True)
             return d_loss
 
     def configure_optimizers(self):
-        n_critic = 5  # how often the DISCRIMINATOR will be called, every 5 times the iteration of the GENERATOR
-
         lr = self.lr
         b1 = self.b1
         b2 = self.b2
 
         opt_g = torch.optim.Adam(self.generator.parameters(), lr=lr, betas=(b1, b2))
         opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr, betas=(b1, b2))
-        return ({'optimizer': opt_g, 'frequency': 1}, {'optimizer': opt_d, 'frequency': n_critic})
+        return ({'optimizer': opt_g, 'frequency': self.opt_g_frequency},
+                {'optimizer': opt_d, 'frequency': self.opt_g_frequency})
 
     def train_dataloader(self):
         if self.dataloader_choice == 'MNIST':
@@ -303,25 +298,50 @@ class WGANGP(LightningModule):
         send_telegram_picture(a, label)
         plt.close('all')
 
+        # send grid
+        data = kornia.tensor_to_image(grid)  # will be between -1 and 1
+        from_max = 1.0
+        from_min = -1.0
+        to_max = 1.
+        to_min = 0.
+        a = (to_max - to_min) / (from_max - from_min)
+        b = to_max - a * from_max
+        data_ = np.array([(a * x + b) for x in data])
+        label = 'GAN - GRID\ncurrent epoch: ' + str(self.current_epoch)
+        a = plt.figure()
+        plt.imshow(data_)
+        self.trainer.logger.experiment.log({"current grid": wandb.Image(plt, caption=f"Epoch:{self.current_epoch}")})
+        plt.close('all')
 
-        #self.logger.experiment.add_image('generated_images', grid, self.current_epoch)
+        # self.logger.experiment.add_image('generated_images', grid, self.current_epoch)
 
 
 def main(args: Namespace) -> None:
+
+    # keep track of parameters in logs
+    print(args)
+
     # ------------------------
     # 1 INIT LIGHTNING MODEL
     # ------------------------
     model = WGANGP(**vars(args))
+
+    if args.wandb_group_id:
+        group_id = args.wandb_group_id
+    else:
+        group_id = 'GENERIC-GAN'
 
     # ------------------------
     # 2 INIT TRAINER
     # ------------------------
     # If use distubuted training  PyTorch recommends to use DistributedDataParallel.
     # See: https://pytorch.org/docs/stable/nn.html#torch.nn.DataParallel
-    run=wandb.init(project="GAN") 
-    #config = wandb.config
-    wandb_logger = pl_loggers.WandbLogger()
-    trainer = Trainer(gpus=args.gpus, logger=wandb_logger)
+    if not args.nowandb:
+        run = wandb.init(project='GAN')
+        wandb_logger = WandbLogger(project='GAN', entity='chiringuito', group=group_id, job_type="training")
+        trainer = Trainer(gpus=args.gpus, logger=wandb_logger)
+    else:
+        trainer = Trainer(gpus=args.gpus)
 
     # ------------------------
     # 3 START TRAINING
@@ -337,11 +357,16 @@ if __name__ == '__main__':
     parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
     parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
     parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
+    parser.add_argument("--opt_g_frequency", type=int, default=1, help="generator frequency")
+    parser.add_argument("--opt_d_frequency", type=int, default=5, help="discriminator frequency")
     parser.add_argument('--dataloader', type=str, default='txt_dataloader',
                         choices=['fromAANETandDualBisenet', 'generatedDataset', 'Kitti2011_RGB', 'triplet_OBB',
                                  'triplet_BOO', 'triplet_ROO', 'triplet_ROO_360', 'triplet_3DOO_360', 'Kitti360',
                                  'Kitti360_3D', 'txt_dataloader', 'lstm_txt_dataloader', 'MNIST'],
                         help='One of the supported datasets')
+
+    parser.add_argument('--wandb_group_id', type=str, help='Set group id for the wandb experiment')
+    parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
 
     hparams = parser.parse_args()
 
