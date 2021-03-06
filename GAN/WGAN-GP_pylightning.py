@@ -187,6 +187,8 @@ class WGANGP(LightningModule):
 
         lambda_gp = 10
 
+        # print('optimizer_idx: ' + str(optimizer_idx))
+
         # train generator
         if optimizer_idx == 0:
 
@@ -237,7 +239,7 @@ class WGANGP(LightningModule):
         opt_g = torch.optim.Adam(self.generator.parameters(), lr=lr, betas=(b1, b2))
         opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr, betas=(b1, b2))
         return ({'optimizer': opt_g, 'frequency': self.opt_g_frequency},
-                {'optimizer': opt_d, 'frequency': self.opt_g_frequency})
+                {'optimizer': opt_d, 'frequency': self.opt_d_frequency})
 
     def train_dataloader(self):
         if self.dataloader_choice == 'MNIST':
