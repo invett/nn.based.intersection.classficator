@@ -230,8 +230,8 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
 
             if args.model == 'LSTM':
                 LSTM.eval()
-                acc, loss, _, _ = lstm_network_pass(args, sample, criterion, model, LSTM, miner=miner,
-                                                    acc_metric=acc_metric)
+                acc, loss, label, predict = lstm_network_pass(args, sample, criterion, model, LSTM, miner=miner,
+                                                              acc_metric=acc_metric)
             else:
                 model.eval()
                 acc, loss, label, predict, embedding = student_network_pass(args, sample, criterion, model,
