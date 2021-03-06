@@ -16,6 +16,7 @@ import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from pytorch_lightning.core import LightningModule
+from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.trainer import Trainer
 import kornia
 import matplotlib.pyplot as plt
@@ -199,7 +200,7 @@ class WGANGP(LightningModule):
             # log sampled images
             sample_imgs = self.generated_imgs[:6]
             grid = torchvision.utils.make_grid(sample_imgs)
-            self.logger.experiment.add_image('generated_images', grid, 0)
+            #self.logger.experiment.add_image('generated_images', grid, 0)
 
             # ground truth result (ie: all fake)
             # put on GPU because we created this tensor inside training_loop
@@ -208,9 +209,12 @@ class WGANGP(LightningModule):
 
             # adversarial loss is binary cross-entropy
             g_loss = -torch.mean(self.discriminator(self(z)))
-            tqdm_dict = {'g_loss': g_loss}
-            output = OrderedDict({'loss': g_loss, 'progress_bar': tqdm_dict, 'log': tqdm_dict})
-            return output
+            #tqdm_dict = {'g_loss': g_loss}
+            #output = OrderedDict({'loss': g_loss, 'progress_bar': tqdm_dict, 'log': tqdm_dict})
+            #return output
+            self.log("g_loss": g_loss, on_step=False, on_epoch=True)
+            return g_loss
+            
 
         # train discriminator
         # Measure discriminator's ability to classify real from generated samples
@@ -226,9 +230,8 @@ class WGANGP(LightningModule):
             # Adversarial loss
             d_loss = -torch.mean(real_validity) + torch.mean(fake_validity) + lambda_gp * gradient_penalty
 
-            tqdm_dict = {'d_loss': d_loss}
-            output = OrderedDict({'loss': d_loss, 'progress_bar': tqdm_dict, 'log': tqdm_dict})
-            return output
+            self.log("d_loss": d_loss, on_step=False, on_epoch=True)
+            return d_loss
 
     def configure_optimizers(self):
         n_critic = 5  # how often the DISCRIMINATOR will be called, every 5 times the iteration of the GENERATOR
@@ -301,7 +304,7 @@ class WGANGP(LightningModule):
         plt.close('all')
 
 
-        self.logger.experiment.add_image('generated_images', grid, self.current_epoch)
+        #self.logger.experiment.add_image('generated_images', grid, self.current_epoch)
 
 
 def main(args: Namespace) -> None:
@@ -315,7 +318,10 @@ def main(args: Namespace) -> None:
     # ------------------------
     # If use distubuted training  PyTorch recommends to use DistributedDataParallel.
     # See: https://pytorch.org/docs/stable/nn.html#torch.nn.DataParallel
-    trainer = Trainer(gpus=args.gpus)
+    run=wandb.init(project="GAN") 
+    #config = wandb.config
+    wandb_logger = pl_loggers.WandbLogger()
+    trainer = Trainer(gpus=args.gpus, logger=wandb_logger)
 
     # ------------------------
     # 3 START TRAINING
