@@ -137,6 +137,7 @@ class WGANGP(LightningModule):
         self.precision = kwargs['precision']  ## actually, it's not used, but with this we can debug in telegram routine
         self.decimate = kwargs['decimate']
         self.nowandb = kwargs['nowandb']
+        self.loss = kwargs['loss']
 
         # networks
         image_shape = (3, 224, 224)
@@ -207,9 +208,14 @@ class WGANGP(LightningModule):
             # put on GPU because we created this tensor inside training_loop
             valid = torch.ones(imgs.size(0), 1)
             valid = valid.type_as(imgs)
-
-            # adversarial loss is binary cross-entropy
-            g_loss = -torch.mean(self.discriminator(self(z)))
+            
+            fake_validity = self.discriminator(self(z))            
+            if self.loss == 'wloss':
+                # adversarial loss is binary cross-entropy
+                g_loss = -torch.mean(fake_validity)
+            else:
+                #BCELoss (sigmoid activation function included)
+                g_loss = nn.BCEWithLogitsLoss(fake_validity, torch.ones_like(fake_validity))
             # tqdm_dict = {'g_loss': g_loss}
             # output = OrderedDict({'loss': g_loss, 'progress_bar': tqdm_dict, 'log': tqdm_dict})
             # return output
@@ -226,11 +232,16 @@ class WGANGP(LightningModule):
             real_validity = self.discriminator(imgs)
             # Fake images
             fake_validity = self.discriminator(fake_imgs)
-            # Gradient penalty
-            gradient_penalty = self.compute_gradient_penalty(imgs.data, fake_imgs.data)
-            # Adversarial loss
-            d_loss = -torch.mean(real_validity) + torch.mean(fake_validity) + lambda_gp * gradient_penalty
-
+            if self.loss == 'wloss':
+                # Gradient penalty
+                gradient_penalty = self.compute_gradient_penalty(imgs.data, fake_imgs.data)
+                # Adversarial loss
+                d_loss = -torch.mean(real_validity) + torch.mean(fake_validity) + lambda_gp * gradient_penalty
+            else:
+                d_loss_fake = nn.BCEWithLogitsLoss(fake_validity, torch.zeros_like(fake_validity))
+                d_loss_real = nn.BCEWithLogitsLoss(real_validity, torch.ones_like(real_validity))
+                d_loss = (d_loss_fake + d_loss_real) / 2
+                
             self.log('d_loss', d_loss, on_step=False, on_epoch=True)
             return d_loss
 
@@ -374,6 +385,7 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_group_id', type=str, help='Set group id for the wandb experiment')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     parser.add_argument("--precision", type=int, default=32, help="32 or 16 bit precision", choices=[32, 16])
+    parser.add_argument("--loss", type=str, default='wloss', help="Choose loss between Wasserstein or BCE", choices=['wloss', 'bce'])
     parser.add_argument('--decimate', type=int, default=1, help='How much of the points will remain after '
                                                                 'decimation')
     hparams = parser.parse_args()
