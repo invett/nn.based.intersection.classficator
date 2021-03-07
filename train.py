@@ -823,11 +823,12 @@ def main(args, model=None):
         if not args.nowandb and args.train:  # if nowandb flag was set, skip
             if args.wandb_resume:
                 print('Resuming WANDB run, this run will log into: ', args.wandb_resume)
-                wandb.init(project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
+                wandb.init(wandb.Settings(start_method="fork"), project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
                            job_type="training", reinit=True, resume=args.wandb_resume)
+
                 wandb.config.update(args, allow_val_change=True)
             else:
-                wandb.init(project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
+                wandb.init(wandb.Settings(start_method="fork"), project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
                            job_type="training", reinit=True)
                 wandb.config.update(args)
 
@@ -1131,7 +1132,7 @@ def main(args, model=None):
                                          num_workers=args.num_workers, worker_init_fn=init_fn)
 
         if not args.nowandb:  # if nowandb flag was set, skip
-            wandb.init(project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
+            wandb.init(wandb.Settings(start_method="fork"), project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
                        job_type="eval")
             wandb.config.update(args)
 
