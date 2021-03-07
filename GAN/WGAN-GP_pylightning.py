@@ -29,11 +29,11 @@ import wandb
 
 
 class Generator(nn.Module):
-    def __init__(self, input_dim=10, im_chan=1, hidden_dim=64):
+    def __init__(self, input_dim=100, im_chan=1, hidden_dim=64):
         super(Generator, self).__init__()
         self.input_dim = input_dim
 
-        self.gen = nn.Sequential(self.make_gen_block(input_dim, hidden_dim * 2), #
+        self.gen = nn.Sequential(self.make_gen_block(input_dim, hidden_dim * 2), 
                                  self.make_gen_block(hidden_dim * 2, hidden_dim * 4, kernel_size=4, stride=1),
                                  self.make_gen_block(hidden_dim * 4, hidden_dim * 8),
                                  self.make_gen_block(hidden_dim * 8, hidden_dim * 4),
@@ -137,12 +137,13 @@ class WGANGP(LightningModule):
         self.decimate = kwargs['decimate']
         self.nowandb = kwargs['nowandb']
         self.loss = kwargs['loss']
+        self.hidden_dim = kwargs['hidden_dim']
 
         # networks
         image_shape = (3, 224, 224)
         im_chan = 3
-        self.generator = Generator(input_dim=latent_dim, im_chan=3)
-        self.discriminator = Discriminator(im_chan)
+        self.generator = Generator(input_dim=latent_dim, im_chan=3, hidden_dim=self.hidden_dim)
+        self.discriminator = Discriminator(im_chan, hidden_dim=self.hidden_dim)
         self.generator.apply(self.weights_init)
         self.discriminator.apply(self.weights_init)
         self.validation_z = torch.randn(9, self.latent_dim)
@@ -189,6 +190,8 @@ class WGANGP(LightningModule):
         z = z.type_as(imgs)
 
         lambda_gp = 10
+        # For loss=BCELoss option
+        criterion = torch.nn.BCEWithLogitsLoss()
 
         # print('optimizer_idx: ' + str(optimizer_idx))
 
@@ -214,7 +217,7 @@ class WGANGP(LightningModule):
                 g_loss = -torch.mean(fake_validity)
             else:
                 #BCELoss (sigmoid activation function included)
-                g_loss = nn.BCEWithLogitsLoss(fake_validity, valid)
+                g_loss = criterion(fake_validity, valid)
             # tqdm_dict = {'g_loss': g_loss}
             # output = OrderedDict({'loss': g_loss, 'progress_bar': tqdm_dict, 'log': tqdm_dict})
             # return output
@@ -240,8 +243,8 @@ class WGANGP(LightningModule):
                 # put on GPU because we created this tensor inside training_loop
                 real_valid = torch.ones(imgs.size(0), 1).type_as(imgs)
                 fake_valid = torch.zeros(imgs.size(0), 1).type_as(imgs)
-                d_loss_fake = nn.BCEWithLogitsLoss(fake_validity, fake_valid)
-                d_loss_real = nn.BCEWithLogitsLoss(real_validity, real_valid) #torch.ones_like(real_validity)
+                d_loss_fake = criterion(fake_validity, fake_valid)
+                d_loss_real = criterion(real_validity, real_valid) #torch.ones_like(real_validity)
                 d_loss = (d_loss_fake + d_loss_real) / 2
                 
             self.log('d_loss', d_loss, on_step=False, on_epoch=True)
@@ -376,6 +379,7 @@ if __name__ == '__main__':
     parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
     parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
     parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
+    parser.add_argument("--hidden_dim", type=int, default=64, help="channels width multiplier")
     parser.add_argument("--opt_g_frequency", type=int, default=1, help="generator frequency")
     parser.add_argument("--opt_d_frequency", type=int, default=5, help="discriminator frequency")
     parser.add_argument('--dataloader', type=str, default='txt_dataloader',
