@@ -214,7 +214,7 @@ class WGANGP(LightningModule):
                 g_loss = -torch.mean(fake_validity)
             else:
                 #BCELoss (sigmoid activation function included)
-                g_loss = nn.BCEWithLogitsLoss(fake_validity, torch.ones_like(fake_validity))
+                g_loss = nn.BCEWithLogitsLoss(fake_validity, valid)
             # tqdm_dict = {'g_loss': g_loss}
             # output = OrderedDict({'loss': g_loss, 'progress_bar': tqdm_dict, 'log': tqdm_dict})
             # return output
@@ -237,8 +237,11 @@ class WGANGP(LightningModule):
                 # Adversarial loss
                 d_loss = -torch.mean(real_validity) + torch.mean(fake_validity) + lambda_gp * gradient_penalty
             else:
-                d_loss_fake = nn.BCEWithLogitsLoss(fake_validity, torch.zeros_like(fake_validity))
-                d_loss_real = nn.BCEWithLogitsLoss(real_validity, torch.ones_like(real_validity))
+                # put on GPU because we created this tensor inside training_loop
+                real_valid = torch.ones(imgs.size(0), 1).type_as(imgs)
+                fake_valid = torch.zeros(imgs.size(0), 1).type_as(imgs)
+                d_loss_fake = nn.BCEWithLogitsLoss(fake_validity, fake_valid)
+                d_loss_real = nn.BCEWithLogitsLoss(real_validity, real_valid) #torch.ones_like(real_validity)
                 d_loss = (d_loss_fake + d_loss_real) / 2
                 
             self.log('d_loss', d_loss, on_step=False, on_epoch=True)
