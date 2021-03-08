@@ -360,16 +360,16 @@ def main(args: Namespace) -> None:
     if not args.nowandb:
         run = wandb.init(project='GAN')
         wandb_logger = WandbLogger(project='GAN', entity='chiringuito', group=group_id, job_type="training")
-        trainer = Trainer(gpus=args.gpus, logger=wandb_logger, weights_summary='full', precision=args.precision,
-                          profiler=True)
+        trainer = Trainer(gpus=args.gpus, logger=wandb_logger, weights_summary='full', precision=args.precision,profiler=True, checkpoint_callback=False,
+                           resume_from_checkpoint="./wandb/run-20210307_113223-2rn3cl1a/files/GAN/2rn3cl1a/checkpoints/epoch=999-step=678999.ckpt")
     else:
-        trainer = Trainer(gpus=args.gpus, weights_summary='full', precision=args.precision, profiler=True)
+        trainer = Trainer(gpus=args.gpus, weights_summary='full', precision=args.precision, profiler=True, checkpoint_callback=False)
 
     # ------------------------
     # 3 START TRAINING
     # ------------------------
     trainer.fit(model)
-
+    trainer.save_checkpoint(os.path.join("./trainedmodels/GAN/",run.id,".ckpt"))
 
 if __name__ == '__main__':
     parser = ArgumentParser()
