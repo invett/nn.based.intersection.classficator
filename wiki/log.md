@@ -10,6 +10,8 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
 - [ ] Training LSTM 'Kevin' + TEST: SVM + Mahalanobis
 - [ ] Temporal integration with Resnet Embeddings (¿Method to compare RESNET/LSTM? We can't just compare conf.matrices)
 - [ ] Kitti360/Kitti2011 Segmentation masks
+- [ ] GAN: Add MASK fot the black part of the WARPING, as to not count those black pixels
+- [ ] GAN: use direct RGB image
 
 ## FUTURISTIC wannabe
 - [ ] CARLA + pix2pixHD https://github.com/NVIDIA/pix2pixHD
