@@ -391,7 +391,6 @@ def main(args: Namespace) -> None:
     # 3 START TRAINING
     # ------------------------
     trainer.fit(model)
-    trainer.save_checkpoint(os.path.join("./trainedmodels/GAN/", run.id, ".ckpt"))
 
 
 if __name__ == '__main__':
