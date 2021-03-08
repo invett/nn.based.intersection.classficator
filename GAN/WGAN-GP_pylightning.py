@@ -365,21 +365,27 @@ def main(args: Namespace) -> None:
     # ------------------------
     # If use distubuted training  PyTorch recommends to use DistributedDataParallel.
     # See: https://pytorch.org/docs/stable/nn.html#torch.nn.DataParallel
+    
+    # saves a file like: ./trainedmodels/GAN/wandb_run_id-epoch=100.ckpt
+    checkpoint_callback = ModelCheckpoint(
+        dirpath='./trainedmodels/GAN/',
+        filename=os.path.join(run.id, '-{epoch:02d}.ckpt'),
+    )
     if not args.nowandb:
         run = wandb.init(project='GAN')
         wandb_logger = WandbLogger(project='GAN', entity='chiringuito', group=group_id, job_type="training")
 
         if args.resume_from_checkpoint == 'no':
             trainer = Trainer(gpus=args.gpus, logger=wandb_logger, weights_summary='full', precision=args.precision,
-                              profiler=True, checkpoint_callback=False, max_epochs=args.max_epochs)
+                              profiler=True, callbacks=[checkpoint_callback], max_epochs=args.max_epochs)
         else:
             trainer = Trainer(gpus=args.gpus, logger=wandb_logger, weights_summary='full', precision=args.precision,
-                              profiler=True, checkpoint_callback=False, max_epochs=args.max_epochs,
+                              profiler=True, callbacks=[checkpoint_callback], max_epochs=args.max_epochs,
                               resume_from_checkpoint=args.resume_from_checkpoint)
 
     else:
         trainer = Trainer(gpus=args.gpus, weights_summary='full', precision=args.precision, profiler=True,
-                          checkpoint_callback=False)
+                          callbacks=[checkpoint_callback])
 
     # ------------------------
     # 3 START TRAINING
