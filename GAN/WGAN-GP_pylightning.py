@@ -365,7 +365,7 @@ def main(args: Namespace) -> None:
         run = wandb.init(project='GAN')
         wandb_logger = WandbLogger(project='GAN', entity='chiringuito', group=group_id, job_type="training")
         trainer = Trainer(gpus=args.gpus, logger=wandb_logger, weights_summary='full', precision=args.precision,profiler=True, checkpoint_callback=False,
-                           resume_from_checkpoint="./wandb/run-20210307_113223-2rn3cl1a/files/GAN/2rn3cl1a/checkpoints/epoch=999-step=678999.ckpt")
+                           max_epochs=10000, resume_from_checkpoint="./wandb/run-20210307_113223-2rn3cl1a/files/GAN/2rn3cl1a/checkpoints/epoch=999-step=678999.ckpt")
     else:
         trainer = Trainer(gpus=args.gpus, weights_summary='full', precision=args.precision, profiler=True, checkpoint_callback=False)
 
