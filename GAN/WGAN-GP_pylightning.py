@@ -267,7 +267,11 @@ class WGANGP(LightningModule):
             return DataLoader(dataset, batch_size=self.batch_size)
 
         if self.dataloader_choice == 'txt_dataloader':
+            # warpings
             train_path = '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected_warped/prefix_all.txt'
+
+            # RGB
+            #train_path = '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected/prefix_all.txt'
 
             rgb_image_test_transforms = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(),
                                                             transforms.Normalize((0.485, 0.456, 0.406),
