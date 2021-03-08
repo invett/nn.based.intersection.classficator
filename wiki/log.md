@@ -11,7 +11,9 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
 - [ ] Temporal integration with Resnet Embeddings (¿Method to compare RESNET/LSTM? We can't just compare conf.matrices)
 - [ ] Kitti360/Kitti2011 Segmentation masks
 - [ ] GAN: Add MASK fot the black part of the WARPING, as to not count those black pixels
-- [ ] GAN: use direct RGB image
+- [X] GAN: use direct RGB image
+- [ ] GAN: Add MASK fot the non-interesting parts of the RGB (eg. sky)
+- [ ] GAN: Conditional GAN for balancing classes.
 
 ## FUTURISTIC wannabe
 - [ ] CARLA + pix2pixHD https://github.com/NVIDIA/pix2pixHD
@@ -174,3 +176,11 @@ The idea is to exploit the trained RESNET, then the train is made as follows:
 - kitti Road (LSTM): model_n6tg093u_45.pth
   
 - kitti 360 (LSTM + Kevin): model_n6tg093u_45.pth
+
+
+### GAN
+
+ - Implementation of DCGAN (BCELoss) and WGAN (Wasserstein Loss)
+ - Implementation of Conditional GAN (both BCELoss and WLoss)
+ - Trials with warped images failed. Better performance with RGB images.
+
