@@ -33,13 +33,13 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
         self.input_dim = input_dim
 
-        self.gen = nn.Sequential(self.make_gen_block(input_dim, hidden_dim * 2), 
+        self.gen = nn.Sequential(self.make_gen_block(input_dim, hidden_dim * 2),
                                  self.make_gen_block(hidden_dim * 2, hidden_dim * 4, kernel_size=4, stride=1),
                                  self.make_gen_block(hidden_dim * 4, hidden_dim * 8),
                                  self.make_gen_block(hidden_dim * 8, hidden_dim * 4),
                                  self.make_gen_block(hidden_dim * 4, hidden_dim * 2),
                                  self.make_gen_block(hidden_dim * 2, hidden_dim),
-                                 self.make_gen_block(hidden_dim, im_chan, kernel_size=4,final_layer=True))
+                                 self.make_gen_block(hidden_dim, im_chan, kernel_size=4, final_layer=True))
 
     def make_gen_block(self, input_channels, output_channels, kernel_size=3, stride=2, padding=0, final_layer=False):
         """
@@ -80,12 +80,12 @@ class Discriminator(nn.Module):
 
     def __init__(self, im_chan=1, hidden_dim=64):
         super(Discriminator, self).__init__()
-        self.disc = nn.Sequential(self.make_disc_block(im_chan, hidden_dim, kernel_size=4), 
+        self.disc = nn.Sequential(self.make_disc_block(im_chan, hidden_dim, kernel_size=4),
                                   self.make_disc_block(hidden_dim, hidden_dim * 2),
                                   self.make_disc_block(hidden_dim * 2, hidden_dim * 4),
                                   self.make_disc_block(hidden_dim * 4, hidden_dim * 4),
                                   self.make_disc_block(hidden_dim * 4, hidden_dim * 2),
-                                  self.make_disc_block(hidden_dim * 2, hidden_dim,stride=1, kernel_size=4),
+                                  self.make_disc_block(hidden_dim * 2, hidden_dim, stride=1, kernel_size=4),
                                   self.make_disc_block(hidden_dim, 1, final_layer=True))
 
     def make_disc_block(self, input_channels, output_channels, kernel_size=3, stride=2, padding=0, final_layer=False):
@@ -138,6 +138,7 @@ class WGANGP(LightningModule):
         self.nowandb = kwargs['nowandb']
         self.loss = kwargs['loss']
         self.hidden_dim = kwargs['hidden_dim']
+        self.image_type = kwargs['image_type']
 
         # networks
         image_shape = (3, 224, 224)
@@ -210,20 +211,19 @@ class WGANGP(LightningModule):
             # put on GPU because we created this tensor inside training_loop
             valid = torch.ones(imgs.size(0), 1)
             valid = valid.type_as(imgs)
-            
-            fake_validity = self.discriminator(self(z))            
+
+            fake_validity = self.discriminator(self(z))
             if self.loss == 'wloss':
                 # adversarial loss is binary cross-entropy
                 g_loss = -torch.mean(fake_validity)
             else:
-                #BCELoss (sigmoid activation function included)
+                # BCELoss (sigmoid activation function included)
                 g_loss = criterion(fake_validity, valid)
             # tqdm_dict = {'g_loss': g_loss}
             # output = OrderedDict({'loss': g_loss, 'progress_bar': tqdm_dict, 'log': tqdm_dict})
             # return output
             self.log('g_loss', g_loss, on_step=False, on_epoch=True)
             return g_loss
-
 
         # train discriminator
         # Measure discriminator's ability to classify real from generated samples
@@ -244,9 +244,9 @@ class WGANGP(LightningModule):
                 real_valid = torch.ones(imgs.size(0), 1).type_as(imgs)
                 fake_valid = torch.zeros(imgs.size(0), 1).type_as(imgs)
                 d_loss_fake = criterion(fake_validity, fake_valid)
-                d_loss_real = criterion(real_validity, real_valid) #torch.ones_like(real_validity)
+                d_loss_real = criterion(real_validity, real_valid)  # torch.ones_like(real_validity)
                 d_loss = (d_loss_fake + d_loss_real) / 2
-                
+
             self.log('d_loss', d_loss, on_step=False, on_epoch=True)
             return d_loss
 
@@ -267,11 +267,14 @@ class WGANGP(LightningModule):
             return DataLoader(dataset, batch_size=self.batch_size)
 
         if self.dataloader_choice == 'txt_dataloader':
-            # warpings
-            train_path = '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected_warped/prefix_all.txt'
 
-            # RGB
-            #train_path = '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected/prefix_all.txt'
+            if self.image_type == 'warping':
+                train_path = '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected_warped/prefix_all.txt'
+            elif self.image_type == 'rgb':
+                train_path = '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected/prefix_all.txt'
+            else:
+                print('dataloader error')
+                exit(-1)
 
             rgb_image_test_transforms = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(),
                                                             transforms.Normalize((0.485, 0.456, 0.406),
@@ -309,7 +312,7 @@ class WGANGP(LightningModule):
 
         # send grid
         grid = torchvision.utils.make_grid(sample_imgs, nrow=3)
-        data = kornia.tensor_to_image(grid).astype(np.float32)   # will be between -1 and 1
+        data = kornia.tensor_to_image(grid).astype(np.float32)  # will be between -1 and 1
         from_max = 1.0
         from_min = -1.0
         to_max = 1.
@@ -325,7 +328,7 @@ class WGANGP(LightningModule):
 
         # send grid to wandb
         if not self.nowandb:
-            data = kornia.tensor_to_image(grid).astype(np.float32)   # will be between -1 and 1
+            data = kornia.tensor_to_image(grid).astype(np.float32)  # will be between -1 and 1
             from_max = 1.0
             from_min = -1.0
             to_max = 1.
@@ -336,7 +339,8 @@ class WGANGP(LightningModule):
             label = 'GAN - GRID\ncurrent epoch: ' + str(self.current_epoch)
             a = plt.figure()
             plt.imshow(data_)
-            self.trainer.logger.experiment.log({"current grid": wandb.Image(plt, caption=f"Epoch:{self.current_epoch}")})
+            self.trainer.logger.experiment.log(
+                {"current grid": wandb.Image(plt, caption=f"Epoch:{self.current_epoch}")})
             plt.close('all')
 
         # self.logger.experiment.add_image('generated_images', grid, self.current_epoch)
@@ -364,16 +368,25 @@ def main(args: Namespace) -> None:
     if not args.nowandb:
         run = wandb.init(project='GAN')
         wandb_logger = WandbLogger(project='GAN', entity='chiringuito', group=group_id, job_type="training")
-        trainer = Trainer(gpus=args.gpus, logger=wandb_logger, weights_summary='full', precision=args.precision,profiler=True, checkpoint_callback=False,
-                           max_epochs=10000, resume_from_checkpoint="./wandb/run-20210307_113223-2rn3cl1a/files/GAN/2rn3cl1a/checkpoints/epoch=999-step=678999.ckpt")
+
+        if args.resume_from_checkpoint == 'no':
+            trainer = Trainer(gpus=args.gpus, logger=wandb_logger, weights_summary='full', precision=args.precision,
+                              profiler=True, checkpoint_callback=False, max_epochs=args.max_epochs)
+        else:
+            trainer = Trainer(gpus=args.gpus, logger=wandb_logger, weights_summary='full', precision=args.precision,
+                              profiler=True, checkpoint_callback=False, max_epochs=args.max_epochs,
+                              resume_from_checkpoint=args.resume_from_checkpoint)
+
     else:
-        trainer = Trainer(gpus=args.gpus, weights_summary='full', precision=args.precision, profiler=True, checkpoint_callback=False)
+        trainer = Trainer(gpus=args.gpus, weights_summary='full', precision=args.precision, profiler=True,
+                          checkpoint_callback=False)
 
     # ------------------------
     # 3 START TRAINING
     # ------------------------
     trainer.fit(model)
-    trainer.save_checkpoint(os.path.join("./trainedmodels/GAN/",run.id,".ckpt"))
+    trainer.save_checkpoint(os.path.join("./trainedmodels/GAN/", run.id, ".ckpt"))
+
 
 if __name__ == '__main__':
     parser = ArgumentParser()
@@ -395,9 +408,16 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_group_id', type=str, help='Set group id for the wandb experiment')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     parser.add_argument("--precision", type=int, default=32, help="32 or 16 bit precision", choices=[32, 16])
-    parser.add_argument("--loss", type=str, default='wloss', help="Choose loss between Wasserstein or BCE", choices=['wloss', 'bce'])
+    parser.add_argument("--loss", type=str, default='wloss', help="Choose loss between Wasserstein or BCE",
+                        choices=['wloss', 'bce'])
     parser.add_argument('--decimate', type=int, default=1, help='How much of the points will remain after '
                                                                 'decimation')
+
+    parser.add_argument("--max_epochs", type=int, default=10000, help="max number of epochs")
+    parser.add_argument("--image_type", type=str, default='warping', help="Choose between warping or rgb",
+                        choices=['rgb', 'warping'])
+    parser.add_argument("--resume_from_checkpoint", type=str, default='no', help="absolute path for checkpoint resume")
+
     hparams = parser.parse_args()
 
     main(hparams)
