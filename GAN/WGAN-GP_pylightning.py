@@ -360,7 +360,7 @@ def main(args: Namespace) -> None:
     if not args.nowandb:
         run = wandb.init(project='GAN')
         wandb_logger = WandbLogger(project='GAN', entity='chiringuito', group=group_id, job_type="training")
-        trainer = Trainer(gpus=args.gpus, logger=wandb_logger, weights_summary='full', precision=args.precision,
+        trainer = Trainer(gpus=args.gpus, accelerator='ddp',logger=wandb_logger, weights_summary='full', precision=args.precision,
                           profiler=True)
     else:
         trainer = Trainer(gpus=args.gpus, weights_summary='full', precision=args.precision, profiler=True)
