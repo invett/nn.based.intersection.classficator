@@ -45,7 +45,7 @@ class Generator(nn.Module):
 
         mask = Image.open('GAN/MASK/alcala26_mask.png').convert('RGB')
         mask = np.asarray(mask) / 255.0  # .transpose((2, 0, 1))
-        self.mask = kornia.image_to_tensor(mask).cuda()
+        self.mask = kornia.image_to_tensor(mask).cuda().half()
         self.apply_mask = apply_mask
 
     def make_gen_block(self, input_channels, output_channels, kernel_size=3, stride=2, padding=0, final_layer=False):
