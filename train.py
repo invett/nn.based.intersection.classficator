@@ -825,6 +825,7 @@ def main(args, model=None):
                 print('Resuming WANDB run, this run will log into: ', args.wandb_resume)
                 wandb.init(project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
                            job_type="training", reinit=True, resume=args.wandb_resume)
+
                 wandb.config.update(args, allow_val_change=True)
             else:
                 wandb.init(project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
@@ -1249,8 +1250,6 @@ if __name__ == '__main__':
     parser.add_argument('--lstm_input', type=int, default=512, help='size of the embbedings for lstm')
     parser.add_argument('--lstm_hidden', type=int, default=256, help='size of the hidden layers for lstm')
     parser.add_argument('--lstm_layers', type=int, default=2, help='number of layers for lstm')
-    parser.add_argument('--lstm_embeddings', type=str2bool, nargs='?', const=True, default=False,
-                        help='train the lstm with metric learning')
     parser.add_argument('--normalize', type=str2bool, nargs='?', const=True, default=False,
                         help='normalize embeddings in metric learning')
 
