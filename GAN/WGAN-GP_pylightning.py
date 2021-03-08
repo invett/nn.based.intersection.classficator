@@ -363,7 +363,7 @@ def main(args: Namespace) -> None:
         trainer = Trainer(gpus=args.gpus, logger=wandb_logger, weights_summary='full', precision=args.precision,
                           profiler=True)
     else:
-        trainer = Trainer(gpus=args.gpus, accelerator='ddp',weights_summary='full', precision=args.precision, profiler=True)
+        trainer = Trainer(gpus=args.gpus, weights_summary='full', precision=args.precision, profiler=True)
 
     # ------------------------
     # 3 START TRAINING
