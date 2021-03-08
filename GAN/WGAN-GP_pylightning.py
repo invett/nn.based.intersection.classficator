@@ -27,10 +27,11 @@ from dataloaders.sequencedataloader import txt_dataloader
 from miscellaneous.utils import send_telegram_picture, send_telegram_message
 
 import wandb
+from PIL import Image
 
 
 class Generator(nn.Module):
-    def __init__(self, input_dim=100, im_chan=1, hidden_dim=64):
+    def __init__(self, input_dim=100, im_chan=1, hidden_dim=64, apply_mask=False):
         super(Generator, self).__init__()
         self.input_dim = input_dim
 
@@ -41,6 +42,11 @@ class Generator(nn.Module):
                                  self.make_gen_block(hidden_dim * 4, hidden_dim * 2),
                                  self.make_gen_block(hidden_dim * 2, hidden_dim),
                                  self.make_gen_block(hidden_dim, im_chan, kernel_size=4, final_layer=True))
+
+        mask = Image.open('MASK/alcala26_mask.png').convert('RGB')
+        mask = np.asarray(mask) / 255.0  # .transpose((2, 0, 1))
+        self.mask = kornia.image_to_tensor(mask).cuda()
+        self.apply_mask = apply_mask
 
     def make_gen_block(self, input_channels, output_channels, kernel_size=3, stride=2, padding=0, final_layer=False):
         """
@@ -70,8 +76,12 @@ class Generator(nn.Module):
         Parameters:
             noise: a noise tensor with dimensions (n_samples, input_dim)
         """
-        x = noise.view(len(noise), self.input_dim, 1, 1)
-        return self.gen(x)
+        # GENERATOR
+        x = noise.view(len(noise), self.input_dim, 1, 1)  # reshape vector in BxCxWxH
+        imgs = self.gen(x)
+        if self.apply_mask:
+            imgs = imgs * self.mask
+        return imgs
 
 
 class Discriminator(nn.Module):
@@ -114,6 +124,7 @@ class Discriminator(nn.Module):
         Parameters:
             image: a flattened image tensor with dimension (im_chan)
         """
+        # DISCRIMINATOR
         disc_pred = self.disc(image)
         return disc_pred.view(len(disc_pred), -1)
 
@@ -140,11 +151,13 @@ class WGANGP(LightningModule):
         self.loss = kwargs['loss']
         self.hidden_dim = kwargs['hidden_dim']
         self.image_type = kwargs['image_type']
+        self.apply_mask = kwargs['apply_mask']
 
         # networks
         image_shape = (3, 224, 224)
         im_chan = 3
-        self.generator = Generator(input_dim=latent_dim, im_chan=3, hidden_dim=self.hidden_dim)
+        self.generator = Generator(input_dim=latent_dim, im_chan=3, hidden_dim=self.hidden_dim,
+                                   apply_mask=self.apply_mask)
         self.discriminator = Discriminator(im_chan, hidden_dim=self.hidden_dim)
         self.generator.apply(self.weights_init)
         self.discriminator.apply(self.weights_init)
@@ -187,7 +200,7 @@ class WGANGP(LightningModule):
         else:
             return -1
 
-        # sample noise
+        # sample noise (batch-size * size_of_latent_vector)
         z = torch.randn(imgs.shape[0], self.latent_dim)
         z = z.type_as(imgs)
 
@@ -201,11 +214,11 @@ class WGANGP(LightningModule):
         if optimizer_idx == 0:
 
             # generate images
-            self.generated_imgs = self(z)
+            # self.generated_imgs = self(z)  # TODO: check: esto no entiendo para que sirve... en self.discriminator se llama de nuevo self(z)
 
             # log sampled images
-            sample_imgs = self.generated_imgs[:6]
-            grid = torchvision.utils.make_grid(sample_imgs)
+            # sample_imgs = self.generated_imgs[:6]
+            # grid = torchvision.utils.make_grid(sample_imgs)
             # self.logger.experiment.add_image('generated_images', grid, 0)
 
             # ground truth result (ie: all fake)
@@ -366,16 +379,14 @@ def main(args: Namespace) -> None:
     # ------------------------
     # If use distubuted training  PyTorch recommends to use DistributedDataParallel.
     # See: https://pytorch.org/docs/stable/nn.html#torch.nn.DataParallel
-    
-    
+
+
     if not args.nowandb:
         run = wandb.init(project='GAN')
         wandb_logger = WandbLogger(project='GAN', entity='chiringuito', group=group_id, job_type="training")
         # saves a file like: ./trainedmodels/GAN/wandb_run_id-epoch=100.ckpt
-        checkpoint_callback = ModelCheckpoint(
-            dirpath='./trainedmodels/GAN/',
-            filename=os.path.join(run.id, '-{epoch:02d}.ckpt'),
-        )
+        checkpoint_callback = ModelCheckpoint(dirpath='./trainedmodels/GAN/',
+            filename=os.path.join(run.id, '-{epoch:02d}.ckpt'), )
         if args.resume_from_checkpoint == 'no':
             trainer = Trainer(gpus=args.gpus, logger=wandb_logger, weights_summary='full', precision=args.precision,
                               profiler=True, callbacks=[checkpoint_callback], max_epochs=args.max_epochs)
@@ -385,10 +396,8 @@ def main(args: Namespace) -> None:
                               resume_from_checkpoint=args.resume_from_checkpoint)
 
     else:
-        checkpoint_callback = ModelCheckpoint(
-            dirpath='./trainedmodels/GAN/',
-            filename=os.path.join('nowandb-{epoch:02d}.ckpt'),
-        )
+        checkpoint_callback = ModelCheckpoint(dirpath='./trainedmodels/GAN/',
+            filename=os.path.join('nowandb-{epoch:02d}.ckpt'), )
         trainer = Trainer(gpus=args.gpus, weights_summary='full', precision=args.precision, profiler=True,
                           callbacks=[checkpoint_callback])
 
@@ -427,6 +436,8 @@ if __name__ == '__main__':
     parser.add_argument("--image_type", type=str, default='warping', help="Choose between warping or rgb",
                         choices=['rgb', 'warping'])
     parser.add_argument("--resume_from_checkpoint", type=str, default='no', help="absolute path for checkpoint resume")
+    parser.add_argument('--apply_mask', action='store_true', help='apply mask to the generated imgs')
+
 
     hparams = parser.parse_args()
 
