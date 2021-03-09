@@ -368,7 +368,16 @@ def main(args: Namespace) -> None:
     # keep track of parameters in logs
     print(args)
 
+    # ------------------------
+    # 1 INIT LIGHTNING MODEL
+    # ------------------------
+    model = WGANGP(**vars(args))
 
+    if args.wandb_group_id:
+        group_id = args.wandb_group_id
+    else:
+        group_id = 'GENERIC-GAN'
+        
     # ------------------------
     # 2 INIT TRAINER
     # ------------------------
@@ -378,7 +387,7 @@ def main(args: Namespace) -> None:
     if not args.nowandb:
         run = wandb.init(project='GAN')
         run.save()
-        wandb_logger = WandbLogger(project='GAN', entity='chiringuito', job_type="training")
+        wandb_logger = WandbLogger(project='GAN', entity='chiringuito', group = group_id, job_type="training")
         wandb_logger.watch(model)
         # saves a file like: ./trainedmodels/GAN/wandb_run_id-epoch=100.ckpt
         checkpoint_callback = ModelCheckpoint(dirpath='./trainedmodels/GAN/',
