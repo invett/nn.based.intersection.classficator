@@ -25,33 +25,35 @@ import wandb
 
 
 class DoubleConv(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3):
+    def __init__(self, in_channels, out_channels, kernel_size=3, padding=0):
         super(DoubleConv, self).__init__()
-        self.net = nn.Sequential(nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size)),
+        self.net = nn.Sequential(nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=paddding),
                                  nn.ReLU(inplace=True),
-                                 nn.Conv2d(out_channels, out_channels,kernel_size=kernel_size)),
-                                 nn.ReLU(inplace=True))
+                                 nn.Conv2d(out_channels, out_channels,kernel_size=kernel_size, padding=paddding),
+                                 nn.ReLU(inplace=True)
+                                )
     def forward(self, x):
         return self.net(x)
 
       
 class UpsampleConv(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=2):
+    def __init__(self, in_channels, out_channels, kernel_size=2, padding=0):
         super(UpsampleConv, self).__init__()
 
         self.net = nn.Sequential(
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
-            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size))
+            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding)
+        )
 
     def forward(self, x):
         return self.net(x)
       
 
 class ExpandingBlock(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, kernel_1=2,kernel_2=3, pad_1=1, pad_2=1):
         super(ExpandingBlock, self).__init__()
-        self.upsample = UpsampleConv(in_channels, out_channels, kernel_size=2)
-        self.double_conv = DoubleConv(out_channels, out_channels, kernel_size=3)
+        self.upsample = UpsampleConv(in_channels, out_channels, kernel_size=kernel_1, padding=pad_1)
+        self.double_conv = DoubleConv(out_channels, out_channels, kernel_size=kernel_2, padding=pad_2)
 
     def forward(self, x):
         x = self.upsample(x)
@@ -60,15 +62,18 @@ class ExpandingBlock(nn.Module):
       
       
 class Generator(nn.Module):
-    def __init__(self, input_dim=1024, im_chan=3, hidden_dim=64):
+    def __init__(self, input_dim=512, im_chan=3, hidden_dim=64):
         super(Generator, self).__init__()
         self.input_dim = input_dim
         
         for i in range(0,depth)
-        self.gen = nn.Sequential(ExpandingBlock(input_dim, input_dim  // 2),
-                                 ExpandingBlock(input_dim, input_dim  // 2),
-                                 ExpandingBlock(input_dim, input_dim  // 2),
-                                 ExpandingBlock(input_dim, input_dim  // 2),
+        self.gen = nn.Sequential(ExpandingBlock(input_dim, input_dim  // 2, kernel_1=1, kernel_2=1, pad_1=1, pad_2=1),
+                                 ExpandingBlock(input_dim, input_dim  // 2, kernel_1=1, kernel_2=1, pad_1=1, pad_2=1),
+                                 ExpandingBlock(input_dim, input_dim  // 2, kernel_1=2, kernel_2=3, pad_1=0, pad_2=0),
+                                 ExpandingBlock(input_dim, input_dim  // 2, kernel_1=2, kernel_2=3, pad_1=0, pad_2=0),
+                                 ExpandingBlock(input_dim, input_dim  // 2, kernel_1=2, kernel_2=3, pad_1=1, pad_2=1),
+                                 ExpandingBlock(input_dim, input_dim  // 2, kernel_1=2, kernel_2=3, pad_1=1, pad_2=1),
+                                 ExpandingBlock(input_dim, input_dim  // 2, kernel_1=2, kernel_2=3, pad_1=0, pad_2=1),
                                  self.conv_final = nn.Conv2d(hidden_channels,
                                     output_channels,
                                     kernel_size=1))  
