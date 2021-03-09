@@ -73,9 +73,8 @@ class Generator(nn.Module):
                                  ExpandingBlock(input_dim, input_dim  // 2, kernel_1=2, kernel_2=3, pad_1=1, pad_2=1),
                                  ExpandingBlock(input_dim, input_dim  // 2, kernel_1=2, kernel_2=3, pad_1=1, pad_2=1),
                                  ExpandingBlock(input_dim, input_dim  // 2, kernel_1=2, kernel_2=3, pad_1=0, pad_2=1),
-                                 self.conv_final = nn.Conv2d(hidden_channels,
-                                    output_channels,
-                                    kernel_size=1))  
+                                 nn.Conv2d(hidden_channels,output_channels, kernel_size=1)
+                                )  
     
     def forward(self, noise):
         """
