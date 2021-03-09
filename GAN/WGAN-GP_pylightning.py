@@ -318,7 +318,7 @@ class WGANGP(LightningModule):
         a = (to_max - to_min) / (from_max - from_min)
         b = to_max - a * from_max
         data_ = np.array([(a * x + b) for x in data])
-        label = 'GAN - SINGLE IMAGE\ncurrent epoch: ' + str(self.current_epoch)
+        label = 'GAN - SINGLE IMAGE\ncurrent epoch: ' + str(self.current_epoch) # TODO wandb --> self.logger.name , see https://docs.wandb.ai/integrations/lightning
         a = plt.figure()
         plt.imshow(data_)
         send_telegram_picture(a, label)
@@ -364,15 +364,6 @@ def main(args: Namespace) -> None:
     # keep track of parameters in logs
     print(args)
 
-    # ------------------------
-    # 1 INIT LIGHTNING MODEL
-    # ------------------------
-    model = WGANGP(**vars(args))
-
-    if args.wandb_group_id:
-        group_id = args.wandb_group_id
-    else:
-        group_id = 'GENERIC-GAN'
 
     # ------------------------
     # 2 INIT TRAINER
@@ -380,9 +371,9 @@ def main(args: Namespace) -> None:
     # If use distubuted training  PyTorch recommends to use DistributedDataParallel.
     # See: https://pytorch.org/docs/stable/nn.html#torch.nn.DataParallel
 
-
     if not args.nowandb:
         run = wandb.init(project='GAN')
+        run.save()
         wandb_logger = WandbLogger(project='GAN', entity='chiringuito', group=group_id, job_type="training")
         # saves a file like: ./trainedmodels/GAN/wandb_run_id-epoch=100.ckpt
         checkpoint_callback = ModelCheckpoint(dirpath='./trainedmodels/GAN/',
