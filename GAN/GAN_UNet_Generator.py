@@ -66,7 +66,6 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
         self.input_dim = input_dim
         
-        for i in range(0,depth)
         self.gen = nn.Sequential(ExpandingBlock(input_dim, input_dim  // 2, kernel_1=1, kernel_2=1, pad_1=1, pad_2=1),
                                  ExpandingBlock(input_dim, input_dim  // 2, kernel_1=1, kernel_2=1, pad_1=1, pad_2=1),
                                  ExpandingBlock(input_dim, input_dim  // 2, kernel_1=2, kernel_2=3, pad_1=0, pad_2=0),
