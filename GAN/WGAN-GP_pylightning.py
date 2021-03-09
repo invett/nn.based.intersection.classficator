@@ -36,10 +36,14 @@ class Generator(nn.Module):
         self.input_dim = input_dim
 
         self.gen = nn.Sequential(self.make_gen_block(input_dim, hidden_dim * 2),
-                                 self.make_gen_block(hidden_dim * 2, hidden_dim * 4, kernel_size=4, stride=1),
+                                 self.make_gen_block(hidden_dim * 2, hidden_dim * 4),
                                  self.make_gen_block(hidden_dim * 4, hidden_dim * 8),
-                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 4),
-                                 self.make_gen_block(hidden_dim * 4, hidden_dim * 2),
+                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 8, stride=1),
+                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 8, kernel_size=4, stride=1),
+                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 8, stride=1),
+                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 8, stride=1),
+                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 4, kernel_size=4, stride=1),
+                                 self.make_gen_block(hidden_dim * 4, hidden_dim * 2, kernel_size=4),
                                  self.make_gen_block(hidden_dim * 2, hidden_dim),
                                  self.make_gen_block(hidden_dim, im_chan, kernel_size=4, final_layer=True))
 
