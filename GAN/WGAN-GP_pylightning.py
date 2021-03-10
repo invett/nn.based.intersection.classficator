@@ -153,6 +153,7 @@ class WGANGP(LightningModule):
         self.hidden_dim = kwargs['hidden_dim']
         self.image_type = kwargs['image_type']
         self.apply_mask = kwargs['apply_mask']
+        self.label_smoothing = kwargs['label_smoothing']
 
         # networks
         image_shape = (3, 224, 224)
@@ -256,10 +257,10 @@ class WGANGP(LightningModule):
                 d_loss = -torch.mean(real_validity) + torch.mean(fake_validity) + lambda_gp * gradient_penalty
             else:
                 # put on GPU because we created this tensor inside training_loop
-                real_valid = torch.ones(imgs.size(0), 1).type_as(imgs)
+                real_valid = torch.ones(imgs.size(0), 1).type_as(imgs)*0.9 if self.label_smoothing else torch.ones(imgs.size(0), 1).type_as(imgs)
                 fake_valid = torch.zeros(imgs.size(0), 1).type_as(imgs)
                 d_loss_fake = criterion(fake_validity, fake_valid)
-                d_loss_real = criterion(real_validity, real_valid*0.9)  # torch.ones_like(real_validity)
+                d_loss_real = criterion(real_validity, real_valid)  # torch.ones_like(real_validity)
                 d_loss = (d_loss_fake + d_loss_real) / 2
 
             self.log('d_loss', d_loss, on_step=False, on_epoch=True)
@@ -439,6 +440,7 @@ if __name__ == '__main__':
                         choices=['rgb', 'warping'])
     parser.add_argument("--resume_from_checkpoint", type=str, default='no', help="absolute path for checkpoint resume")
     parser.add_argument('--apply_mask', action='store_true', help='apply mask to the generated imgs')
+    parser.add_argument('--label_smoothing', action='store_true', help='apply label smoothing, i.e. real labels = 0.9')
 
 
     hparams = parser.parse_args()
