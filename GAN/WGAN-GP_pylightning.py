@@ -391,7 +391,7 @@ def main(args: Namespace) -> None:
         checkpoint_callback = ModelCheckpoint(dirpath='./trainedmodels/GAN/',
             filename=os.path.join(run.id, '-{epoch:02d}.ckpt'),
             monitor='g_loss',
-            mode='min)
+            mode='min')
         if args.resume_from_checkpoint == 'no':
             trainer = Trainer(gpus=args.gpus, logger=wandb_logger, weights_summary='full', precision=args.precision,
                               profiler=True, callbacks=[checkpoint_callback], max_epochs=args.max_epochs)
@@ -404,7 +404,7 @@ def main(args: Namespace) -> None:
         checkpoint_callback = ModelCheckpoint(dirpath='./trainedmodels/GAN/',
             filename=os.path.join('nowandb-{epoch:02d}.ckpt'), 
             monitor='g_loss',
-            mode='min)
+            mode='min')
         trainer = Trainer(gpus=args.gpus, weights_summary='full', precision=args.precision, profiler=True,
                           callbacks=[checkpoint_callback])
 
