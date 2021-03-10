@@ -190,5 +190,6 @@ The idea is to exploit the trained RESNET, then the train is made as follows:
  - Implementation of Conditional GAN (both BCELoss and WLoss)
  - Trials with warped images failed. Better performance with RGB images.
  - Lower bs and lower lr (linear relationship) better performance.
- - 
+ - Add bias=False to convs and BN(output_dim, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+ - Change Generator and Discriminator architectures (More similar to DCGAN Pytorch)
 
