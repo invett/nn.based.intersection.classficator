@@ -389,7 +389,9 @@ def main(args: Namespace) -> None:
         wandb_logger.watch(model)
         # saves a file like: ./trainedmodels/GAN/wandb_run_id-epoch=100.ckpt
         checkpoint_callback = ModelCheckpoint(dirpath='./trainedmodels/GAN/',
-            filename=os.path.join(run.id, '-{epoch:02d}.ckpt'), )
+            filename=os.path.join(run.id, '-{epoch:02d}.ckpt'),
+            monitor='g_loss',
+            mode='min)
         if args.resume_from_checkpoint == 'no':
             trainer = Trainer(gpus=args.gpus, logger=wandb_logger, weights_summary='full', precision=args.precision,
                               profiler=True, callbacks=[checkpoint_callback], max_epochs=args.max_epochs)
@@ -400,7 +402,9 @@ def main(args: Namespace) -> None:
 
     else:
         checkpoint_callback = ModelCheckpoint(dirpath='./trainedmodels/GAN/',
-            filename=os.path.join('nowandb-{epoch:02d}.ckpt'), )
+            filename=os.path.join('nowandb-{epoch:02d}.ckpt'), 
+            monitor='g_loss',
+            mode='min)
         trainer = Trainer(gpus=args.gpus, weights_summary='full', precision=args.precision, profiler=True,
                           callbacks=[checkpoint_callback])
 
@@ -413,14 +417,14 @@ def main(args: Namespace) -> None:
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("--gpus", type=int, default=1, help="number of GPUs")
-    parser.add_argument("--batch_size", type=int, default=128, help="size of the batches")
+    parser.add_argument("--batch_size", type=int, default=64, help="size of the batches")
     parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
     parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
     parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
     parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
     parser.add_argument("--hidden_dim", type=int, default=64, help="channels width multiplier")
     parser.add_argument("--opt_g_frequency", type=int, default=1, help="generator frequency")
-    parser.add_argument("--opt_d_frequency", type=int, default=5, help="discriminator frequency")
+    parser.add_argument("--opt_d_frequency", type=int, default=1, help="discriminator frequency")
     parser.add_argument('--dataloader', type=str, default='txt_dataloader',
                         choices=['fromAANETandDualBisenet', 'generatedDataset', 'Kitti2011_RGB', 'triplet_OBB',
                                  'triplet_BOO', 'triplet_ROO', 'triplet_ROO_360', 'triplet_3DOO_360', 'Kitti360',
@@ -430,7 +434,7 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_group_id', type=str, help='Set group id for the wandb experiment')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     parser.add_argument("--precision", type=int, default=32, help="32 or 16 bit precision", choices=[32, 16])
-    parser.add_argument("--loss", type=str, default='wloss', help="Choose loss between Wasserstein or BCE",
+    parser.add_argument("--loss", type=str, default='bce', help="Choose loss between Wasserstein or BCE",
                         choices=['wloss', 'bce'])
     parser.add_argument('--decimate', type=int, default=1, help='How much of the points will remain after '
                                                                 'decimation')
