@@ -31,7 +31,7 @@ from PIL import Image
 
 
 class Generator(nn.Module):
-    def __init__(self, input_dim=100, im_chan=1, hidden_dim=64, apply_mask=False):
+    def __init__(self, input_dim=100, im_chan=1, hidden_dim=64, apply_mask=False, image_type=''):
         super(Generator, self).__init__()
         self.input_dim = input_dim
 
@@ -44,10 +44,18 @@ class Generator(nn.Module):
                                  self.make_gen_block(hidden_dim * 2, hidden_dim),
                                  self.make_gen_block(hidden_dim, im_chan, kernel_size=4, final_layer=True))
 
-        mask = Image.open('GAN/MASK/alcala26_mask.png').convert('RGB')
+        # load the mask
+        if image_type == 'warping':
+            mask = Image.open('GAN/MASK/alcala26_mask.png').convert('RGB')
+        elif image_type == 'rgb':
+            mask = Image.open('GAN/MASK/alcala26_mask_rgb.png').convert('RGB')
+        elif apply_mask:
+            exit(-1)
+
         mask = np.asarray(mask) / 255.0  # .transpose((2, 0, 1))
         self.mask = kornia.image_to_tensor(mask).cuda().half()
         self.apply_mask = apply_mask
+        self.image_type = image_type
 
     def make_gen_block(self, input_channels, output_channels, kernel_size=3, stride=2, padding=0, final_layer=False):
         """
@@ -159,7 +167,7 @@ class WGANGP(LightningModule):
         image_shape = (3, 224, 224)
         im_chan = 3
         self.generator = Generator(input_dim=latent_dim, im_chan=3, hidden_dim=self.hidden_dim,
-                                   apply_mask=self.apply_mask)
+                                   apply_mask=self.apply_mask, image_type=self.image_type)
         self.discriminator = Discriminator(im_chan, hidden_dim=self.hidden_dim)
         self.generator.apply(self.weights_init)
         self.discriminator.apply(self.weights_init)
