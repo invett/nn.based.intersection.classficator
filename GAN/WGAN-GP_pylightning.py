@@ -35,15 +35,12 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
         self.input_dim = input_dim
 
-        self.gen = nn.Sequential(self.make_gen_block(input_dim, hidden_dim * 2),
-                                 self.make_gen_block(hidden_dim * 2, hidden_dim * 4),
-                                 self.make_gen_block(hidden_dim * 4, hidden_dim * 8),
-                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 8, stride=1),
-                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 8, kernel_size=4, stride=1),
-                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 8, stride=1),
-                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 8, stride=1),
-                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 4, kernel_size=4, stride=1),
-                                 self.make_gen_block(hidden_dim * 4, hidden_dim * 2, kernel_size=4),
+        self.gen = nn.Sequential(self.make_gen_block(input_dim,      hidden_dim * 8, kernel_size=4, stride=1),
+                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 8, stride=1, padding=1),
+                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 8, padding=1),
+                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 4, padding=1),
+                                 self.make_gen_block(hidden_dim * 4, hidden_dim * 4),
+                                 self.make_gen_block(hidden_dim * 4, hidden_dim * 2),
                                  self.make_gen_block(hidden_dim * 2, hidden_dim),
                                  self.make_gen_block(hidden_dim, im_chan, kernel_size=4, final_layer=True))
 
@@ -67,8 +64,8 @@ class Generator(nn.Module):
         """
         if not final_layer:
             return nn.Sequential(
-                nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding),
-                nn.BatchNorm2d(output_channels), nn.ReLU(inplace=True))
+                nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding, bias=False),
+                nn.BatchNorm2d(output_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True), nn.ReLU(inplace=True))
         else:
             return nn.Sequential(
                 nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding), nn.Tanh())
@@ -99,8 +96,8 @@ class Discriminator(nn.Module):
                                   self.make_disc_block(hidden_dim, hidden_dim * 2),
                                   self.make_disc_block(hidden_dim * 2, hidden_dim * 4),
                                   self.make_disc_block(hidden_dim * 4, hidden_dim * 4),
-                                  self.make_disc_block(hidden_dim * 4, hidden_dim * 2),
-                                  self.make_disc_block(hidden_dim * 2, hidden_dim, stride=1, kernel_size=4),
+                                  self.make_disc_block(hidden_dim * 4, hidden_dim * 8),
+                                  self.make_disc_block(hidden_dim * 8, hidden_dim, stride=1, kernel_size=4),
                                   self.make_disc_block(hidden_dim, 1, final_layer=True))
 
     def make_disc_block(self, input_channels, output_channels, kernel_size=3, stride=2, padding=0, final_layer=False):
@@ -116,8 +113,8 @@ class Discriminator(nn.Module):
                       (affects activation and batchnorm)
         """
         if not final_layer:
-            return nn.Sequential(nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding),
-                                 nn.BatchNorm2d(output_channels), nn.LeakyReLU(0.2, inplace=True))
+            return nn.Sequential(nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding, bias=False),
+                                 nn.BatchNorm2d(output_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True), nn.LeakyReLU(0.2, inplace=True))
         else:
             return nn.Sequential(nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding))
 
