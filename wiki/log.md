@@ -13,8 +13,9 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
 - [X] GAN: Add MASK fot the black part of the WARPING, as to not count those black pixels
 - [X] GAN: use direct RGB image
 - [X] GAN: Beef-up Generator -> 11 layers
-- [ ] GAN: Label smoothing strategy nn.BCEWithLogitsLoss(logits, labels*0.9) 
+- [X] GAN: Label smoothing strategy nn.BCEWithLogitsLoss(logits, labels*0.9) 
 - [ ] GAN: UNet Generator
+- [ ] GAN: PatchGAN Discriminator (Based on UNet Contracting Path)
 - [ ] GAN: Add MASK fot the non-interesting parts of the RGB (eg. sky)
 - [ ] GAN: Conditional GAN for balancing classes.
 - [ ] GAN: Pix2Pix to convert from road mask to RGB.
