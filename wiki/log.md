@@ -10,10 +10,16 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
 - [ ] Training LSTM 'Kevin' + TEST: SVM + Mahalanobis
 - [ ] Temporal integration with Resnet Embeddings (¿Method to compare RESNET/LSTM? We can't just compare conf.matrices)
 - [ ] Kitti360/Kitti2011 Segmentation masks
-- [?] GAN: Add MASK fot the black part of the WARPING, as to not count those black pixels
+- [X] GAN: Add MASK fot the black part of the WARPING, as to not count those black pixels
 - [X] GAN: use direct RGB image
+- [X] GAN: Beef-up Generator -> 11 layers
+- [X] GAN: Label smoothing strategy nn.BCEWithLogitsLoss(logits, labels*0.9) 
+- [ ] GAN: UNet Generator
+- [ ] GAN: PatchGAN Discriminator (Based on UNet Contracting Path)
 - [ ] GAN: Add MASK fot the non-interesting parts of the RGB (eg. sky)
 - [ ] GAN: Conditional GAN for balancing classes.
+- [ ] GAN: Pix2Pix to convert from road mask to RGB.
+- [ ] GAN: StyleGAN2  /   StyleGAN2-ADA: Training Generative Adversarial Networks with Limited Data https://github.com/NVlabs/stylegan2-ada-pytorch 
 - [ ] GRU vs LSTM: should be 1-line change
 
 ## FUTURISTIC wannabe
@@ -184,4 +190,7 @@ The idea is to exploit the trained RESNET, then the train is made as follows:
  - Implementation of DCGAN (BCELoss) and WGAN (Wasserstein Loss)
  - Implementation of Conditional GAN (both BCELoss and WLoss)
  - Trials with warped images failed. Better performance with RGB images.
+ - Lower bs and lower lr (linear relationship) better performance.
+ - Add bias=False to convs and BN(output_dim, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+ - Change Generator and Discriminator architectures (More similar to DCGAN Pytorch)
 

@@ -35,15 +35,12 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
         self.input_dim = input_dim
 
-        self.gen = nn.Sequential(self.make_gen_block(input_dim, hidden_dim * 2),
-                                 self.make_gen_block(hidden_dim * 2, hidden_dim * 4),
-                                 self.make_gen_block(hidden_dim * 4, hidden_dim * 8),
-                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 8, stride=1),
-                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 8, kernel_size=4, stride=1),
-                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 8, stride=1),
-                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 8, stride=1),
-                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 4, kernel_size=4, stride=1),
-                                 self.make_gen_block(hidden_dim * 4, hidden_dim * 2, kernel_size=4),
+        self.gen = nn.Sequential(self.make_gen_block(input_dim,      hidden_dim * 8, kernel_size=4, stride=1),
+                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 8, stride=1, padding=1),
+                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 8, padding=1),
+                                 self.make_gen_block(hidden_dim * 8, hidden_dim * 4, padding=1),
+                                 self.make_gen_block(hidden_dim * 4, hidden_dim * 4),
+                                 self.make_gen_block(hidden_dim * 4, hidden_dim * 2),
                                  self.make_gen_block(hidden_dim * 2, hidden_dim),
                                  self.make_gen_block(hidden_dim, im_chan, kernel_size=4, final_layer=True))
 
@@ -67,8 +64,8 @@ class Generator(nn.Module):
         """
         if not final_layer:
             return nn.Sequential(
-                nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding),
-                nn.BatchNorm2d(output_channels), nn.ReLU(inplace=True))
+                nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding, bias=False),
+                nn.BatchNorm2d(output_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True), nn.ReLU(inplace=True))
         else:
             return nn.Sequential(
                 nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding), nn.Tanh())
@@ -99,8 +96,8 @@ class Discriminator(nn.Module):
                                   self.make_disc_block(hidden_dim, hidden_dim * 2),
                                   self.make_disc_block(hidden_dim * 2, hidden_dim * 4),
                                   self.make_disc_block(hidden_dim * 4, hidden_dim * 4),
-                                  self.make_disc_block(hidden_dim * 4, hidden_dim * 2),
-                                  self.make_disc_block(hidden_dim * 2, hidden_dim, stride=1, kernel_size=4),
+                                  self.make_disc_block(hidden_dim * 4, hidden_dim * 8),
+                                  self.make_disc_block(hidden_dim * 8, hidden_dim, stride=1, kernel_size=4),
                                   self.make_disc_block(hidden_dim, 1, final_layer=True))
 
     def make_disc_block(self, input_channels, output_channels, kernel_size=3, stride=2, padding=0, final_layer=False):
@@ -116,8 +113,8 @@ class Discriminator(nn.Module):
                       (affects activation and batchnorm)
         """
         if not final_layer:
-            return nn.Sequential(nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding),
-                                 nn.BatchNorm2d(output_channels), nn.LeakyReLU(0.2, inplace=True))
+            return nn.Sequential(nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding, bias=False),
+                                 nn.BatchNorm2d(output_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True), nn.LeakyReLU(0.2, inplace=True))
         else:
             return nn.Sequential(nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding))
 
@@ -156,6 +153,7 @@ class WGANGP(LightningModule):
         self.hidden_dim = kwargs['hidden_dim']
         self.image_type = kwargs['image_type']
         self.apply_mask = kwargs['apply_mask']
+        self.label_smoothing = kwargs['label_smoothing']
 
         # networks
         image_shape = (3, 224, 224)
@@ -259,7 +257,7 @@ class WGANGP(LightningModule):
                 d_loss = -torch.mean(real_validity) + torch.mean(fake_validity) + lambda_gp * gradient_penalty
             else:
                 # put on GPU because we created this tensor inside training_loop
-                real_valid = torch.ones(imgs.size(0), 1).type_as(imgs)
+                real_valid = torch.ones(imgs.size(0), 1).type_as(imgs)*0.9 if self.label_smoothing else torch.ones(imgs.size(0), 1).type_as(imgs)
                 fake_valid = torch.zeros(imgs.size(0), 1).type_as(imgs)
                 d_loss_fake = criterion(fake_validity, fake_valid)
                 d_loss_real = criterion(real_validity, real_valid)  # torch.ones_like(real_validity)
@@ -391,7 +389,9 @@ def main(args: Namespace) -> None:
         wandb_logger.watch(model)
         # saves a file like: ./trainedmodels/GAN/wandb_run_id-epoch=100.ckpt
         checkpoint_callback = ModelCheckpoint(dirpath='./trainedmodels/GAN/',
-            filename=os.path.join(run.id, '-{epoch:02d}.ckpt'), )
+            filename=os.path.join(run.id, '-{epoch:02d}.ckpt'),
+            monitor='g_loss',
+            mode='min)
         if args.resume_from_checkpoint == 'no':
             trainer = Trainer(gpus=args.gpus, logger=wandb_logger, weights_summary='full', precision=args.precision,
                               profiler=True, callbacks=[checkpoint_callback], max_epochs=args.max_epochs)
@@ -402,7 +402,9 @@ def main(args: Namespace) -> None:
 
     else:
         checkpoint_callback = ModelCheckpoint(dirpath='./trainedmodels/GAN/',
-            filename=os.path.join('nowandb-{epoch:02d}.ckpt'), )
+            filename=os.path.join('nowandb-{epoch:02d}.ckpt'), 
+            monitor='g_loss',
+            mode='min)
         trainer = Trainer(gpus=args.gpus, weights_summary='full', precision=args.precision, profiler=True,
                           callbacks=[checkpoint_callback])
 
@@ -415,14 +417,14 @@ def main(args: Namespace) -> None:
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("--gpus", type=int, default=1, help="number of GPUs")
-    parser.add_argument("--batch_size", type=int, default=128, help="size of the batches")
+    parser.add_argument("--batch_size", type=int, default=64, help="size of the batches")
     parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
     parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
     parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
     parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
     parser.add_argument("--hidden_dim", type=int, default=64, help="channels width multiplier")
     parser.add_argument("--opt_g_frequency", type=int, default=1, help="generator frequency")
-    parser.add_argument("--opt_d_frequency", type=int, default=5, help="discriminator frequency")
+    parser.add_argument("--opt_d_frequency", type=int, default=1, help="discriminator frequency")
     parser.add_argument('--dataloader', type=str, default='txt_dataloader',
                         choices=['fromAANETandDualBisenet', 'generatedDataset', 'Kitti2011_RGB', 'triplet_OBB',
                                  'triplet_BOO', 'triplet_ROO', 'triplet_ROO_360', 'triplet_3DOO_360', 'Kitti360',
@@ -432,7 +434,7 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_group_id', type=str, help='Set group id for the wandb experiment')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     parser.add_argument("--precision", type=int, default=32, help="32 or 16 bit precision", choices=[32, 16])
-    parser.add_argument("--loss", type=str, default='wloss', help="Choose loss between Wasserstein or BCE",
+    parser.add_argument("--loss", type=str, default='bce', help="Choose loss between Wasserstein or BCE",
                         choices=['wloss', 'bce'])
     parser.add_argument('--decimate', type=int, default=1, help='How much of the points will remain after '
                                                                 'decimation')
@@ -442,6 +444,7 @@ if __name__ == '__main__':
                         choices=['rgb', 'warping'])
     parser.add_argument("--resume_from_checkpoint", type=str, default='no', help="absolute path for checkpoint resume")
     parser.add_argument('--apply_mask', action='store_true', help='apply mask to the generated imgs')
+    parser.add_argument('--label_smoothing', action='store_true', help='apply label smoothing, i.e. real labels = 0.9')
 
 
     hparams = parser.parse_args()
