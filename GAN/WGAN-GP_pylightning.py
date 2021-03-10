@@ -262,7 +262,7 @@ class WGANGP(LightningModule):
                 real_valid = torch.ones(imgs.size(0), 1).type_as(imgs)
                 fake_valid = torch.zeros(imgs.size(0), 1).type_as(imgs)
                 d_loss_fake = criterion(fake_validity, fake_valid)
-                d_loss_real = criterion(real_validity, real_valid)  # torch.ones_like(real_validity)
+                d_loss_real = criterion(real_validity, real_valid*0.9)  # torch.ones_like(real_validity)
                 d_loss = (d_loss_fake + d_loss_real) / 2
 
             self.log('d_loss', d_loss, on_step=False, on_epoch=True)
