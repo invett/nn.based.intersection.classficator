@@ -35,7 +35,7 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
         self.input_dim = input_dim
 
-        self.gen = nn.Sequential(self.make_gen_block(input_dim,      hidden_dim * 8, kernel_size=4, stride=1),
+        self.gen = nn.Sequential(self.make_gen_block(input_dim, hidden_dim * 8, kernel_size=4, stride=1),
                                  self.make_gen_block(hidden_dim * 8, hidden_dim * 8, stride=1, padding=1),
                                  self.make_gen_block(hidden_dim * 8, hidden_dim * 8, padding=1),
                                  self.make_gen_block(hidden_dim * 8, hidden_dim * 4, padding=1),
@@ -73,7 +73,8 @@ class Generator(nn.Module):
         if not final_layer:
             return nn.Sequential(
                 nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding, bias=False),
-                nn.BatchNorm2d(output_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True), nn.ReLU(inplace=True))
+                nn.BatchNorm2d(output_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
+                nn.ReLU(inplace=True))
         else:
             return nn.Sequential(
                 nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding), nn.Tanh())
@@ -121,8 +122,10 @@ class Discriminator(nn.Module):
                       (affects activation and batchnorm)
         """
         if not final_layer:
-            return nn.Sequential(nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding, bias=False),
-                                 nn.BatchNorm2d(output_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True), nn.LeakyReLU(0.2, inplace=True))
+            return nn.Sequential(
+                nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding, bias=False),
+                nn.BatchNorm2d(output_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
+                nn.LeakyReLU(0.2, inplace=True))
         else:
             return nn.Sequential(nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding))
 
@@ -265,7 +268,8 @@ class WGANGP(LightningModule):
                 d_loss = -torch.mean(real_validity) + torch.mean(fake_validity) + lambda_gp * gradient_penalty
             else:
                 # put on GPU because we created this tensor inside training_loop
-                real_valid = torch.ones(imgs.size(0), 1).type_as(imgs)*0.9 if self.label_smoothing else torch.ones(imgs.size(0), 1).type_as(imgs)
+                real_valid = torch.ones(imgs.size(0), 1).type_as(imgs) * 0.9 if self.label_smoothing else torch.ones(
+                    imgs.size(0), 1).type_as(imgs)
                 fake_valid = torch.zeros(imgs.size(0), 1).type_as(imgs)
                 d_loss_fake = criterion(fake_validity, fake_valid)
                 d_loss_real = criterion(real_validity, real_valid)  # torch.ones_like(real_validity)
@@ -300,9 +304,13 @@ class WGANGP(LightningModule):
                 print('dataloader error')
                 exit(-1)
 
+            #rgb_image_test_transforms = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(),
+            #                                                transforms.Normalize((0.485, 0.456, 0.406),
+            #                                                                     (0.229, 0.224, 0.225))])
+
+            # for GANS, normalize with these values https://pytorch.org/tutorials/beginner/dcgan_faces_tutorial.html
             rgb_image_test_transforms = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(),
-                                                            transforms.Normalize((0.485, 0.456, 0.406),
-                                                                                 (0.229, 0.224, 0.225))])
+                                                            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
             dataset_ = txt_dataloader(train_path, transform=rgb_image_test_transforms, decimateStep=self.decimate)
             dataloader_ = DataLoader(dataset_, batch_size=self.batch_size, shuffle=True, num_workers=8, drop_last=True)
@@ -328,7 +336,8 @@ class WGANGP(LightningModule):
         a = (to_max - to_min) / (from_max - from_min)
         b = to_max - a * from_max
         data_ = np.array([(a * x + b) for x in data])
-        label = 'GAN - SINGLE IMAGE\ncurrent epoch: ' + str(self.current_epoch) # TODO wandb --> self.logger.name , see https://docs.wandb.ai/integrations/lightning
+        label = 'GAN - SINGLE IMAGE\ncurrent epoch: ' + str(
+            self.current_epoch)  # TODO wandb --> self.logger.name , see https://docs.wandb.ai/integrations/lightning
         a = plt.figure()
         plt.imshow(data_)
         send_telegram_picture(a, label)
@@ -383,7 +392,7 @@ def main(args: Namespace) -> None:
         group_id = args.wandb_group_id
     else:
         group_id = 'GENERIC-GAN'
-        
+
     # ------------------------
     # 2 INIT TRAINER
     # ------------------------
@@ -393,13 +402,12 @@ def main(args: Namespace) -> None:
     if not args.nowandb:
         run = wandb.init(project='GAN')
         run.save()
-        wandb_logger = WandbLogger(project='GAN', entity='chiringuito', group = group_id, job_type="training")
+        wandb_logger = WandbLogger(project='GAN', entity='chiringuito', group=group_id, job_type="training")
         wandb_logger.watch(model)
         # saves a file like: ./trainedmodels/GAN/wandb_run_id-epoch=100.ckpt
         checkpoint_callback = ModelCheckpoint(dirpath='./trainedmodels/GAN/',
-            filename=os.path.join(run.id, '-{epoch:02d}.ckpt'),
-            monitor='g_loss',
-            mode='min')
+                                              filename=os.path.join(run.id, '-{epoch:02d}.ckpt'), monitor='g_loss',
+                                              mode='min')
         if args.resume_from_checkpoint == 'no':
             trainer = Trainer(gpus=args.gpus, logger=wandb_logger, weights_summary='full', precision=args.precision,
                               profiler=True, callbacks=[checkpoint_callback], max_epochs=args.max_epochs)
@@ -410,9 +418,8 @@ def main(args: Namespace) -> None:
 
     else:
         checkpoint_callback = ModelCheckpoint(dirpath='./trainedmodels/GAN/',
-            filename=os.path.join('nowandb-{epoch:02d}.ckpt'), 
-            monitor='g_loss',
-            mode='min')
+                                              filename=os.path.join('nowandb-{epoch:02d}.ckpt'), monitor='g_loss',
+                                              mode='min')
         trainer = Trainer(gpus=args.gpus, weights_summary='full', precision=args.precision, profiler=True,
                           callbacks=[checkpoint_callback])
 
@@ -453,7 +460,6 @@ if __name__ == '__main__':
     parser.add_argument("--resume_from_checkpoint", type=str, default='no', help="absolute path for checkpoint resume")
     parser.add_argument('--apply_mask', action='store_true', help='apply mask to the generated imgs')
     parser.add_argument('--label_smoothing', action='store_true', help='apply label smoothing, i.e. real labels = 0.9')
-
 
     hparams = parser.parse_args()
 
