@@ -72,7 +72,7 @@ class Generator(nn.Module):
                                  ExpandingBlock(hidden_dim * 8,  hidden_dim * 8, kernel_1=2, kernel_2=3, pad_1=0, pad_2=0),
                                  ExpandingBlock(hidden_dim * 8,  hidden_dim * 4, kernel_1=2, kernel_2=3, pad_1=1, pad_2=1),
                                  ExpandingBlock(hidden_dim * 4,  hidden_dim * 2, kernel_1=2, kernel_2=3, pad_1=0, pad_2=0),
-                                 ExpandingBlock(hidden_dim * 2,  hidden_dim,     kernel_1=2, kernel_2=3, pad_1=1, pad_2=0),
+                                 ExpandingBlock(hidden_dim * 2,  hidden_dim,     kernel_1=2, kernel_2=3, pad_1=0, pad_2=1),
                                  #ExpandingBlock(input_dim, im_chan, kernel_1=2, kernel_2=3, pad_1=0, pad_2=1),
                                  nn.Conv2d(hidden_dim,im_chan, kernel_size=2, stride=2, padding=1)
                                 )  
