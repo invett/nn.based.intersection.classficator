@@ -178,11 +178,13 @@ The idea is to exploit the trained RESNET, then the train is made as follows:
   `train.py --TripletMarginMinerType=hard --batch_size=32 --dataloader=txt_dataloader --dataset=../../DualBiSeNet/KITTI-360_warped/train.prefix/prefix_train_list.txt --dataset_test=../../DualBiSeNet/KITTI-360_warped/test.prefix/prefix_test_list.txt --dataset_val=../../DualBiSeNet/KITTI-360_warped/validation.prefix/prefix_validation_list.txt --decimate=1 --distance_function=SNR --lr=0.00025 --margin=4 --metric=true --miner=false --num_epochs=500 --num_workers=8 --optimizer=adamW --p=1 --patience=5 --patience_start=30 --pretrained=true --scheduler=true --scheduler_type=ReduceLROnPlateau --telegram=true --train=true --wandb_group_id=WORKSHOP.IV21.sweep.KITTI-360 --weight_tensor=Kitti360 --weighted=true`
 - kitti 360 (LSTM): model_n6tg093u_45.pth
   `train.py --batch_size=64 --dataloader=lstm_txt_dataloader --dataset=../../DualBiSeNet/KITTI-360_warped/train.prefix/prefix_train_list.txt --dataset_test=../../DualBiSeNet/KITTI-360_warped/test.prefix/prefix_test_list.txt --dataset_val=../../DualBiSeNet/KITTI-360_warped/validation.prefix/prefix_validation_list.txt --decimate=1 --fc_dropout=0.2 --feature_detector_path=./trainedmodels/model_m5qcz4ha_75.pth --feature_model=resnet18 --lossfunction=focal --lr=0.0011 --lstm_dropout=0.1 --lstm_hidden=32 --lstm_layers=1 --model=LSTM --num_epochs=500 --num_workers=8 --optimizer=adam --patience=5 --patience_start=30 --pretrained=true --scheduler=true --scheduler_type=ReduceLROnPlateau --telegram=true --train=true --wandb_group_id=WORKSHOP.IV21.sweep.KITTI-360.warpings.lstm --weight_tensor=Kitti360 --weighted=true`
-- Alcala 26 (LSTM): model_n6tg093u_45.pth
+- Alcala 26 (LSTM): (¿ERROR?)
   
-- kitti Road (LSTM): model_n6tg093u_45.pth
+- kitti Road (LSTM):
   
-- kitti 360 (LSTM + Kevin): model_n6tg093u_45.pth
+- kitti 360 (LSTM + Kevin): model_h0sdz1pq_90.pth OR model_7ce52yge_70.pth
+
+
 
 
 ### GAN
