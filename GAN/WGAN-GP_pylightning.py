@@ -55,18 +55,7 @@ class Generator(nn.Module):
                                  self.make_gen_block(hidden_dim * 2, hidden_dim),
                                  self.make_gen_block(hidden_dim, im_chan, kernel_size=4, final_layer=True))
 
-        # load the mask
-        if image_type == 'warping':
-            mask = Image.open('GAN/MASK/alcala26_mask.png').convert('RGB')
-        elif image_type == 'rgb':
-            mask = Image.open('GAN/MASK/alcala26_mask_rgb.png').convert('RGB')
-        elif apply_mask:
-            exit(-1)
-
-        mask = np.asarray(mask) / 255.0  # .transpose((2, 0, 1))
-        self.mask = kornia.image_to_tensor(mask).cuda().half()
-        self.apply_mask = apply_mask
-        self.image_type = image_type
+        
 
     def make_gen_block(self, input_channels, output_channels, kernel_size=3, stride=2, padding=0, final_layer=False):
         """
@@ -100,8 +89,6 @@ class Generator(nn.Module):
         # GENERATOR
         x = noise.view(len(noise), self.input_dim, 1, 1)  # reshape vector in BxCxWxH
         imgs = self.gen(x)
-        if self.apply_mask:
-            imgs = imgs * self.mask
         return imgs
 
 
@@ -119,6 +106,19 @@ class Discriminator(nn.Module):
                                   self.make_disc_block(hidden_dim * 4, hidden_dim * 8),
                                   self.make_disc_block(hidden_dim * 8, hidden_dim, stride=1, kernel_size=4),
                                   self.make_disc_block(hidden_dim, 1, final_layer=True))
+        
+        # load the mask
+        if image_type == 'warping':
+            mask = Image.open('GAN/MASK/alcala26_mask.png').convert('RGB')
+        elif image_type == 'rgb':
+            mask = Image.open('GAN/MASK/alcala26_mask_rgb.png').convert('RGB')
+        elif apply_mask:
+            exit(-1)
+
+        mask = np.asarray(mask) / 255.0  # .transpose((2, 0, 1))
+        self.mask = kornia.image_to_tensor(mask).cuda().half()
+        self.apply_mask = apply_mask
+        self.image_type = image_type
 
     def make_disc_block(self, input_channels, output_channels, kernel_size=3, stride=2, padding=0, final_layer=False):
         """
@@ -148,6 +148,8 @@ class Discriminator(nn.Module):
             image: a flattened image tensor with dimension (im_chan)
         """
         # DISCRIMINATOR
+        if self.apply_mask:
+            image = image * self.mask
         disc_pred = self.disc(image)
         return disc_pred.view(len(disc_pred), -1)
 
