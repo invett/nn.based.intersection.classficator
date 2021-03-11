@@ -42,7 +42,7 @@ def scale(x, feature_range=(-1, 1)):
 
 
 class Generator(nn.Module):
-    def __init__(self, input_dim=100, im_chan=1, hidden_dim=64, apply_mask=False, image_type=''):
+    def __init__(self, input_dim=100, im_chan=1, hidden_dim=64):
         super(Generator, self).__init__()
         self.input_dim = input_dim
 
@@ -97,7 +97,7 @@ class Discriminator(nn.Module):
     Discriminator Class
     """
 
-    def __init__(self, im_chan=1, hidden_dim=64):
+    def __init__(self, im_chan=1, hidden_dim=64, apply_mask=False, image_type=''):
         super(Discriminator, self).__init__()
         self.disc = nn.Sequential(self.make_disc_block(im_chan, hidden_dim, kernel_size=4),
                                   self.make_disc_block(hidden_dim, hidden_dim * 2),
@@ -182,9 +182,9 @@ class WGANGP(LightningModule):
         # networks
         image_shape = (3, 224, 224)
         im_chan = 3
-        self.generator = Generator(input_dim=latent_dim, im_chan=3, hidden_dim=self.hidden_dim,
+        self.generator = Generator(input_dim=latent_dim, im_chan=3, hidden_dim=self.hidden_dim)
+        self.discriminator = Discriminator(im_chan, hidden_dim=self.hidden_dim,
                                    apply_mask=self.apply_mask, image_type=self.image_type)
-        self.discriminator = Discriminator(im_chan, hidden_dim=self.hidden_dim)
         self.generator.apply(self.weights_init)
         self.discriminator.apply(self.weights_init)
         self.validation_z = torch.randn(9, self.latent_dim)
