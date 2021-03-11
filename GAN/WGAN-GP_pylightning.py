@@ -30,6 +30,17 @@ import wandb
 from PIL import Image
 
 
+def scale(x, feature_range=(-1, 1)):
+    ''' Scale takes in an image x and returns that image, scaled
+       with a feature_range of pixel values from -1 to 1.
+       This function assumes that the input x is already scaled from 0-1.'''
+    # assume x is scaled to (0, 1)
+    # scale to feature_range and return scaled x
+    min, max = feature_range
+    x = x * (max - min) + min
+    return x
+
+
 class Generator(nn.Module):
     def __init__(self, input_dim=100, im_chan=1, hidden_dim=64, apply_mask=False, image_type=''):
         super(Generator, self).__init__()
@@ -210,6 +221,7 @@ class WGANGP(LightningModule):
             imgs, _ = batch
         elif self.dataloader_choice == 'txt_dataloader':
             imgs = batch['data']
+            imgs = scale(imgs)  # range [-1,1] to keep consistent with generated images (tanh activation function)
         else:
             return -1
 
