@@ -8,7 +8,7 @@
 # 	2. THE ALVARO's MASKs
 
 
-# USE generate.bev.dataset.py INSTEAD !!!!
+# USE generate-bev-dataset.py INSTEAD !!!!
 
 while read folder
 do
@@ -27,7 +27,7 @@ do
       pcdFolder=`sed "s|000.*||;s|aanet_||;s|alvaromask|pcd|;" <<< $i` 
       bevFolder=`sed "s|000.*||;s|aanet_||;s|alvaromask|bev|;" <<< $i` 
       echo python reproject.py $aanetFile $alvaroMaskFile out_aanet.ply $pcdFolder$pcdName.pcd $image_02 $image_03 $bevFolder$pcdName.png
-      python reproject.py $aanetFile $alvaroMaskFile out_aanet.ply $pcdFolder$pcdName.pcd $image_02 $image_03 $bevFolder$pcdName.png
+      # python reproject.py $aanetFile $alvaroMaskFile out_aanet.ply $pcdFolder$pcdName.pcd $image_02 $image_03 $bevFolder$pcdName.png
     done
     else
       echo "Skipping " $folder

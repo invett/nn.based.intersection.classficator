@@ -101,7 +101,8 @@ class txt_dataloader(AbstractSequence, Dataset):
 
             sample = {'image_02': image,
                       'label': label,
-                      'neg_label': neg_label}
+                      'neg_label': neg_label,
+                      'path_of_original_image': imagepath}
 
             transformed = []
             if self.transform:
@@ -116,6 +117,9 @@ class txt_dataloader(AbstractSequence, Dataset):
                     dataset_path = os.path.split(imagepath)[0].replace('KITTI-360', os.path.split(transformed['path'])[1])
                 else:
                     dataset_path = os.path.join(transformed['path'], imagepath.split('/')[-2])
+
+                # TODO: HANDLE THIS HELL...
+                dataset_path = os.path.join(transformed['path'], imagepath.split('/')[-4], 'image_02', 'data')
 
                 print("Saving image in ", dataset_path)
 

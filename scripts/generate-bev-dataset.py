@@ -7,7 +7,7 @@ import time
 
 import torchvision.transforms as transforms
 from dataloaders.transforms import Rescale, ToTensor, Normalize, GenerateBev, Mirror, GenerateNewDataset, \
-    WriteDebugInfoOnNewDataset, GenerateWarping
+    WriteDebugInfoOnNewDataset, GenerateWarping, addEntry
 from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromAANETandDualBisenet360, txt_dataloader
 import matplotlib.pyplot as plt
 from miscellaneous.utils import send_telegram_message, send_telegram_picture
@@ -25,17 +25,20 @@ def main(args):
     execute = args.execute
     if not execute:
         # execute = 'KITTI-ROAD-WARPING'
-        # execute = 'warping'
-        # execute = 'standard'
+        execute = 'KITTI-ROAD-3D'
         # execute = 'kitti360'
-        execute = 'kitti360-warping'
+        # execute = 'kitti360-warping'
+
         # execute = 'alcala26012021'   #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
         # execute = 'alcala.12.02.2021.000'   #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
         # execute = 'alcala.12.02.2021.001'  #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
 
+        # execute = 'warping'
+        # execute = 'standard'
+
     # alcala26122012 does not walk os paths! it directly uses a .txt file!
     if execute != 'alcala26012021' and execute != 'alcala.12.02.2021.000' and execute != 'alcala.12.02.2021.001' and \
-            execute != 'KITTI-ROAD-WARPING' and execute != 'kitti360-warping':
+            execute != 'KITTI-ROAD-WARPING' and execute != 'kitti360-warping' and execute != 'KITTI-ROAD-3D':
         folders = np.array([os.path.join(args.rootfolder, folder) for folder in sorted(os.listdir(args.rootfolder)) if
                             os.path.isdir(os.path.join(args.rootfolder, folder))])
 
@@ -163,6 +166,26 @@ def main(args):
                                                                                      #WriteDebugInfoOnNewDataset(),
                                                                                      GenerateNewDataset(args.savefolder)]), usePIL=False)
 
+    if execute == 'KITTI-ROAD-3D':
+        # this dataloader, uses the .txt files. Specify inside warpdataset the warping you need.
+        dataset = txt_dataloader(path_filename=args.rootfolder, transform=transforms.Compose([addEntry('aanet', 'no.value.needed.here'),
+                                                                                             GenerateBev(returnPoints=False,
+                                                                                             max_front_distance=args.max_front_distance,
+                                                                                             max_height=args.max_height,
+                                                                                             excludeMask=args.excludeMask,
+                                                                                             decimate=1.0,
+                                                                                             random_Rx_degrees=0.0,
+                                                                                             random_Ry_degrees=0.0,
+                                                                                             random_Rz_degrees=0.0,
+                                                                                             random_Tx_meters =0.0,
+                                                                                             random_Ty_meters =0.0,
+                                                                                             random_Tz_meters =0.0,
+                                                                                             txtdataloader=True,
+                                                                                             qmatrix='kitti'
+                                                                                             ),
+                                                                                     Rescale((224, 224)),
+                                                                                     GenerateNewDataset(args.savefolder)]), usePIL=False)
+
     if execute == 'standard':
         dataset = fromAANETandDualBisenet(folders, transform=transforms.Compose([#Normalize(),
                                                                                  GenerateBev(returnPoints=False,
@@ -184,14 +207,14 @@ def main(args):
                                           distance=args.distance_from_intersection)
 
     # num_workers starts from 0
-    dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=args.workers)
+    dataloader = DataLoader(dataset, batch_size=10, shuffle=False, num_workers=args.workers)
 
-    #USE THIS TO SELECT ONE SINGLE IMAGE AND VERIFY THE WARPING
+    # USE THIS TO SELECT ONE SINGLE IMAGE AND VERIFY THE WARPING
     # to see the path of the original image, enable # print(imagepath) in line def __getitem__(self, idx):
     # on file sequencedataloader.py
-    # for i in range(1):
-    #     sample = dataloader.dataset.__getitem__(0)
-    #     # sample = dataloader.dataset.__getitem__(2013+i)
+    # for i in range(12):
+    #     # sample = dataloader.dataset.__getitem__(0)
+    #     sample = dataloader.dataset.__getitem__(2013+i)
     #     data = sample['data']
     #     label = sample['label']
     #     a = plt.figure()
@@ -204,7 +227,7 @@ def main(args):
         print("Generating run {} ... ".format(index))
         if args.telegram:
             send_telegram_message("Generating run {} ... ".format(index))
-
+                                                                                
         # RESET SEED to have np.random working correctly https://github.com/pytorch/pytorch/issues/5059
         np.random.seed()
 
@@ -257,8 +280,12 @@ if __name__ == '__main__':
     # parser.add_argument('--savefolder', default="/media/augusto/500GBHECTOR/augusto/kitti360-augusto-augmented-warped", type=str, help='Where to save the new data')
 
     # KITTI-ROAD (kitti2011 relabeled)
+    # WARPINGS
+    # warpings parser.add_argument('--rootfolder', default="/home/ballardini/DualBiSeNet/KITTI-ROAD/all.txt", type=str, help='Root folder for all datasets')
+    # warpings parser.add_argument('--savefolder', default="/home/ballardini/DualBiSeNet/KITTI-ROAD_warped", type=str, help='Where to save the new data')
+    # 3D
     parser.add_argument('--rootfolder', default="/home/ballardini/DualBiSeNet/KITTI-ROAD/all.txt", type=str, help='Root folder for all datasets')
-    parser.add_argument('--savefolder', default="/home/ballardini/DualBiSeNet/KITTI-ROAD_warped", type=str, help='Where to save the new data')
+    parser.add_argument('--savefolder', default="/home/ballardini/DualBiSeNet/KITTI-ROAD_3D", type=str, help='Where to save the new data')
 
     # ALCALA 26 - AUGUSTO's LAPTOP
     # parser.add_argument('--rootfolder', default="/home/ballardini/Desktop/alcala-26.01.2021_selected/all.txt", type=str, help='Root folder for all datasets')
