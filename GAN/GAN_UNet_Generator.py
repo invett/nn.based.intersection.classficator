@@ -24,33 +24,49 @@ from miscellaneous.utils import send_telegram_picture, send_telegram_message
 import wandb
 
 
+class Print(nn.Module):
+    def __init__(self, txt=''):
+        super(Print, self).__init__()
+        self.txt = txt
+
+    def forward(self, x):
+        print('DEBUG-SHAPE (' + self.txt + '): '+ str(x.shape))
+        return x
+
+
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, padding=0):
         super(DoubleConv, self).__init__()
-        self.net = nn.Sequential(nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
+        self.net = nn.Sequential(Print('DoubleConv IN'),
+                                 nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
+                                 Print('DoubleConv Conv2d (kernel=' + str(kernel_size) + ', padding=' + str(padding) + ')'),
                                  nn.ReLU(inplace=True),
                                  nn.Conv2d(out_channels, out_channels,kernel_size=kernel_size, padding=padding),
+                                 Print('DoubleConv Conv2d (kernel=' + str(kernel_size) + ', padding=' + str(padding) + ')'),
                                  nn.ReLU(inplace=True)
                                 )
     def forward(self, x):
         return self.net(x)
 
-      
+
 class UpsampleConv(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=2, padding=0):
         super(UpsampleConv, self).__init__()
 
         self.net = nn.Sequential(
+            Print('UpsampleConv IN'),
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
-            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding)
+            Print('UpsampleConv Upsample, scale_factor: 2'),
+            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
+            Print('UpsampleConv Conv2d (kernel=' + str(kernel_size) + ', padding=' + str(padding) + ')')
         )
 
     def forward(self, x):
         return self.net(x)
-      
+
 
 class ExpandingBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_1=2,kernel_2=3, pad_1=1, pad_2=1):
+    def __init__(self, in_channels, out_channels, kernel_1=2, kernel_2=3, pad_1=1, pad_2=1):
         super(ExpandingBlock, self).__init__()
         self.upsample = UpsampleConv(in_channels, out_channels, kernel_size=kernel_1, padding=pad_1)
         self.double_conv = DoubleConv(out_channels, out_channels, kernel_size=kernel_2, padding=pad_2)
@@ -59,24 +75,32 @@ class ExpandingBlock(nn.Module):
         x = self.upsample(x)
         x = self.double_conv(x)
         return x
-      
-      
+
+
 class Generator(nn.Module):
     def __init__(self, input_dim=512, im_chan=3, hidden_dim=64):
         super(Generator, self).__init__()
         self.input_dim = input_dim
-        
+
         #Channels choice following StyleGAN2 generator
-        self.gen = nn.Sequential(ExpandingBlock(input_dim,       hidden_dim * 8, kernel_1=1, kernel_2=1, pad_1=1, pad_2=0),
+        self.gen = nn.Sequential(Print(),
+                                 ExpandingBlock(input_dim,       hidden_dim * 8, kernel_1=1, kernel_2=1, pad_1=1, pad_2=0),
+                                 Print(),
                                  ExpandingBlock(hidden_dim * 8,  hidden_dim * 8, kernel_1=1, kernel_2=1, pad_1=1, pad_2=0),
+                                 Print(),
                                  ExpandingBlock(hidden_dim * 8,  hidden_dim * 8, kernel_1=2, kernel_2=3, pad_1=0, pad_2=0),
+                                 Print(),
                                  ExpandingBlock(hidden_dim * 8,  hidden_dim * 4, kernel_1=2, kernel_2=3, pad_1=1, pad_2=1),
+                                 Print(),
                                  ExpandingBlock(hidden_dim * 4,  hidden_dim * 2, kernel_1=2, kernel_2=3, pad_1=0, pad_2=0),
+                                 Print(),
                                  ExpandingBlock(hidden_dim * 2,  hidden_dim,     kernel_1=2, kernel_2=3, pad_1=0, pad_2=1),
+                                 Print(),
                                  #ExpandingBlock(input_dim, im_chan, kernel_1=2, kernel_2=3, pad_1=0, pad_2=1),
-                                 nn.Conv2d(hidden_dim,im_chan, kernel_size=2, stride=2, padding=1)
-                                )  
-    
+                                 nn.Conv2d(hidden_dim, im_chan, kernel_size=2, stride=2, padding=1),
+                                 Print()
+                                )
+
     def forward(self, noise):
         """
         Function for completing a forward pass of the generator: Given a noise tensor, 
@@ -296,7 +320,7 @@ class WGANGP(LightningModule):
                                                                                  (0.229, 0.224, 0.225))])
 
             dataset_ = txt_dataloader(train_path, transform=rgb_image_test_transforms, decimateStep=self.decimate)
-            dataloader_ = DataLoader(dataset_, batch_size=self.batch_size, shuffle=True, num_workers=8, drop_last=True)
+            dataloader_ = DataLoader(dataset_, batch_size=self.batch_size, shuffle=True, num_workers=0, drop_last=True)
             return dataloader_
 
     def on_epoch_end(self):
@@ -380,8 +404,8 @@ def main(args: Namespace) -> None:
     # ------------------------
     # If use distubuted training  PyTorch recommends to use DistributedDataParallel.
     # See: https://pytorch.org/docs/stable/nn.html#torch.nn.DataParallel
-    
-    
+
+
     if not args.nowandb:
         run = wandb.init(project='GAN')
         wandb_logger = WandbLogger(project='GAN', entity='chiringuito', group=group_id, job_type="training")
