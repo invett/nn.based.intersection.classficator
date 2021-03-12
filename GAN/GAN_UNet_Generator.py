@@ -83,7 +83,7 @@ class Generator(nn.Module):
         self.input_dim = input_dim
 
         #Channels choice following StyleGAN2 generator
-        self.gen = nn.Sequential(Print(),
+        self.gen = nn.Sequential(Print('***GENERATOR***'),
                                  ExpandingBlock(input_dim,       hidden_dim * 8, kernel_1=1, kernel_2=1, pad_1=1, pad_2=0),
                                  Print(),
                                  ExpandingBlock(hidden_dim * 8,  hidden_dim * 8, kernel_1=1, kernel_2=1, pad_1=1, pad_2=0),
@@ -96,9 +96,9 @@ class Generator(nn.Module):
                                  Print(),
                                  ExpandingBlock(hidden_dim * 2,  hidden_dim,     kernel_1=2, kernel_2=3, pad_1=0, pad_2=1),
                                  Print(),
-                                 #ExpandingBlock(input_dim, im_chan, kernel_1=2, kernel_2=3, pad_1=0, pad_2=1),
-                                 nn.Conv2d(hidden_dim, im_chan, kernel_size=2, stride=2, padding=1),
+                                 ExpandingBlock(hidden_dim, im_chan, kernel_1=3, kernel_2=3, pad_1=0, pad_2=1),
                                  Print()
+                                 #nn.Conv2d(hidden_dim, im_chan, kernel_size=2, stride=2, padding=1),
                                 )
 
     def forward(self, noise):
@@ -119,13 +119,14 @@ class Discriminator(nn.Module):
 
     def __init__(self, im_chan=1, hidden_dim=64):
         super(Discriminator, self).__init__()
-        self.disc = nn.Sequential(self.make_disc_block(im_chan, hidden_dim, kernel_size=4),
-                                  self.make_disc_block(hidden_dim, hidden_dim * 2),
-                                  self.make_disc_block(hidden_dim * 2, hidden_dim * 4),
-                                  self.make_disc_block(hidden_dim * 4, hidden_dim * 4),
-                                  self.make_disc_block(hidden_dim * 4, hidden_dim * 2),
-                                  self.make_disc_block(hidden_dim * 2, hidden_dim, stride=1, kernel_size=4),
-                                  self.make_disc_block(hidden_dim, 1, final_layer=True))
+        self.disc = nn.Sequential(Print('***DISCRIMINATOR***'),
+                                  self.make_disc_block(im_chan, hidden_dim, kernel_size=4), Print(),
+                                  self.make_disc_block(hidden_dim, hidden_dim * 2), Print(),
+                                  self.make_disc_block(hidden_dim * 2, hidden_dim * 4), Print(),
+                                  self.make_disc_block(hidden_dim * 4, hidden_dim * 4), Print(),
+                                  self.make_disc_block(hidden_dim * 4, hidden_dim * 2), Print(),
+                                  self.make_disc_block(hidden_dim * 2, hidden_dim, stride=1, kernel_size=4), Print(),
+                                  self.make_disc_block(hidden_dim, 1, final_layer=True), Print())
 
     def make_disc_block(self, input_channels, output_channels, kernel_size=3, stride=2, padding=0, final_layer=False):
         """
@@ -140,8 +141,11 @@ class Discriminator(nn.Module):
                       (affects activation and batchnorm)
         """
         if not final_layer:
-            return nn.Sequential(nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding),
-                                 nn.BatchNorm2d(output_channels), nn.LeakyReLU(0.2, inplace=True))
+            return nn.Sequential(Print(),
+                                 nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding),
+                                 Print('make_disc_block Conv2d (kernel=' + str(kernel_size) + ', padding=' + str(padding) + ', stride=' + str(stride) + ')'),
+                                 nn.BatchNorm2d(output_channels), nn.LeakyReLU(0.2, inplace=True),
+                                 Print('make_disc_block BatchNorm2d'))
         else:
             return nn.Sequential(nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding))
 
@@ -188,7 +192,7 @@ class WGANGP(LightningModule):
         self.discriminator.apply(self.weights_init)
         self.validation_z = torch.randn(9, self.latent_dim)
 
-        self.example_input_array = torch.zeros(2, self.latent_dim)
+        # TODO:DELETE para no se usa nunca ... self.example_input_array = torch.zeros(2, self.latent_dim)
 
     def weights_init(self, m):
         if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
@@ -239,11 +243,11 @@ class WGANGP(LightningModule):
         if optimizer_idx == 0:
 
             # generate images
-            self.generated_imgs = self(z)
+            # TODO:DELETE para no se usa nunca ... self.generated_imgs = self(z)
 
             # log sampled images
-            sample_imgs = self.generated_imgs[:6]
-            grid = torchvision.utils.make_grid(sample_imgs)
+            # TODO:DELETE para no se usa nunca ... sample_imgs = self.generated_imgs[:6]
+            # TODO:DELETE para no se usa nunca ... grid = torchvision.utils.make_grid(sample_imgs)
             # self.logger.experiment.add_image('generated_images', grid, 0)
 
             # ground truth result (ie: all fake)
