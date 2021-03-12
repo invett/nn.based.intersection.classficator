@@ -14,7 +14,7 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
 - [X] GAN: use direct RGB image
 - [X] GAN: Beef-up Generator -> 11 layers
 - [X] GAN: Label smoothing strategy nn.BCEWithLogitsLoss(logits, labels*0.9) 
-- [ ] GAN: UNet Generator
+- [?] GAN: UNet Generator : update 12.03.2021 ... should be ok. need to test
 - [ ] GAN: PatchGAN Discriminator (Based on UNet Contracting Path)
 - [ ] GAN: Add MASK fot the non-interesting parts of the RGB (eg. sky)
 - [ ] GAN: Conditional GAN for balancing classes.
@@ -35,8 +35,15 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
     
 - [ ] Kitti360 actualization
 
-    - [x] Warpings No mirror
-    - [ ] Stereo + Lidar --> 3D-Mask 
+    - [x] Warpings No mirror --> warped
+    - [ ] Stereo + Lidar --> 3D 
+    - [ ] Stereo + Lidar + alvaromask --> 3D_masked 
+
+- [ ] KITTI ROAD actualization
+
+    - [x] Warpings No mirror --> warped
+    - [x] Stereo + Lidar --> 3D                             ok 12.03.2021
+    - [ ] Stereo + Lidar + alvaromask --> 3D_masked
 
 ## Log
 ### TRAIN 15.02.2021
@@ -185,8 +192,6 @@ The idea is to exploit the trained RESNET, then the train is made as follows:
 - kitti 360 (LSTM + Kevin): model_h0sdz1pq_90.pth OR model_7ce52yge_70.pth
 
 
-
-
 ### GAN
 
  - Implementation of DCGAN (BCELoss) and WGAN (Wasserstein Loss)
@@ -195,4 +200,3 @@ The idea is to exploit the trained RESNET, then the train is made as follows:
  - Lower bs and lower lr (linear relationship) better performance.
  - Add bias=False to convs and BN(output_dim, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
  - Change Generator and Discriminator architectures (More similar to DCGAN Pytorch)
-
