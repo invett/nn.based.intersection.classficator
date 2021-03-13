@@ -169,6 +169,7 @@ class WGANGP(LightningModule):
         self.loss = kwargs['loss']
         self.hidden_dim = kwargs['hidden_dim']
         self.image_type = kwargs['image_type']
+        self.label_smoothing = kwargs['label_smoothing']
 
         # networks
         image_shape = (3, 224, 224)
@@ -271,8 +272,10 @@ class WGANGP(LightningModule):
                 d_loss = -torch.mean(real_validity) + torch.mean(fake_validity) + lambda_gp * gradient_penalty
             else:
                 # put on GPU because we created this tensor inside training_loop
-                real_valid = torch.ones(imgs.size(0), 1).type_as(imgs)
-                fake_valid = torch.zeros(imgs.size(0), 1).type_as(imgs)
+                real_valid = torch.ones(imgs.size(0), 1).type_as(imgs) * np.random.uniform(low=0.7, high=1.2) if self.label_smoothing else torch.ones(
+                    imgs.size(0), 1).type_as(imgs)
+                fake_valid = torch.zeros(imgs.size(0), 1).type_as(imgs) * np.random.uniform(low=0.0, high=0.3) if self.label_smoothing else torch.zeros(
+                    imgs.size(0), 1).type_as(imgs)
                 d_loss_fake = criterion(fake_validity, fake_valid)
                 d_loss_real = criterion(real_validity, real_valid)  # torch.ones_like(real_validity)
                 d_loss = (d_loss_fake + d_loss_real) / 2
@@ -456,6 +459,7 @@ if __name__ == '__main__':
     parser.add_argument("--image_type", type=str, default='warping', help="Choose between warping or rgb",
                         choices=['rgb', 'warping'])
     parser.add_argument("--resume_from_checkpoint", type=str, default='no', help="absolute path for checkpoint resume")
+    parser.add_argument('--label_smoothing', action='store_true', help='apply label smoothing, i.e. real labels = 0.9')
 
     hparams = parser.parse_args()
 
