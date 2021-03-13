@@ -38,10 +38,10 @@ class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, padding=0):
         super(DoubleConv, self).__init__()
         self.net = nn.Sequential(Print('DoubleConv IN'),
-                                 nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
+                                 nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding, bias=False),
                                  Print('DoubleConv Conv2d (kernel=' + str(kernel_size) + ', padding=' + str(padding) + ')'),
                                  nn.ReLU(inplace=True),
-                                 nn.Conv2d(out_channels, out_channels,kernel_size=kernel_size, padding=padding),
+                                 nn.Conv2d(out_channels, out_channels,kernel_size=kernel_size, padding=padding, bias=False),
                                  Print('DoubleConv Conv2d (kernel=' + str(kernel_size) + ', padding=' + str(padding) + ')'),
                                  nn.ReLU(inplace=True)
                                 )
@@ -57,7 +57,7 @@ class UpsampleConv(nn.Module):
             Print('UpsampleConv IN'),
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
             Print('UpsampleConv Upsample, scale_factor: 2'),
-            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
+            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding, bias=False),
             Print('UpsampleConv Conv2d (kernel=' + str(kernel_size) + ', padding=' + str(padding) + ')')
         )
 
@@ -142,9 +142,9 @@ class Discriminator(nn.Module):
         """
         if not final_layer:
             return nn.Sequential(Print(),
-                                 nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding),
+                                 nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding, bias=False),
                                  Print('make_disc_block Conv2d (kernel=' + str(kernel_size) + ', padding=' + str(padding) + ', stride=' + str(stride) + ')'),
-                                 nn.BatchNorm2d(output_channels), nn.LeakyReLU(0.2, inplace=True),
+                                 nn.BatchNorm2d(output_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True), nn.LeakyReLU(0.2, inplace=True),
                                  Print('make_disc_block BatchNorm2d'))
         else:
             return nn.Sequential(nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding))
