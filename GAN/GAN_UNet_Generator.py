@@ -314,7 +314,7 @@ class WGANGP(LightningModule):
                                                                                  (0.229, 0.224, 0.225))])
 
             dataset_ = txt_dataloader(train_path, transform=rgb_image_test_transforms, decimateStep=self.decimate)
-            dataloader_ = DataLoader(dataset_, batch_size=self.batch_size, shuffle=True, num_workers=0, drop_last=True)
+            dataloader_ = DataLoader(dataset_, batch_size=self.batch_size, shuffle=True, num_workers=16, drop_last=True)
             return dataloader_
 
     def on_epoch_end(self):
