@@ -118,7 +118,7 @@ class Discriminator(nn.Module):
     Discriminator Class
     """
 
-    def __init__(self, im_chan=1, hidden_dim=64):
+    def __init__(self, im_chan=1, hidden_dim=64, apply_mask=False, image_type=''):
         super(Discriminator, self).__init__()
         self.disc = nn.Sequential(
                                   self.make_disc_block(im_chan, hidden_dim, kernel_size=4), 
