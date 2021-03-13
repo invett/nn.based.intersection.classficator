@@ -37,13 +37,10 @@ class Print(nn.Module):
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, padding=0):
         super(DoubleConv, self).__init__()
-        self.net = nn.Sequential(Print('DoubleConv IN'),
-                                 nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding, bias=False),
-                                 Print('DoubleConv Conv2d (kernel=' + str(kernel_size) + ', padding=' + str(padding) + ')'),
-                                 nn.ReLU(inplace=True),
+        self.net = nn.Sequential(nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding, bias=False),
+                                 nn.LeakyReLU(0.2, inplace=True),
                                  nn.Conv2d(out_channels, out_channels,kernel_size=kernel_size, padding=padding, bias=False),
-                                 Print('DoubleConv Conv2d (kernel=' + str(kernel_size) + ', padding=' + str(padding) + ')'),
-                                 nn.ReLU(inplace=True)
+                                 nn.LeakyReLU(0.2, inplace=True)
                                 )
     def forward(self, x):
         return self.net(x)
@@ -54,11 +51,8 @@ class UpsampleConv(nn.Module):
         super(UpsampleConv, self).__init__()
 
         self.net = nn.Sequential(
-            Print('UpsampleConv IN'),
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
-            Print('UpsampleConv Upsample, scale_factor: 2'),
-            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding, bias=False),
-            Print('UpsampleConv Conv2d (kernel=' + str(kernel_size) + ', padding=' + str(padding) + ')')
+            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding, bias=False)
         )
 
     def forward(self, x):
@@ -83,21 +77,14 @@ class Generator(nn.Module):
         self.input_dim = input_dim
 
         #Channels choice following StyleGAN2 generator
-        self.gen = nn.Sequential(Print('***GENERATOR***'),
+        self.gen = nn.Sequential(
                                  ExpandingBlock(input_dim,       hidden_dim * 8, kernel_1=1, kernel_2=1, pad_1=1, pad_2=0),
-                                 Print(),
                                  ExpandingBlock(hidden_dim * 8,  hidden_dim * 8, kernel_1=1, kernel_2=1, pad_1=1, pad_2=0),
-                                 Print(),
                                  ExpandingBlock(hidden_dim * 8,  hidden_dim * 8, kernel_1=2, kernel_2=3, pad_1=0, pad_2=0),
-                                 Print(),
                                  ExpandingBlock(hidden_dim * 8,  hidden_dim * 4, kernel_1=2, kernel_2=3, pad_1=1, pad_2=1),
-                                 Print(),
                                  ExpandingBlock(hidden_dim * 4,  hidden_dim * 2, kernel_1=2, kernel_2=3, pad_1=0, pad_2=0),
-                                 Print(),
                                  ExpandingBlock(hidden_dim * 2,  hidden_dim,     kernel_1=2, kernel_2=3, pad_1=0, pad_2=1),
-                                 Print(),
-                                 ExpandingBlock(hidden_dim, im_chan, kernel_1=3, kernel_2=3, pad_1=0, pad_2=1),
-                                 Print()
+                                 ExpandingBlock(hidden_dim, im_chan, kernel_1=3, kernel_2=3, pad_1=0, pad_2=1)
                                  #nn.Conv2d(hidden_dim, im_chan, kernel_size=2, stride=2, padding=1),
                                 )
 
@@ -119,14 +106,15 @@ class Discriminator(nn.Module):
 
     def __init__(self, im_chan=1, hidden_dim=64):
         super(Discriminator, self).__init__()
-        self.disc = nn.Sequential(Print('***DISCRIMINATOR***'),
-                                  self.make_disc_block(im_chan, hidden_dim, kernel_size=4), Print(),
-                                  self.make_disc_block(hidden_dim, hidden_dim * 2), Print(),
-                                  self.make_disc_block(hidden_dim * 2, hidden_dim * 4), Print(),
-                                  self.make_disc_block(hidden_dim * 4, hidden_dim * 4), Print(),
-                                  self.make_disc_block(hidden_dim * 4, hidden_dim * 2), Print(),
-                                  self.make_disc_block(hidden_dim * 2, hidden_dim, stride=1, kernel_size=4), Print(),
-                                  self.make_disc_block(hidden_dim, 1, final_layer=True), Print())
+        self.disc = nn.Sequential(
+                                  self.make_disc_block(im_chan, hidden_dim, kernel_size=4), 
+                                  self.make_disc_block(hidden_dim, hidden_dim * 2),
+                                  self.make_disc_block(hidden_dim * 2, hidden_dim * 4), 
+                                  self.make_disc_block(hidden_dim * 4, hidden_dim * 4), 
+                                  self.make_disc_block(hidden_dim * 4, hidden_dim * 2), 
+                                  self.make_disc_block(hidden_dim * 2, hidden_dim, stride=1, kernel_size=4), 
+                                  self.make_disc_block(hidden_dim, 1, final_layer=True)
+                                )
 
     def make_disc_block(self, input_channels, output_channels, kernel_size=3, stride=2, padding=0, final_layer=False):
         """
@@ -141,11 +129,10 @@ class Discriminator(nn.Module):
                       (affects activation and batchnorm)
         """
         if not final_layer:
-            return nn.Sequential(Print(),
+            return nn.Sequential(
                                  nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding, bias=False),
-                                 Print('make_disc_block Conv2d (kernel=' + str(kernel_size) + ', padding=' + str(padding) + ', stride=' + str(stride) + ')'),
-                                 nn.BatchNorm2d(output_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True), nn.LeakyReLU(0.2, inplace=True),
-                                 Print('make_disc_block BatchNorm2d'))
+                                 nn.BatchNorm2d(output_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True), nn.LeakyReLU(0.2, inplace=True)
+                                )
         else:
             return nn.Sequential(nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding))
 
