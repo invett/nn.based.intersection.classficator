@@ -74,7 +74,7 @@ class Generator(nn.Module):
             return nn.Sequential(
                 nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding, bias=False),
                 nn.BatchNorm2d(output_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
-                nn.ReLU(inplace=True))
+                nn.LeakyReLU(0.2, inplace=True))
         else:
             return nn.Sequential(
                 nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride, padding=padding), nn.Tanh())
@@ -282,9 +282,10 @@ class WGANGP(LightningModule):
                 d_loss = -torch.mean(real_validity) + torch.mean(fake_validity) + lambda_gp * gradient_penalty
             else:
                 # put on GPU because we created this tensor inside training_loop
-                real_valid = torch.ones(imgs.size(0), 1).type_as(imgs) * 0.9 if self.label_smoothing else torch.ones(
+                real_valid = torch.ones(imgs.size(0), 1).type_as(imgs) * np.random.uniform(low=0.7, high=1.2) if self.label_smoothing else torch.ones(
                     imgs.size(0), 1).type_as(imgs)
-                fake_valid = torch.zeros(imgs.size(0), 1).type_as(imgs)
+                fake_valid = torch.zeros(imgs.size(0), 1).type_as(imgs) * np.random.uniform(low=0.0, high=0.3) if self.label_smoothing else torch.zeros(
+                    imgs.size(0), 1).type_as(imgs)
                 d_loss_fake = criterion(fake_validity, fake_valid)
                 d_loss_real = criterion(real_validity, real_valid)  # torch.ones_like(real_validity)
                 d_loss = (d_loss_fake + d_loss_real) / 2
