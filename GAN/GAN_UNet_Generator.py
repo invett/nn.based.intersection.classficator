@@ -38,9 +38,9 @@ class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, padding=0):
         super(DoubleConv, self).__init__()
         self.net = nn.Sequential(nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
-                                 nn.LeakyReLU(0.1, inplace=True),
+                                 nn.ReLU(inplace=True),
                                  nn.Conv2d(out_channels, out_channels,kernel_size=kernel_size, padding=padding),
-                                 nn.LeakyReLU(0.1, inplace=True)
+                                 nn.ReLU(inplace=True)
                                 )
     def forward(self, x):
         return self.net(x)
@@ -131,7 +131,7 @@ class Discriminator(nn.Module):
         if not final_layer:
             return nn.Sequential(
                                  nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding, bias=False),
-                                 nn.BatchNorm2d(output_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True), nn.LeakyReLU(0.2, inplace=True)
+                                 nn.BatchNorm2d(output_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True), nn.LeakyReLU(0.1, inplace=True)
                                 )
         else:
             return nn.Sequential(nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding))
