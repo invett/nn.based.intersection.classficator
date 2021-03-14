@@ -179,7 +179,7 @@ class Patch_Discriminator(nn.Module):
 
     def forward(self, image):
         x0 = self.upfeature(image)
-        x1 = self.contract1(image)
+        x1 = self.contract1(x0)
         x2 = self.contract2(x1)
         x3 = self.contract3(x2)
         x4 = self.contract4(x3)
