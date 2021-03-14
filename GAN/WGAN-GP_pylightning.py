@@ -178,7 +178,7 @@ class Patch_Discriminator(nn.Module):
         self.final = nn.Conv2d(hidden_channels * 16, 1, kernel_size=1)
 
     def forward(self, image):
-        #x0 = self.upfeature(image)
+        x0 = self.upfeature(image)
         x1 = self.contract1(image)
         x2 = self.contract2(x1)
         x3 = self.contract3(x2)
