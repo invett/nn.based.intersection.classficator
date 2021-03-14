@@ -49,10 +49,10 @@ class Print(nn.Module):
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, padding=0):
         super(DoubleConv, self).__init__()
-        self.net = nn.Sequential(nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding, bias=False),
-                                 nn.LeakyReLU(0.2, inplace=True),
-                                 nn.Conv2d(out_channels, out_channels,kernel_size=kernel_size, padding=padding, bias=False),
-                                 nn.LeakyReLU(0.2, inplace=True)
+        self.net = nn.Sequential(nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
+                                 nn.ReLU(inplace=True),
+                                 nn.Conv2d(out_channels, out_channels,kernel_size=kernel_size, padding=padding),
+                                 nn.ReLU(inplace=True)
                                 )
     def forward(self, x):
         return self.net(x)
@@ -64,7 +64,7 @@ class UpsampleConv(nn.Module):
 
         self.net = nn.Sequential(
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
-            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding, bias=False)
+            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding)
         )
 
     def forward(self, x):
