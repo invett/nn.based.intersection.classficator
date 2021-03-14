@@ -40,6 +40,72 @@ def scale(x, feature_range=(-1, 1)):
     x = x * (max - min) + min
     return x
 
+class FeatureMapBlock(nn.Module):
+    '''
+    FeatureMapBlock Class
+    The final layer of a U-Net - 
+    maps each pixel to a pixel with the correct number of output dimensions
+    using a 1x1 convolution.
+    Values:
+        input_channels: the number of channels to expect from a given input
+        output_channels: the number of channels to expect for a given output
+    '''
+    def __init__(self, input_channels, output_channels):
+        super(FeatureMapBlock, self).__init__()
+        self.conv = nn.Conv2d(input_channels, output_channels, kernel_size=1)
+
+    def forward(self, x):
+        '''
+        Function for completing a forward pass of FeatureMapBlock: 
+        Given an image tensor, returns it mapped to the desired number of channels.
+        Parameters:
+            x: image tensor of shape (batch size, channels, height, width)
+        '''
+        x = self.conv(x)
+        return x
+
+    
+class ContractingBlock(nn.Module):
+    '''
+    ContractingBlock Class
+    Performs two convolutions followed by a max pool operation.
+    Values:
+        input_channels: the number of channels to expect from a given input
+    '''
+    def __init__(self, input_channels, use_dropout=False, use_bn=True):
+        super(ContractingBlock, self).__init__()
+        self.conv1 = nn.Conv2d(input_channels, input_channels * 2, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(input_channels * 2, input_channels * 2, kernel_size=3, padding=1)
+        self.activation = nn.LeakyReLU(0.2)
+        self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
+        if use_bn:
+            self.batchnorm = nn.BatchNorm2d(input_channels * 2)
+        self.use_bn = use_bn
+        if use_dropout:
+            self.dropout = nn.Dropout()
+        self.use_dropout = use_dropout
+
+    def forward(self, x):
+        '''
+        Function for completing a forward pass of ContractingBlock: 
+        Given an image tensor, completes a contracting block and returns the transformed tensor.
+        Parameters:
+            x: image tensor of shape (batch size, channels, height, width)
+        '''
+        x = self.conv1(x)
+        if self.use_bn:
+            x = self.batchnorm(x)
+        if self.use_dropout:
+            x = self.dropout(x)
+        x = self.activation(x)
+        x = self.conv2(x)
+        if self.use_bn:
+            x = self.batchnorm(x)
+        if self.use_dropout:
+            x = self.dropout(x)
+        x = self.activation(x)
+        x = self.maxpool(x)
+        return x
 
 class Generator(nn.Module):
     def __init__(self, input_dim=100, im_chan=1, hidden_dim=64):
@@ -90,8 +156,38 @@ class Generator(nn.Module):
         x = noise.view(len(noise), self.input_dim, 1, 1)  # reshape vector in BxCxWxH
         imgs = self.gen(x)
         return imgs
+    
+    
 
+class Patch_Discriminator(nn.Module):
+    '''
+    PatchGAN Discriminator Class
+    Structured like the contracting path of the U-Net, the discriminator will
+    output a matrix of values classifying corresponding portions of the image as real or fake. 
+    Parameters:
+        input_channels: the number of image input channels
+        hidden_channels: the initial number of discriminator convolutional filters
+    '''
+    def __init__(self, input_channels=3, hidden_channels=8):
+        super(Discriminator, self).__init__()
+        self.upfeature = FeatureMapBlock(input_channels, hidden_channels)
+        self.contract1 = ContractingBlock(hidden_channels, use_bn=False)
+        self.contract2 = ContractingBlock(hidden_channels * 2)
+        self.contract3 = ContractingBlock(hidden_channels * 4)
+        self.contract4 = ContractingBlock(hidden_channels * 8)
+        self.final = nn.Conv2d(hidden_channels * 16, 1, kernel_size=1)
 
+    def forward(self, x, y):
+        x = torch.cat([x, y], axis=1)
+        x0 = self.upfeature(x)
+        x1 = self.contract1(x0)
+        x2 = self.contract2(x1)
+        x3 = self.contract3(x2)
+        x4 = self.contract4(x3)
+        xn = self.final(x4)
+        return xn
+    
+    
 class Discriminator(nn.Module):
     """
     Discriminator Class
@@ -178,12 +274,16 @@ class WGANGP(LightningModule):
         self.image_type = kwargs['image_type']
         self.apply_mask = kwargs['apply_mask']
         self.label_smoothing = kwargs['label_smoothing']
+        self.patch_disc = kwargs['patch_disc']
 
         # networks
         image_shape = (3, 224, 224)
         im_chan = 3
         self.generator = Generator(input_dim=latent_dim, im_chan=3, hidden_dim=self.hidden_dim)
-        self.discriminator = Discriminator(im_chan, hidden_dim=self.hidden_dim,
+        if self.patch_disc:
+            self.discriminator = Patch_Discriminator(im_chan)
+        else:
+            self.discriminator = Discriminator(im_chan, hidden_dim=self.hidden_dim,
                                    apply_mask=self.apply_mask, image_type=self.image_type)
         self.generator.apply(self.weights_init)
         self.discriminator.apply(self.weights_init)
@@ -248,12 +348,10 @@ class WGANGP(LightningModule):
             # grid = torchvision.utils.make_grid(sample_imgs)
             # self.logger.experiment.add_image('generated_images', grid, 0)
 
+            fake_validity = self.discriminator(self(z))
             # ground truth result (ie: all fake)
             # put on GPU because we created this tensor inside training_loop
-            valid = torch.ones(imgs.size(0), 1)
-            valid = valid.type_as(imgs)
-
-            fake_validity = self.discriminator(self(z))
+            valid = torch.ones_like(fake_validity)
             if self.loss == 'wloss':
                 # adversarial loss is binary cross-entropy
                 g_loss = -torch.mean(fake_validity)
@@ -282,10 +380,8 @@ class WGANGP(LightningModule):
                 d_loss = -torch.mean(real_validity) + torch.mean(fake_validity) + lambda_gp * gradient_penalty
             else:
                 # put on GPU because we created this tensor inside training_loop
-                real_valid = torch.ones(imgs.size(0), 1).type_as(imgs) * np.random.uniform(low=0.7, high=1.2) if self.label_smoothing else torch.ones(
-                    imgs.size(0), 1).type_as(imgs)
-                fake_valid = torch.zeros(imgs.size(0), 1).type_as(imgs) * np.random.uniform(low=0.0, high=0.3) if self.label_smoothing else torch.zeros(
-                    imgs.size(0), 1).type_as(imgs)
+                real_valid = torch.ones_like(fake_validity) * np.random.uniform(low=0.7, high=1.2) if self.label_smoothing else torch.ones_like(fake_validity)
+                fake_valid = torch.zeros_like(fake_validity) * np.random.uniform(low=0.0, high=0.3) if self.label_smoothing else torch.zeros_like(fake_validity)
                 d_loss_fake = criterion(fake_validity, fake_valid)
                 d_loss_real = criterion(real_validity, real_valid)  # torch.ones_like(real_validity)
                 d_loss = (d_loss_fake + d_loss_real) / 2
@@ -474,7 +570,8 @@ if __name__ == '__main__':
                         choices=['rgb', 'warping'])
     parser.add_argument("--resume_from_checkpoint", type=str, default='no', help="absolute path for checkpoint resume")
     parser.add_argument('--apply_mask', action='store_true', help='apply mask to the generated imgs')
-    parser.add_argument('--label_smoothing', action='store_true', help='apply label smoothing, i.e. real labels = 0.9')
+    parser.add_argument('--label_smoothing', action='store_true', help='apply label smoothing')    
+    parser.add_argument('--patch_disc', action='store_true', help='use PatchGAN Discriminator')
 
     hparams = parser.parse_args()
 
