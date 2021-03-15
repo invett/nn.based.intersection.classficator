@@ -159,17 +159,20 @@ class txt_dataloader(AbstractSequence, Dataset):
 
 
 class txt_dataloader_styleGAN(txt_dataloader):
+    """
+    Adapts txt_dataloader to the structure of Pycharm datasets.ImageFolder
+    """
     def __init__(self, path_filename=None, transform=None, usePIL=True, isSequence=False, decimateStep=1):
         txt_dataloader.__init__(self, path_filename, transform, usePIL, isSequence, decimateStep)
+
+        self.imgs = list(zip(self.images, self.labels))
 
     def __len__(self):
         return txt_dataloader.__len__(self.images)
 
     def __getitem__(self, idx):
         sample_ = txt_dataloader.__getitem__(self, idx)
-
-        sample = ''
-
+        sample = (sample_['data'], sample_['label'])
         return sample
 
 
