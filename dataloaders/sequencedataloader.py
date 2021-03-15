@@ -158,6 +158,21 @@ class txt_dataloader(AbstractSequence, Dataset):
         return sample
 
 
+class txt_dataloader_styleGAN(txt_dataloader):
+    def __init__(self, path_filename=None, transform=None, usePIL=True, isSequence=False, decimateStep=1):
+        txt_dataloader.__init__(self, path_filename, transform, usePIL, isSequence, decimateStep)
+
+    def __len__(self):
+        return txt_dataloader.__len__(self.images)
+
+    def __getitem__(self, idx):
+        sample_ = txt_dataloader.__getitem__(self, idx)
+
+        sample = ''
+
+        return sample
+
+
 class kitti360(AbstractSequence, Dataset):
     def __init__(self, path, sequence_list, transform=None, isSequence=False):
         """
