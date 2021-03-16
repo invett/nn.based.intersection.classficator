@@ -32,7 +32,7 @@ class AbstractSequence:
 
 
 class txt_dataloader(AbstractSequence, Dataset):
-    def __init__(self, path_filename=None, transform=None, usePIL=True, isSequence=False, decimateStep=1):
+    def __init__(self, path_filename_list=None, transform=None, usePIL=True, isSequence=False, decimateStep=1):
         """
 
                 THIS IS THE DATALOADER USES the split files generated with labelling-script.py
@@ -40,7 +40,9 @@ class txt_dataloader(AbstractSequence, Dataset):
                 USED TO TRAIN THE FRAME-BASED CLASSIFICATOR!
 
                 Args:
-                    path_filename (string): filename with all the files that you want to use; this dataloader uses a file
+                    path_filename_list (string): a list of filenames with all the files that you want to use;
+                                                 this dataloader uses a file; to mantain compatibility with previous
+                                                 versions, we alsto support for single string.
                     with all the images, does not walk a os folder!
                     transform (callable, optional): Optional transform to be applied
                         on a sample.
@@ -78,16 +80,27 @@ class txt_dataloader(AbstractSequence, Dataset):
         trainimages = []
         trainlabels = []
 
-        # Check the file containing all the images! This dataloader does not work walking a folder!
-        if not os.path.isfile(path_filename):
-            print('Class: ' + __class__.__name__, " - file doesn't exist - ", path_filename)
+        if isinstance(path_filename_list, str):
+            path_filename_list = [path_filename_list]
 
-        with open(path_filename) as filename:
-            Lines = filename.readlines()
-            for line in Lines:
-                # trainimages.append(os.path.join('../DualBiSeNet/', line.strip().split(';')[0]))
-                trainimages.append(os.path.join(os.path.split(path_filename)[0], line.strip().split(';')[0]))
-                trainlabels.append(line.strip().split(';')[1])
+        # cycle through list of path_filename_list.. this was introduced to allow multi-dataset loadings
+        for path_filename in path_filename_list:
+
+            print('Loading: ' + str(path_filename) + ' ...')
+
+            # Check the file containing all the images! This dataloader does not work walking a folder!
+            if not os.path.isfile(path_filename):
+                print('Class: ' + __class__.__name__, " - file doesn't exist - ", path_filename)
+                exit(-1)
+
+            with open(path_filename) as filename:
+                Lines = filename.readlines()
+                for line in Lines:
+                    # trainimages.append(os.path.join('../DualBiSeNet/', line.strip().split(';')[0]))
+                    trainimages.append(os.path.join(os.path.split(path_filename)[0], line.strip().split(';')[0]))
+                    trainlabels.append(line.strip().split(';')[1])
+
+        print('Images loaded: ' + str(len(trainimages)))
 
         self.transform = transform
 
@@ -182,8 +195,8 @@ class txt_dataloader_styleGAN(txt_dataloader):
     """
     Adapts txt_dataloader to the structure of Pycharm datasets.ImageFolder
     """
-    def __init__(self, path_filename=None, transform=None, usePIL=True, isSequence=False, decimateStep=1):
-        txt_dataloader.__init__(self, path_filename, transform, usePIL, isSequence, decimateStep)
+    def __init__(self, path_filename_list=None, transform=None, usePIL=True, isSequence=False, decimateStep=1):
+        txt_dataloader.__init__(self, path_filename_list, transform, usePIL, isSequence, decimateStep)
 
         self.imgs = list(zip(self.images, self.labels))
 
