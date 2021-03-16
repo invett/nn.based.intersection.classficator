@@ -47,6 +47,25 @@ class txt_dataloader(AbstractSequence, Dataset):
                     usePIL: default True, but if not, return numpy-arrays!
                     decimateStep: use this value to decimate the dataset; set as "::STEP"
 
+                the path_filename will be used together with the lines of the file to create the full-paths of the imgs
+
+                as example, given:
+
+                    path_filename = '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected/prefix_all.txt'
+
+                and:
+                    head /home/ballardini/DualBiSeNet/alcala-26.01.2021_selected/prefix_all.txt
+                        164057AA/0000004164.png;0
+                        164057AA/0000004165.png;0
+                        ...
+                        164057AA/0000004167.png;0
+
+                then, resulting filenames will be a mix between the first part of path_filename and each line
+
+                        /home/ballardini/DualBiSeNet/alcala-26.01.2021_selected  +  164057AA/0000004164.png;0
+                        /home/ballardini/DualBiSeNet/alcala-26.01.2021_selected  +  164057AA/0000004165.png;0
+                        ...
+                        /home/ballardini/DualBiSeNet/alcala-26.01.2021_selected  +  164057AA/0000004167.png;0
 
         """
 
