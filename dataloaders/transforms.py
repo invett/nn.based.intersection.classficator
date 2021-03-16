@@ -522,7 +522,14 @@ class GenerateBev(object):
             # already loaded in 'sample', so we do this by some magic from the png file; thx god all the files and
             # directories are now consistent, so 1 file.with.path (RGB) corresponds to the NPZ.
             npz = sample['path_of_original_image']
-            npz = npz.replace('image_02/data/', 'pred/').replace('.png', '_pred.npz')
+
+            # handle folders: one of these two should work... having both doesn't seem a problem
+            npz = npz.replace('image_02/data/', 'pred/')
+            npz = npz.replace('image_00/data_rect/', 'pred/')
+
+            # eventually handle extension
+            npz = npz.replace('.png', '_pred.npz')
+
             dict_data = load(npz)
             aanet_image = dict_data['arr_0']
             points = cv2.reprojectImageTo3D(aanet_image, rev_proj_matrix)

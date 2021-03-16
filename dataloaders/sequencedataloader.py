@@ -154,7 +154,6 @@ class txt_dataloader(AbstractSequence, Dataset):
                 # TODO: HANDLE THIS HELL...
                 dataset_path = os.path.join(transformed['path'], imagepath.split('/')[-4], 'image_02', 'data')
 
-                print("Saving image in ", dataset_path)
 
                 if not os.path.isdir(dataset_path):
                     os.makedirs(dataset_path)
@@ -163,6 +162,8 @@ class txt_dataloader(AbstractSequence, Dataset):
                 last_number = len([x for x in current_filelist if "json" not in x])
                 final_filename = base_file_star + '.' + str(last_number + 1).zfill(3) + '.png'
                 bev_path_filename = os.path.join(dataset_path, final_filename)
+
+                print("Saving image in ", bev_path_filename)
 
                 wheretowrite = os.path.join(transformed['path'], 'output.txt')
                 towrite = os.path.join(os.path.split(dataset_path)[1], final_filename) + ';' + str(
@@ -1617,7 +1618,7 @@ class lstm_txt_dataloader(txt_dataloader, Dataset):
         # self.images = trainimages
         # self.labels = trainlabels
         # self.usePIL = usePIL
-        # Sequences_alcala26012021_Dataloader.__init__(self, path_filename, transform, usePIL)
+        # Sequences_alcala26012021_Dataloader.__init__(self, path_filename_list, transform, usePIL)
         super().__init__(path_filename, transform, usePIL, isSequence=isSequence)
 
         sequences = {}

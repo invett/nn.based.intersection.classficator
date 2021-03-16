@@ -25,9 +25,10 @@ def main(args):
     execute = args.execute
     if not execute:
         # execute = 'KITTI-ROAD-WARPING'
-        execute = 'KITTI-ROAD-3D'
+        # execute = 'KITTI-ROAD-3D'
         # execute = 'kitti360'
         # execute = 'kitti360-warping'
+        execute = 'kitti360-3D'
 
         # execute = 'alcala26012021'   #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
         # execute = 'alcala.12.02.2021.000'   #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
@@ -38,7 +39,9 @@ def main(args):
 
     # alcala26122012 does not walk os paths! it directly uses a .txt file!
     if execute != 'alcala26012021' and execute != 'alcala.12.02.2021.000' and execute != 'alcala.12.02.2021.001' and \
-            execute != 'KITTI-ROAD-WARPING' and execute != 'kitti360-warping' and execute != 'KITTI-ROAD-3D':
+            execute != 'KITTI-ROAD-WARPING' and execute != 'kitti360-warping' and execute != 'KITTI-ROAD-3D' and \
+            execute != 'kitti360-3D':
+
         folders = np.array([os.path.join(args.rootfolder, folder) for folder in sorted(os.listdir(args.rootfolder)) if
                             os.path.isdir(os.path.join(args.rootfolder, folder))])
 
@@ -63,7 +66,7 @@ def main(args):
         #                                      distance=args.distance_from_intersection)
 
         # NOW DO THE SAME BUT WITH THE TXT FILES
-        dataset = txt_dataloader(path_filename=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
+        dataset = txt_dataloader(path_filename_list=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
                                                                                                      random_Ry_degrees=0.5,
                                                                                                      random_Rz_degrees=0.5,
                                                                                                      random_Tx_meters=2.0,
@@ -98,6 +101,26 @@ def main(args):
                                                                                  GenerateNewDataset(args.savefolder)]),
                                              distance=args.distance_from_intersection)
 
+    if execute == 'kitti360-3D':
+        # this dataloader, uses the .txt files. Specify inside warpdataset the warping you need.
+        dataset = txt_dataloader(path_filename_list=args.rootfolder, transform=transforms.Compose([addEntry('aanet', 'no.value.needed.here'),
+                                                                                             GenerateBev(returnPoints=False,
+                                                                                             max_front_distance=args.max_front_distance,
+                                                                                             max_height=args.max_height,
+                                                                                             excludeMask=args.excludeMask,
+                                                                                             decimate=1.0,
+                                                                                             random_Rx_degrees=0.0,
+                                                                                             random_Ry_degrees=0.0,
+                                                                                             random_Rz_degrees=0.0,
+                                                                                             random_Tx_meters =0.0,
+                                                                                             random_Ty_meters =0.0,
+                                                                                             random_Tz_meters =0.0,
+                                                                                             txtdataloader=True,
+                                                                                             qmatrix='kitti360'
+                                                                                             ),
+                                                                                     Rescale((224, 224)),
+                                                                                     GenerateNewDataset(args.savefolder)]), usePIL=False)
+
     if execute == 'warping':
         # WARNING! MIRROR IS/WAS DISABLED! not sure whether this respects our intentions...
         dataset = fromAANETandDualBisenet(folders, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=1.0,
@@ -114,7 +137,7 @@ def main(args):
                                           distance=args.distance_from_intersection)
 
     if execute == 'alcala26012021':
-        dataset = txt_dataloader(path_filename=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
+        dataset = txt_dataloader(path_filename_list=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
                                                                                                  random_Ry_degrees=0.0, #0.2,
                                                                                                  random_Rz_degrees=0.0, #0.2,
                                                                                                  random_Tx_meters =0.0, #2.0,
@@ -127,7 +150,7 @@ def main(args):
                                                                                  GenerateNewDataset(args.savefolder)]), usePIL=False)
 
     if execute == 'alcala.12.02.2021.000':
-        dataset = txt_dataloader(path_filename=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
+        dataset = txt_dataloader(path_filename_list=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
                                                                                                      random_Ry_degrees=0.5,
                                                                                                      random_Rz_degrees=0.5,
                                                                                                      random_Tx_meters=2.0,
@@ -140,7 +163,7 @@ def main(args):
                                                                                      GenerateNewDataset(args.savefolder)]), usePIL=False)
 
     if execute == 'alcala.12.02.2021.001':
-        dataset = txt_dataloader(path_filename=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
+        dataset = txt_dataloader(path_filename_list=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
                                                                                                      random_Ry_degrees=0.5,
                                                                                                      random_Rz_degrees=0.5,
                                                                                                      random_Tx_meters=2.0,
@@ -154,7 +177,7 @@ def main(args):
 
     if execute == 'KITTI-ROAD-WARPING':
         # this dataloader, uses the .txt files. Specify inside warpdataset the warping you need.
-        dataset = txt_dataloader(path_filename=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
+        dataset = txt_dataloader(path_filename_list=args.rootfolder, transform=transforms.Compose([GenerateWarping(random_Rx_degrees=0.2,
                                                                                                      random_Ry_degrees=0.5,
                                                                                                      random_Rz_degrees=0.5,
                                                                                                      random_Tx_meters=2.0,
@@ -168,7 +191,7 @@ def main(args):
 
     if execute == 'KITTI-ROAD-3D':
         # this dataloader, uses the .txt files. Specify inside warpdataset the warping you need.
-        dataset = txt_dataloader(path_filename=args.rootfolder, transform=transforms.Compose([addEntry('aanet', 'no.value.needed.here'),
+        dataset = txt_dataloader(path_filename_list=args.rootfolder, transform=transforms.Compose([addEntry('aanet', 'no.value.needed.here'),
                                                                                              GenerateBev(returnPoints=False,
                                                                                              max_front_distance=args.max_front_distance,
                                                                                              max_height=args.max_height,
