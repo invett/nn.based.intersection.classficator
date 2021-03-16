@@ -104,9 +104,10 @@ class txt_dataloader(AbstractSequence, Dataset):
                       'neg_label': neg_label,
                       'path_of_original_image': imagepath}
 
-            transformed = []
             if self.transform:
                 transformed = self.transform(sample)
+            else:
+                transformed = sample
 
             # save the image if needed, ie, we have the path inserted with the "fake-transform".
             if "path" in transformed:
