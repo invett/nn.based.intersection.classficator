@@ -20,6 +20,7 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
 - [ ] GAN: Conditional GAN for balancing classes.
 - [ ] GAN: Pix2Pix to convert from road mask to RGB. (connected to 'futuristic wannabe'? see below)
 - [ ] GAN: StyleGAN2  /   StyleGAN2-ADA: Training Generative Adversarial Networks with Limited Data https://github.com/NVlabs/stylegan2-ada-pytorch 
+- [ ] GAN: GAUCGAN -> https://blog.paperspace.com/gaugan-training-on-custom-datasets
 - [ ] GRU vs LSTM: should be 1-line change
 
 ## FUTURISTIC wannabe
@@ -200,3 +201,5 @@ The idea is to exploit the trained RESNET, then the train is made as follows:
  - Lower bs and lower lr (linear relationship) better performance.
  - Add bias=False to convs and BN(output_dim, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
  - Change Generator and Discriminator architectures (More similar to DCGAN Pytorch)
+
+ - first dataset was made with: 
