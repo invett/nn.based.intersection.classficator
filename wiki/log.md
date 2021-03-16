@@ -14,11 +14,11 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
 - [X] GAN: use direct RGB image
 - [X] GAN: Beef-up Generator -> 11 layers
 - [X] GAN: Label smoothing strategy nn.BCEWithLogitsLoss(logits, labels*0.9) 
-- [?] GAN: UNet Generator : update 12.03.2021 ... should be ok. need to test
+- [x] GAN: UNet Generator : update 12.03.2021 ... should be ok. need to test ; gave us artistic results...
 - [X] GAN: PatchGAN Discriminator (Based on UNet Contracting Path)
 - [ ] GAN: Add MASK fot the non-interesting parts of the RGB (eg. sky)
 - [ ] GAN: Conditional GAN for balancing classes.
-- [ ] GAN: Pix2Pix to convert from road mask to RGB.
+- [ ] GAN: Pix2Pix to convert from road mask to RGB. (connected to 'futuristic wannabe'? see below)
 - [ ] GAN: StyleGAN2  /   StyleGAN2-ADA: Training Generative Adversarial Networks with Limited Data https://github.com/NVlabs/stylegan2-ada-pytorch 
 - [ ] GRU vs LSTM: should be 1-line change
 
@@ -36,7 +36,7 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
 - [ ] Kitti360 actualization
 
     - [x] Warpings No mirror --> warped
-    - [ ] Stereo + Lidar --> 3D 
+    - [x] Stereo + Lidar --> 3D                             ok 16.03.2021 
     - [ ] Stereo + Lidar + alvaromask --> 3D_masked 
 
 - [ ] KITTI ROAD actualization
