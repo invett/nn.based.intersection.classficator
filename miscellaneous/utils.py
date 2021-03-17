@@ -616,7 +616,7 @@ def embb_data_lstm(model, dataloader_train, dataloader_val, LSTM=None):
             for sequence in batch:
                 seq_tensor = model(torch.stack(sequence['sequence']).cuda())
                 seq_list.append(seq_tensor.squeeze())
-                len_list.append(len(sequence))
+                len_list.append(len(sequence['sequence']))
                 label_list.append(int(sequence['label']))
 
             padded_batch = pad_sequence(seq_list, batch_first=True)
