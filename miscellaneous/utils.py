@@ -525,7 +525,7 @@ def svm_generator(args, model, dataloader_train=None, dataloader_val=None, LSTM=
             features, labels = embb_data(args, model, dataloader_train, dataloader_val)
         else:
             if LSTM is not None:
-                features, labels = embb_data_lstm(args, model, dataloader_train, dataloader_val, LSTM=LSTM)
+                features, labels = embb_data_lstm(model, dataloader_train, dataloader_val, LSTM=LSTM)
             else:
                 train_embeddings, train_labels = get_all_embeddings(dataloader_train, model)
                 val_embeddings, val_labels = get_all_embeddings(dataloader_val, model)
@@ -602,7 +602,7 @@ def embb_data(args, model, dataloader_train, dataloader_val, save=False):
     return embeddingRecord, labelRecord
 
 
-def embb_data_lstm(args, model, dataloader_train, dataloader_val, LSTM=None):
+def embb_data_lstm(model, dataloader_train, dataloader_val, LSTM=None):
     embeddingRecord = []
     labelRecord = []
 
