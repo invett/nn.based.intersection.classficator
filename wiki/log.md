@@ -14,12 +14,13 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
 - [X] GAN: use direct RGB image
 - [X] GAN: Beef-up Generator -> 11 layers
 - [X] GAN: Label smoothing strategy nn.BCEWithLogitsLoss(logits, labels*0.9) 
-- [ ] GAN: UNet Generator
-- [ ] GAN: PatchGAN Discriminator (Based on UNet Contracting Path)
+- [x] GAN: UNet Generator : update 12.03.2021 ... should be ok. need to test ; gave us artistic results...
+- [X] GAN: PatchGAN Discriminator (Based on UNet Contracting Path)
 - [ ] GAN: Add MASK fot the non-interesting parts of the RGB (eg. sky)
 - [ ] GAN: Conditional GAN for balancing classes.
-- [ ] GAN: Pix2Pix to convert from road mask to RGB.
+- [ ] GAN: Pix2Pix to convert from road mask to RGB. (connected to 'futuristic wannabe'? see below)
 - [ ] GAN: StyleGAN2  /   StyleGAN2-ADA: Training Generative Adversarial Networks with Limited Data https://github.com/NVlabs/stylegan2-ada-pytorch 
+- [ ] GAN: GAUCGAN -> https://blog.paperspace.com/gaugan-training-on-custom-datasets
 - [ ] GRU vs LSTM: should be 1-line change
 
 ## FUTURISTIC wannabe
@@ -35,8 +36,15 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
     
 - [ ] Kitti360 actualization
 
-    - [x] Warpings No mirror
-    - [ ] Stereo + Lidar --> 3D-Mask 
+    - [x] Warpings No mirror --> warped
+    - [x] Stereo + Lidar --> 3D                             ok 16.03.2021 
+    - [ ] Stereo + Lidar + alvaromask --> 3D_masked 
+
+- [ ] KITTI ROAD actualization
+
+    - [x] Warpings No mirror --> warped
+    - [x] Stereo + Lidar --> 3D                             ok 12.03.2021
+    - [ ] Stereo + Lidar + alvaromask --> 3D_masked
 
 ## Log
 ### TRAIN 15.02.2021
@@ -191,8 +199,6 @@ The idea is to exploit the trained RESNET, then the train is made as follows:
     
 
 
-
-
 ### GAN
 
  - Implementation of DCGAN (BCELoss) and WGAN (Wasserstein Loss)
@@ -202,3 +208,4 @@ The idea is to exploit the trained RESNET, then the train is made as follows:
  - Add bias=False to convs and BN(output_dim, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
  - Change Generator and Discriminator architectures (More similar to DCGAN Pytorch)
 
+ - first dataset was made with: 

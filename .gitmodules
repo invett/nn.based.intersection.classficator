@@ -1,0 +1,3 @@
+[submodule "GAN/stylegan2-pytorch"]
+	path = GAN/stylegan2-pytorch
+	url = https://github.com/invett/stylegan2-pytorch.git

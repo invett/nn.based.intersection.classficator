@@ -22,6 +22,18 @@ from dataloaders.sequencedataloader import txt_dataloader
 from miscellaneous.utils import send_telegram_picture, send_telegram_message
 
 import wandb
+from PIL import Image
+
+
+def scale(x, feature_range=(-1, 1)):
+    ''' Scale takes in an image x and returns that image, scaled
+       with a feature_range of pixel values from -1 to 1.
+       This function assumes that the input x is already scaled from 0-1.'''
+    # assume x is scaled to (0, 1)
+    # scale to feature_range and return scaled x
+    min, max = feature_range
+    x = x * (max - min) + min
+    return x
 
 
 class Print(nn.Module):
@@ -37,12 +49,9 @@ class Print(nn.Module):
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, padding=0):
         super(DoubleConv, self).__init__()
-        self.net = nn.Sequential(Print('DoubleConv IN'),
-                                 nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
-                                 Print('DoubleConv Conv2d (kernel=' + str(kernel_size) + ', padding=' + str(padding) + ')'),
+        self.net = nn.Sequential(nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
                                  nn.ReLU(inplace=True),
                                  nn.Conv2d(out_channels, out_channels,kernel_size=kernel_size, padding=padding),
-                                 Print('DoubleConv Conv2d (kernel=' + str(kernel_size) + ', padding=' + str(padding) + ')'),
                                  nn.ReLU(inplace=True)
                                 )
     def forward(self, x):
@@ -54,11 +63,8 @@ class UpsampleConv(nn.Module):
         super(UpsampleConv, self).__init__()
 
         self.net = nn.Sequential(
-            Print('UpsampleConv IN'),
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
-            Print('UpsampleConv Upsample, scale_factor: 2'),
-            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
-            Print('UpsampleConv Conv2d (kernel=' + str(kernel_size) + ', padding=' + str(padding) + ')')
+            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding)
         )
 
     def forward(self, x):
@@ -83,21 +89,14 @@ class Generator(nn.Module):
         self.input_dim = input_dim
 
         #Channels choice following StyleGAN2 generator
-        self.gen = nn.Sequential(Print('***GENERATOR***'),
+        self.gen = nn.Sequential(
                                  ExpandingBlock(input_dim,       hidden_dim * 8, kernel_1=1, kernel_2=1, pad_1=1, pad_2=0),
-                                 Print(),
                                  ExpandingBlock(hidden_dim * 8,  hidden_dim * 8, kernel_1=1, kernel_2=1, pad_1=1, pad_2=0),
-                                 Print(),
                                  ExpandingBlock(hidden_dim * 8,  hidden_dim * 8, kernel_1=2, kernel_2=3, pad_1=0, pad_2=0),
-                                 Print(),
                                  ExpandingBlock(hidden_dim * 8,  hidden_dim * 4, kernel_1=2, kernel_2=3, pad_1=1, pad_2=1),
-                                 Print(),
                                  ExpandingBlock(hidden_dim * 4,  hidden_dim * 2, kernel_1=2, kernel_2=3, pad_1=0, pad_2=0),
-                                 Print(),
                                  ExpandingBlock(hidden_dim * 2,  hidden_dim,     kernel_1=2, kernel_2=3, pad_1=0, pad_2=1),
-                                 Print(),
-                                 ExpandingBlock(hidden_dim, im_chan, kernel_1=3, kernel_2=3, pad_1=0, pad_2=1),
-                                 Print()
+                                 ExpandingBlock(hidden_dim, im_chan, kernel_1=3, kernel_2=3, pad_1=0, pad_2=1), nn.Tanh()
                                  #nn.Conv2d(hidden_dim, im_chan, kernel_size=2, stride=2, padding=1),
                                 )
 
@@ -108,8 +107,10 @@ class Generator(nn.Module):
         Parameters:
             noise: a noise tensor with dimensions (n_samples, input_dim)
         """
-        x = noise.view(len(noise), self.input_dim, 1, 1)
-        return self.gen(x)
+        # GENERATOR
+        x = noise.view(len(noise), self.input_dim, 1, 1)  # reshape vector in BxCxWxH
+        imgs = self.gen(x)
+        return imgs
 
 
 class Discriminator(nn.Module):
@@ -117,16 +118,29 @@ class Discriminator(nn.Module):
     Discriminator Class
     """
 
-    def __init__(self, im_chan=1, hidden_dim=64):
+    def __init__(self, im_chan=1, hidden_dim=64, apply_mask=False, image_type=''):
         super(Discriminator, self).__init__()
-        self.disc = nn.Sequential(Print('***DISCRIMINATOR***'),
-                                  self.make_disc_block(im_chan, hidden_dim, kernel_size=4), Print(),
-                                  self.make_disc_block(hidden_dim, hidden_dim * 2), Print(),
-                                  self.make_disc_block(hidden_dim * 2, hidden_dim * 4), Print(),
-                                  self.make_disc_block(hidden_dim * 4, hidden_dim * 4), Print(),
-                                  self.make_disc_block(hidden_dim * 4, hidden_dim * 2), Print(),
-                                  self.make_disc_block(hidden_dim * 2, hidden_dim, stride=1, kernel_size=4), Print(),
-                                  self.make_disc_block(hidden_dim, 1, final_layer=True), Print())
+        self.disc = nn.Sequential(
+                                  self.make_disc_block(im_chan, hidden_dim, kernel_size=4), 
+                                  self.make_disc_block(hidden_dim, hidden_dim * 2),
+                                  self.make_disc_block(hidden_dim * 2, hidden_dim * 4), 
+                                  self.make_disc_block(hidden_dim * 4, hidden_dim * 4),
+                                  self.make_disc_block(hidden_dim * 4, hidden_dim * 8),
+                                  self.make_disc_block(hidden_dim * 8, hidden_dim, stride=1, kernel_size=4),
+                                  self.make_disc_block(hidden_dim, 1, final_layer=True))
+        
+        # load the mask
+        if image_type == 'warping':
+            mask = Image.open('GAN/MASK/alcala26_mask.png').convert('RGB')
+        elif image_type == 'rgb':
+            mask = Image.open('GAN/MASK/alcala26_mask_rgb.png').convert('RGB')
+        elif apply_mask:
+            exit(-1)
+
+        mask = np.asarray(mask) / 255.0  # .transpose((2, 0, 1))
+        self.mask = kornia.image_to_tensor(mask).cuda().half()
+        self.apply_mask = apply_mask
+        self.image_type = image_type
 
     def make_disc_block(self, input_channels, output_channels, kernel_size=3, stride=2, padding=0, final_layer=False):
         """
@@ -141,11 +155,10 @@ class Discriminator(nn.Module):
                       (affects activation and batchnorm)
         """
         if not final_layer:
-            return nn.Sequential(Print(),
-                                 nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding),
-                                 Print('make_disc_block Conv2d (kernel=' + str(kernel_size) + ', padding=' + str(padding) + ', stride=' + str(stride) + ')'),
-                                 nn.BatchNorm2d(output_channels), nn.LeakyReLU(0.2, inplace=True),
-                                 Print('make_disc_block BatchNorm2d'))
+            return nn.Sequential(
+                                 nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding, bias=False),
+                                 nn.BatchNorm2d(output_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True), nn.LeakyReLU(0.2, inplace=True)
+                                )
         else:
             return nn.Sequential(nn.Conv2d(input_channels, output_channels, kernel_size, stride, padding=padding))
 
@@ -156,6 +169,10 @@ class Discriminator(nn.Module):
         Parameters:
             image: a flattened image tensor with dimension (im_chan)
         """
+        # DISCRIMINATOR
+        if self.apply_mask:
+            image = image * self.mask
+        
         disc_pred = self.disc(image)
         return disc_pred.view(len(disc_pred), -1)
 
@@ -182,12 +199,15 @@ class WGANGP(LightningModule):
         self.loss = kwargs['loss']
         self.hidden_dim = kwargs['hidden_dim']
         self.image_type = kwargs['image_type']
+        self.apply_mask = kwargs['apply_mask']
+        self.label_smoothing = kwargs['label_smoothing']
 
         # networks
         image_shape = (3, 224, 224)
         im_chan = 3
         self.generator = Generator(input_dim=latent_dim, im_chan=3, hidden_dim=self.hidden_dim)
-        self.discriminator = Discriminator(im_chan, hidden_dim=self.hidden_dim)
+        self.discriminator = Discriminator(im_chan, hidden_dim=self.hidden_dim,
+                                   apply_mask=self.apply_mask, image_type=self.image_type)
         self.generator.apply(self.weights_init)
         self.discriminator.apply(self.weights_init)
         self.validation_z = torch.randn(9, self.latent_dim)
@@ -226,6 +246,7 @@ class WGANGP(LightningModule):
             imgs, _ = batch
         elif self.dataloader_choice == 'txt_dataloader':
             imgs = batch['data']
+            imgs = scale(imgs)  # range [-1,1] to keep consistent with generated images (tanh activation function)
         else:
             return -1
 
@@ -284,8 +305,10 @@ class WGANGP(LightningModule):
                 d_loss = -torch.mean(real_validity) + torch.mean(fake_validity) + lambda_gp * gradient_penalty
             else:
                 # put on GPU because we created this tensor inside training_loop
-                real_valid = torch.ones(imgs.size(0), 1).type_as(imgs)
-                fake_valid = torch.zeros(imgs.size(0), 1).type_as(imgs)
+                real_valid = torch.ones(imgs.size(0), 1).type_as(imgs) * np.random.uniform(low=0.7, high=1.2) if self.label_smoothing else torch.ones(
+                    imgs.size(0), 1).type_as(imgs)
+                fake_valid = torch.zeros(imgs.size(0), 1).type_as(imgs) * np.random.uniform(low=0.0, high=0.3) if self.label_smoothing else torch.zeros(
+                    imgs.size(0), 1).type_as(imgs)
                 d_loss_fake = criterion(fake_validity, fake_valid)
                 d_loss_real = criterion(real_validity, real_valid)  # torch.ones_like(real_validity)
                 d_loss = (d_loss_fake + d_loss_real) / 2
@@ -320,11 +343,10 @@ class WGANGP(LightningModule):
                 exit(-1)
 
             rgb_image_test_transforms = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(),
-                                                            transforms.Normalize((0.485, 0.456, 0.406),
-                                                                                 (0.229, 0.224, 0.225))])
+                                                            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
             dataset_ = txt_dataloader(train_path, transform=rgb_image_test_transforms, decimateStep=self.decimate)
-            dataloader_ = DataLoader(dataset_, batch_size=self.batch_size, shuffle=True, num_workers=0, drop_last=True)
+            dataloader_ = DataLoader(dataset_, batch_size=self.batch_size, shuffle=True, num_workers=16, drop_last=True)
             return dataloader_
 
     def on_epoch_end(self):
@@ -429,8 +451,8 @@ def main(args: Namespace) -> None:
     else:
         checkpoint_callback = ModelCheckpoint(
             dirpath='./trainedmodels/GAN/',
-            filename=os.path.join('nowandb-{epoch:02d}.ckpt'),
-        )
+            filename=os.path.join('nowandb-{epoch:02d}.ckpt'), monitor='g_loss',
+                                              mode='min')
         trainer = Trainer(gpus=args.gpus, weights_summary='full', precision=args.precision, profiler=True,
                           callbacks=[checkpoint_callback])
 
@@ -450,7 +472,7 @@ if __name__ == '__main__':
     parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
     parser.add_argument("--hidden_dim", type=int, default=64, help="channels width multiplier")
     parser.add_argument("--opt_g_frequency", type=int, default=1, help="generator frequency")
-    parser.add_argument("--opt_d_frequency", type=int, default=5, help="discriminator frequency")
+    parser.add_argument("--opt_d_frequency", type=int, default=1, help="discriminator frequency")
     parser.add_argument('--dataloader', type=str, default='txt_dataloader',
                         choices=['fromAANETandDualBisenet', 'generatedDataset', 'Kitti2011_RGB', 'triplet_OBB',
                                  'triplet_BOO', 'triplet_ROO', 'triplet_ROO_360', 'triplet_3DOO_360', 'Kitti360',
@@ -469,6 +491,8 @@ if __name__ == '__main__':
     parser.add_argument("--image_type", type=str, default='warping', help="Choose between warping or rgb",
                         choices=['rgb', 'warping'])
     parser.add_argument("--resume_from_checkpoint", type=str, default='no', help="absolute path for checkpoint resume")
+    parser.add_argument('--apply_mask', action='store_true', help='apply mask to the generated imgs')
+    parser.add_argument('--label_smoothing', action='store_true', help='apply label smoothing, i.e. real labels = 0.9')
 
     hparams = parser.parse_args()
 

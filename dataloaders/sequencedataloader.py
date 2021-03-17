@@ -32,7 +32,7 @@ class AbstractSequence:
 
 
 class txt_dataloader(AbstractSequence, Dataset):
-    def __init__(self, path_filename=None, transform=None, usePIL=True, isSequence=False, decimateStep=1):
+    def __init__(self, path_filename_list=None, transform=None, usePIL=True, isSequence=False, decimateStep=1):
         """
 
                 THIS IS THE DATALOADER USES the split files generated with labelling-script.py
@@ -40,13 +40,34 @@ class txt_dataloader(AbstractSequence, Dataset):
                 USED TO TRAIN THE FRAME-BASED CLASSIFICATOR!
 
                 Args:
-                    path_filename (string): filename with all the files that you want to use; this dataloader uses a file
+                    path_filename_list (string): a list of filenames with all the files that you want to use;
+                                                 this dataloader uses a file; to mantain compatibility with previous
+                                                 versions, we alsto support for single string.
                     with all the images, does not walk a os folder!
                     transform (callable, optional): Optional transform to be applied
                         on a sample.
                     usePIL: default True, but if not, return numpy-arrays!
                     decimateStep: use this value to decimate the dataset; set as "::STEP"
 
+                the path_filename will be used together with the lines of the file to create the full-paths of the imgs
+
+                as example, given:
+
+                    path_filename = '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected/prefix_all.txt'
+
+                and:
+                    head /home/ballardini/DualBiSeNet/alcala-26.01.2021_selected/prefix_all.txt
+                        164057AA/0000004164.png;0
+                        164057AA/0000004165.png;0
+                        ...
+                        164057AA/0000004167.png;0
+
+                then, resulting filenames will be a mix between the first part of path_filename and each line
+
+                        /home/ballardini/DualBiSeNet/alcala-26.01.2021_selected  +  164057AA/0000004164.png;0
+                        /home/ballardini/DualBiSeNet/alcala-26.01.2021_selected  +  164057AA/0000004165.png;0
+                        ...
+                        /home/ballardini/DualBiSeNet/alcala-26.01.2021_selected  +  164057AA/0000004167.png;0
 
         """
 
@@ -59,16 +80,27 @@ class txt_dataloader(AbstractSequence, Dataset):
         trainimages = []
         trainlabels = []
 
-        # Check the file containing all the images! This dataloader does not work walking a folder!
-        if not os.path.isfile(path_filename):
-            print('Class: ' + __class__.__name__, " - file doesn't exist - ", path_filename)
+        if isinstance(path_filename_list, str):
+            path_filename_list = [path_filename_list]
 
-        with open(path_filename) as filename:
-            Lines = filename.readlines()
-            for line in Lines:
-                # trainimages.append(os.path.join('../DualBiSeNet/', line.strip().split(';')[0]))
-                trainimages.append(os.path.join(os.path.split(path_filename)[0], line.strip().split(';')[0]))
-                trainlabels.append(line.strip().split(';')[1])
+        # cycle through list of path_filename_list.. this was introduced to allow multi-dataset loadings
+        for path_filename in path_filename_list:
+
+            print('Loading: ' + str(path_filename) + ' ...')
+
+            # Check the file containing all the images! This dataloader does not work walking a folder!
+            if not os.path.isfile(path_filename):
+                print('Class: ' + __class__.__name__, " - file doesn't exist - ", path_filename)
+                exit(-1)
+
+            with open(path_filename) as filename:
+                Lines = filename.readlines()
+                for line in Lines:
+                    # trainimages.append(os.path.join('../DualBiSeNet/', line.strip().split(';')[0]))
+                    trainimages.append(os.path.join(os.path.split(path_filename)[0], line.strip().split(';')[0]))
+                    trainlabels.append(line.strip().split(';')[1])
+
+        print('Images loaded: ' + str(len(trainimages)))
 
         self.transform = transform
 
@@ -101,11 +133,13 @@ class txt_dataloader(AbstractSequence, Dataset):
 
             sample = {'image_02': image,
                       'label': label,
-                      'neg_label': neg_label}
+                      'neg_label': neg_label,
+                      'path_of_original_image': imagepath}
 
-            transformed = []
             if self.transform:
                 transformed = self.transform(sample)
+            else:
+                transformed = sample
 
             # save the image if needed, ie, we have the path inserted with the "fake-transform".
             if "path" in transformed:
@@ -117,7 +151,9 @@ class txt_dataloader(AbstractSequence, Dataset):
                 else:
                     dataset_path = os.path.join(transformed['path'], imagepath.split('/')[-2])
 
-                print("Saving image in ", dataset_path)
+                # TODO: HANDLE THIS HELL...
+                dataset_path = os.path.join(transformed['path'], imagepath.split('/')[-4], 'image_02', 'data')
+
 
                 if not os.path.isdir(dataset_path):
                     os.makedirs(dataset_path)
@@ -126,6 +162,8 @@ class txt_dataloader(AbstractSequence, Dataset):
                 last_number = len([x for x in current_filelist if "json" not in x])
                 final_filename = base_file_star + '.' + str(last_number + 1).zfill(3) + '.png'
                 bev_path_filename = os.path.join(dataset_path, final_filename)
+
+                print("Saving image in ", bev_path_filename)
 
                 wheretowrite = os.path.join(transformed['path'], 'output.txt')
                 towrite = os.path.join(os.path.split(dataset_path)[1], final_filename) + ';' + str(
@@ -151,6 +189,24 @@ class txt_dataloader(AbstractSequence, Dataset):
             if self.transform:
                 sample['data'] = self.transform(sample['data'])
 
+        return sample
+
+
+class txt_dataloader_styleGAN(txt_dataloader):
+    """
+    Adapts txt_dataloader to the structure of Pycharm datasets.ImageFolder
+    """
+    def __init__(self, path_filename_list=None, transform=None, usePIL=True, isSequence=False, decimateStep=1):
+        txt_dataloader.__init__(self, path_filename_list, transform, usePIL, isSequence, decimateStep)
+
+        self.imgs = list(zip(self.images, self.labels))
+
+    def __len__(self):
+        return txt_dataloader.__len__(self.images)
+
+    def __getitem__(self, idx):
+        sample_ = txt_dataloader.__getitem__(self, idx)
+        sample = (sample_['data'], sample_['label'])
         return sample
 
 
@@ -1562,7 +1618,7 @@ class lstm_txt_dataloader(txt_dataloader, Dataset):
         # self.images = trainimages
         # self.labels = trainlabels
         # self.usePIL = usePIL
-        # Sequences_alcala26012021_Dataloader.__init__(self, path_filename, transform, usePIL)
+        # Sequences_alcala26012021_Dataloader.__init__(self, path_filename_list, transform, usePIL)
         super().__init__(path_filename, transform, usePIL, isSequence=isSequence)
 
         sequences = {}

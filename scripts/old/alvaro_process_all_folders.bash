@@ -12,7 +12,16 @@
 # SALVAR COMO NPZ o PNG
 # --save_type npz | png (png is the default value)
 
+# THIS IS THE SCRIPT IN AANET FOLDER!!!! PREDICT.PY IS THE AANET 'PROGRAM' !
 
+# WARNING # WARNING # WARNING # WARNING # WARNING # WARNING # WARNING # WARNING # WARNING# WARNING # WARNING # WARNING
+
+
+# dont use this anymore. use generate-bev-dataset.py together with
+#
+#         txt_dataloader + GenerateBev TRANSFORM OK?
+#
+#
 
 
 CUDA_VISIBLE_DEVICES=0

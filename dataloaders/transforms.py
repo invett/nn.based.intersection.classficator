@@ -1,6 +1,7 @@
 import cv2.cv2 as cv2
 import kornia
 import numpy as np
+from numpy import load
 import torch
 from scipy.spatial.transform import Rotation as R
 from skimage.transform import resize
@@ -12,6 +13,20 @@ ShowImage = False
 
 if ShowImage:
     import matplotlib.pyplot as plt
+
+
+class addEntry(object):
+    """
+    This simply sets adds a key/value. Nice uh?
+    """
+
+    def __init__(self, key, value):
+        self.key = key
+        self.value = value  # this is used to disable this 'fake-transform' even if present...
+
+    def __call__(self, sample):
+        sample[self.key] = self.value
+        return sample
 
 
 class GenerateNewDataset(object):
@@ -452,7 +467,8 @@ class GenerateBev(object):
                  base_Tz=10.50000e+00,
                  returnPoints=False,
                  excludeMask=False,
-                 qmatrix='kitti'
+                 qmatrix='kitti',
+                 txtdataloader=False
                  ):
         self.max_front_distance = max_front_distance
         self.max_height = max_height
@@ -466,6 +482,7 @@ class GenerateBev(object):
         self.returnPoints = returnPoints
         self.excludeMask = excludeMask
         self.qmatrix = qmatrix
+        self.txtdataloader = txtdataloader  # specify if we're using the new txt dataloader. this should keep compatibility
 
         self.base_Tx = base_Tx
         self.base_Ty = base_Ty
@@ -500,7 +517,24 @@ class GenerateBev(object):
             print("Invalid qmatrix parameter")
             exit(-1)
 
-        points = cv2.reprojectImageTo3D(sample['aanet'], rev_proj_matrix)
+        if self.txtdataloader:
+            # this is the new behaviour, with files loaded with txtdataloader; in this case we don't have the aanet file
+            # already loaded in 'sample', so we do this by some magic from the png file; thx god all the files and
+            # directories are now consistent, so 1 file.with.path (RGB) corresponds to the NPZ.
+            npz = sample['path_of_original_image']
+
+            # handle folders: one of these two should work... having both doesn't seem a problem
+            npz = npz.replace('image_02/data/', 'pred/')
+            npz = npz.replace('image_00/data_rect/', 'pred/')
+
+            # eventually handle extension
+            npz = npz.replace('.png', '_pred.npz')
+
+            dict_data = load(npz)
+            aanet_image = dict_data['arr_0']
+            points = cv2.reprojectImageTo3D(aanet_image, rev_proj_matrix)
+        else:
+            points = cv2.reprojectImageTo3D(sample['aanet'], rev_proj_matrix)
 
         # reflect on x axis
         reflect_matrix = np.identity(3)
@@ -525,7 +559,10 @@ class GenerateBev(object):
             save_out_colors = save_out_colors[idx]
 
         # ALVARO MASK # TODO this is the right place to disable ALVARO MASK s and so get the FULL - BEVs
-        alvaro = sample['alvaromask']
+        if 'alvaromask' in sample:
+            alvaro = sample['alvaromask']
+        else:
+            alvaro = None
 
         # this if was added once we had kitti360
         if alvaro is not None:
