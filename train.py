@@ -30,7 +30,8 @@ from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromGenerate
     lstm_txt_dataloader, txt_dataloader
 from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
-    student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanobis_testing, lstm_network_pass
+    student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanobis_testing, lstm_network_pass, \
+    svm_testing_lstm
 from model.models import Resnet18, Vgg11, LSTM, Freezed_Resnet
 
 
@@ -127,7 +128,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
             if args.test_method == 'svm':
                 classifier = svm_generator(args, feature_extractor_model, dataloader_train=dataloader_train,
                                            dataloader_val=dataloader_val, LSTM=model)
-                confusion_matrix, acc_val = svm_testing(args, feature_extractor_model, dataloader_test, classifier,
+                confusion_matrix, acc_val = svm_testing_lstm(feature_extractor_model, dataloader_test, classifier,
                                                         LSTM=model)
 
     elif args.triplet:

@@ -630,7 +630,7 @@ def embb_data_lstm(model, dataloader_train, dataloader_val, LSTM=None):
             #output, lens_output = pad_packed_sequence(output, batch_first=True)  ## que hacer con output??
 
             embeddingRecord.append(prediction.cpu().numpy())
-            labelRecord.append(np.array(label_list))
+            labelRecord.append(np.expand_dims(np.array(label_list), axis=1))
 
         for batch in dataloader_val:
             seq_list = []
@@ -640,7 +640,7 @@ def embb_data_lstm(model, dataloader_train, dataloader_val, LSTM=None):
                 seq_tensor = model(torch.stack(sequence['sequence']).cuda())
                 seq_list.append(seq_tensor.squeeze())
                 len_list.append(len(sequence['sequence']))
-                label_list.append(sequence['label'])
+                label_list.append(int(sequence['label']))
 
             padded_batch = pad_sequence(seq_list, batch_first=True)
             packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
@@ -653,9 +653,9 @@ def embb_data_lstm(model, dataloader_train, dataloader_val, LSTM=None):
             #output, lens_output = pad_packed_sequence(output, batch_first=True)  ## que hacer con output??
 
             embeddingRecord.append(prediction.cpu().numpy())
-            labelRecord.append(np.array(label_list))
+            labelRecord.append(np.expand_dims(np.array(label_list), axis=1))
 
-    return np.hstack(embeddingRecord), np.hstack(labelRecord)
+    return np.vstack(embeddingRecord), np.vstack(labelRecord)
 
 
 def svm_testing(args, model, dataloader_test, classifier):
@@ -708,12 +708,12 @@ def svm_testing_lstm(model, dataloader_test, classifier, LSTM):
         for batch in dataloader_test:
             seq_list = []
             len_list = []
-            label_list = []
+            seq_label_list = []
             for sequence in batch:
                 seq_tensor = model(torch.stack(sequence['sequence']).cuda())
                 seq_list.append(seq_tensor.squeeze())
-                len_list.append(len(sequence))
-                label_list.append(int(sequence['label']))
+                len_list.append(len(sequence['sequence']))
+                seq_label_list.append(int(sequence['label']))
 
             padded_batch = pad_sequence(seq_list, batch_first=True)
             packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
@@ -729,7 +729,7 @@ def svm_testing_lstm(model, dataloader_test, classifier, LSTM):
             prediction = np.argmax(dec, axis=1)
 
             prediction_list.append(prediction)
-            label_list.append(np.array(label_list))
+            label_list.append(np.array(seq_label_list))
 
     conf_matrix = pd.crosstab(np.hstack(label_list), np.hstack(prediction_list), rownames=['Actual'],
                               colnames=['Predicted'],
