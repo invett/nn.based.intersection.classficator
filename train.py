@@ -56,7 +56,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save_embeddings=None):
+def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save_embeddings=None, test_path=None):
     print('\n<<<<<<<<<<<<<<<<<< START TESTING >>>>>>>>>>>>>>>>>>')
 
     loss_val = None
@@ -162,7 +162,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     if confusion_matrix is not None:
         plt.figure(figsize=(10, 7))
         title = str(
-            socket.gethostname()) + '\nTEST ' + args.test_method + '-' + args.svm_mode + '\n' + args.dataset_test
+            socket.gethostname()) + '\nTEST ' + args.test_method + '-' + args.svm_mode + '\n' + test_path
         plt.title(title)
         sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
 
@@ -1138,11 +1138,11 @@ def main(args, model=None):
 
         if args.triplet:
             test(args, dataloader_test, dataloader_train=dataloader_train, dataloader_val=dataloader_val,
-                 save_embeddings=args.save_embeddings)
+                 save_embeddings=args.save_embeddings, test_path=test_path)
         elif args.metric:
-            test(args, dataloader_test, dataloader_train=dataloader_train, dataloader_val=dataloader_val)
+            test(args, dataloader_test, dataloader_train=dataloader_train, dataloader_val=dataloader_val, test_path=test_path)
         elif args.model == 'LSTM':
-            test(args, dataloader_test)
+            test(args, dataloader_test, test_path=test_path)
         else:
             test(args, dataloader_test, save_embeddings=args.save_embeddings)
 
