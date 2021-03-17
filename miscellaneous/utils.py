@@ -521,16 +521,16 @@ def svm_generator(args, model, dataloader_train=None, dataloader_val=None, LSTM=
     else:
         print('training SVM classifier\n')
         print('svm model will be saved in : {}\n'.format(svm_path))
-        if not args.metric:
-            if LSTM is None:
-                features, labels = embb_data(args, model, dataloader_train, dataloader_val)
-            else:
-                features, labels = embb_data_lstm(args, model, dataloader_train, dataloader_val, LSTM=LSTM)
+        if not args.metric and LSTM is None:
+            features, labels = embb_data(args, model, dataloader_train, dataloader_val)
         else:
-            train_embeddings, train_labels = get_all_embeddings(dataloader_train, model)
-            val_embeddings, val_labels = get_all_embeddings(dataloader_val, model)
-            features = np.vstack((train_embeddings, val_embeddings))
-            labels = np.vstack((train_labels, val_labels))
+            if LSTM is not None:
+                features, labels = embb_data_lstm(args, model, dataloader_train, dataloader_val, LSTM=LSTM)
+            else:
+                train_embeddings, train_labels = get_all_embeddings(dataloader_train, model)
+                val_embeddings, val_labels = get_all_embeddings(dataloader_val, model)
+                features = np.vstack((train_embeddings, val_embeddings))
+                labels = np.vstack((train_labels, val_labels))
 
         classifier = svm_train(features, labels, mode=args.svm_mode)
         pickle.dump(classifier, open(svm_path, 'wb'))
