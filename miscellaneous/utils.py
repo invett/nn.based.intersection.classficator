@@ -621,7 +621,7 @@ def embb_data_lstm(model, dataloader_train, dataloader_val, LSTM=None):
 
             padded_batch = pad_sequence(seq_list, batch_first=True)
             packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
-                                                       batch_first=True)  # --> (Batch x Max_seq_len x 512)
+                                                       batch_first=True, enforce_sorted=False)  # --> (Batch x Max_seq_len x 512)
 
             prediction, output = LSTM(packed_padded_batch)
             # Output contains a packed sequence with the prediction in each timestamp --> (seq_len x batch x hidden_size)
@@ -644,7 +644,7 @@ def embb_data_lstm(model, dataloader_train, dataloader_val, LSTM=None):
 
             padded_batch = pad_sequence(seq_list, batch_first=True)
             packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
-                                                       batch_first=True)  # --> (Batch x Max_seq_len x 512)
+                                                       batch_first=True, enforce_sorted=False)  # --> (Batch x Max_seq_len x 512)
 
             prediction, output = LSTM(packed_padded_batch)
             # Output contains a packed sequence with the prediction in each timestamp --> (seq_len x batch x hidden_size)
@@ -717,7 +717,7 @@ def svm_testing_lstm(args, model, dataloader_test, classifier, LSTM):
 
             padded_batch = pad_sequence(seq_list, batch_first=True)
             packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
-                                                       batch_first=True)  # --> (Batch x Max_seq_len x 512)
+                                                       batch_first=True, enforce_sorted=False)  # --> (Batch x Max_seq_len x 512)
 
             prediction, output = LSTM(packed_padded_batch)
             # Output contains a packed sequence with the prediction in each timestamp --> (seq_len x batch x hidden_size)
