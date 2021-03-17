@@ -627,7 +627,7 @@ def embb_data_lstm(model, dataloader_train, dataloader_val, LSTM=None):
             # Output contains a packed sequence with the prediction in each timestamp --> (seq_len x batch x hidden_size)
             # Prediction contains the prediction in the last timestamp --> (batch x hidden_size)
 
-            output, lens_output = pad_packed_sequence(output, batch_first=True)  ## que hacer con output??
+            #output, lens_output = pad_packed_sequence(output, batch_first=True)  ## que hacer con output??
 
             embeddingRecord.append(prediction.cpu().numpy())
             labelRecord.append(np.array(label_list))
@@ -639,8 +639,8 @@ def embb_data_lstm(model, dataloader_train, dataloader_val, LSTM=None):
             for sequence in batch:
                 seq_tensor = model(torch.stack(sequence['sequence']).cuda())
                 seq_list.append(seq_tensor.squeeze())
-                len_list.append(len(sequence))
-                label_list.append(sequence['sequence'])
+                len_list.append(len(sequence['sequence']))
+                label_list.append(sequence['label'])
 
             padded_batch = pad_sequence(seq_list, batch_first=True)
             packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
@@ -650,7 +650,7 @@ def embb_data_lstm(model, dataloader_train, dataloader_val, LSTM=None):
             # Output contains a packed sequence with the prediction in each timestamp --> (seq_len x batch x hidden_size)
             # Prediction contains the prediction in the last timestamp --> (batch x hidden_size)
 
-            output, lens_output = pad_packed_sequence(output, batch_first=True)  ## que hacer con output??
+            #output, lens_output = pad_packed_sequence(output, batch_first=True)  ## que hacer con output??
 
             embeddingRecord.append(prediction.cpu().numpy())
             labelRecord.append(np.array(label_list))
@@ -698,7 +698,7 @@ def svm_testing(args, model, dataloader_test, classifier):
         return conf_matrix, acc
 
 
-def svm_testing_lstm(args, model, dataloader_test, classifier, LSTM):
+def svm_testing_lstm(model, dataloader_test, classifier, LSTM):
     prediction_list = []
     label_list = []
 
@@ -723,7 +723,7 @@ def svm_testing_lstm(args, model, dataloader_test, classifier, LSTM):
             # Output contains a packed sequence with the prediction in each timestamp --> (seq_len x batch x hidden_size)
             # Prediction contains the prediction in the last timestamp --> (batch x hidden_size)
 
-            output, lens_output = pad_packed_sequence(output, batch_first=True)
+            #output, lens_output = pad_packed_sequence(output, batch_first=True)
 
             dec = classifier.decision_function(prediction.cpu().numpy())
             prediction = np.argmax(dec, axis=1)
