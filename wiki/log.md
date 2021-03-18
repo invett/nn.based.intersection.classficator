@@ -19,7 +19,8 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
 - [X] GAN: Add MASK fot the non-interesting parts of the RGB (eg. sky)  -> does no
 - [ ] GAN: Conditional GAN for balancing classes.
 - [ ] GAN: Pix2Pix to convert from road mask to RGB. (connected to 'futuristic wannabe'? see below)
-- [X] GAN: StyleGAN2  /   StyleGAN2-ADA: Training Generative Adversarial Networks with Limited Data https://github.com/NVlabs/stylegan2-ada-pytorch 
+- [X] GAN: StyleGAN2 (https://github.com/invett/stylegan2-pytorch/) /   (StyleGAN2-ADA: Training Generative Adversarial Networks with Limited Data  https://github.com/NVlabs/stylegan2-ada-pytorch)
+- [X] GAN: SWAGAN (https://github.com/invett/stylegan2-pytorch/)
 - [ ] GAN: GauGAN -> https://blog.paperspace.com/gaugan-training-on-custom-datasets
 - [ ] GRU vs LSTM: should be 1-line change
 
