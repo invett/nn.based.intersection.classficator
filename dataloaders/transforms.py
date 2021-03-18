@@ -5,6 +5,7 @@ from numpy import load
 import torch
 from scipy.spatial.transform import Rotation as R
 from skimage.transform import resize
+import os
 
 from miscellaneous.utils import getCameraRototraslation, radians
 
@@ -533,6 +534,12 @@ class GenerateBev(object):
             dict_data = load(npz)
             aanet_image = dict_data['arr_0']
             points = cv2.reprojectImageTo3D(aanet_image, rev_proj_matrix)
+
+            # if exists, add alvaromask
+            alvaromask_file = npz.replace('.npz', '.png').replace('/pred/', '/alvaromask/')
+            if os.path.isfile(alvaromask_file):
+                sample['alvaromask'] = cv2.imread(alvaromask_file, cv2.IMREAD_UNCHANGED)
+
         else:
             points = cv2.reprojectImageTo3D(sample['aanet'], rev_proj_matrix)
 
