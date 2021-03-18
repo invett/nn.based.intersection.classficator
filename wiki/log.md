@@ -16,11 +16,11 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
 - [X] GAN: Label smoothing strategy nn.BCEWithLogitsLoss(logits, labels*0.9) 
 - [x] GAN: UNet Generator : update 12.03.2021 ... should be ok. need to test ; gave us artistic results...
 - [X] GAN: PatchGAN Discriminator (Based on UNet Contracting Path)
-- [ ] GAN: Add MASK fot the non-interesting parts of the RGB (eg. sky)
+- [X] GAN: Add MASK fot the non-interesting parts of the RGB (eg. sky)  -> does no
 - [ ] GAN: Conditional GAN for balancing classes.
 - [ ] GAN: Pix2Pix to convert from road mask to RGB. (connected to 'futuristic wannabe'? see below)
-- [ ] GAN: StyleGAN2  /   StyleGAN2-ADA: Training Generative Adversarial Networks with Limited Data https://github.com/NVlabs/stylegan2-ada-pytorch 
-- [ ] GAN: GAUCGAN -> https://blog.paperspace.com/gaugan-training-on-custom-datasets
+- [X] GAN: StyleGAN2  /   StyleGAN2-ADA: Training Generative Adversarial Networks with Limited Data https://github.com/NVlabs/stylegan2-ada-pytorch 
+- [ ] GAN: GauGAN -> https://blog.paperspace.com/gaugan-training-on-custom-datasets
 - [ ] GRU vs LSTM: should be 1-line change
 
 ## FUTURISTIC wannabe
@@ -225,5 +225,14 @@ The idea is to exploit the trained RESNET, then the train is made as follows:
  - Lower bs and lower lr (linear relationship) better performance.
  - Add bias=False to convs and BN(output_dim, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
  - Change Generator and Discriminator architectures (More similar to DCGAN Pytorch)
-
- - first dataset was made with: 
+ - Add MASK for the black part in WARPED  / MASK for RGB -> not working
+ - Label smoothing strategy 
+ - Trials with UNet Generator
+ - Trials with PatchGAN Discriminator (UNet contraccting Path)
+ - StyleGAN2 with Alcalá26 RGB's -> 40K iters 1d1h  ( run feasible-armadillo-5 )
+ - SWAGAN with Alcalá26 + Alcalá12 RGB -> 40K iters 16h   ( run azure-disco-6 ) 
+      - x2 FASTER!
+      - More or less same quality, although some checkboard artifacts 
+      - Same training curves, a bit worse PPL regularization
+ - SWAGAN with Alcalá26 + Alcalá12 WARPED ( run visionary-flower-7 )
+      - Improves StyleGAN2 PPL regularization from iter 30k
