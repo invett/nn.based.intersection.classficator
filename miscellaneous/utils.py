@@ -97,15 +97,21 @@ def send_telegram_picture(plt, description):
     Returns: True if ok
 
     """
-    figdata = BytesIO()
-    plt.savefig(figdata, format='png', dpi=600)
-    URI = 'https://api.telegram.org/bot' + telegram_token + '/sendPhoto?chat_id=' + telegram_channel + "&caption=" + str(
-        datetime.datetime.now()) + "\n" + description
-    pic = {'photo': ("Foto", figdata.getvalue(), 'image/png')}
-    response = requests.get(URI, files=pic)
+    try:
 
-    return json.loads(response.content)['ok']
+        figdata = BytesIO()
+        plt.savefig(figdata, format='png', dpi=600)
+        URI = 'https://api.telegram.org/bot' + telegram_token + '/sendPhoto?chat_id=' + telegram_channel + "&caption=" + str(
+            datetime.datetime.now()) + "\n" + description
+        pic = {'photo': ("Foto", figdata.getvalue(), 'image/png')}
+        response = requests.get(URI, files=pic)
 
+        return json.loads(response.content)['ok']
+
+    except:
+        print('error sending telegram message')
+
+        return -1
 
 def euler2mat(z, y, x):
     """
