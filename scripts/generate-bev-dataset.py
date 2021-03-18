@@ -288,7 +288,7 @@ def main(args):
 
             #break
 
-        print("Run {} generated".format(index))
+        print("Run {} generated (the number corresponds to the augmentation.. just to be clear)".format(index))
         if args.telegram:
             send_telegram_message("Run {} generated successfully".format(index))
 
