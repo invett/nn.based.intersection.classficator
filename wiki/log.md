@@ -16,7 +16,7 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
 - [X] GAN: Label smoothing strategy nn.BCEWithLogitsLoss(logits, labels*0.9) 
 - [x] GAN: UNet Generator : update 12.03.2021 ... should be ok. need to test ; gave us artistic results...
 - [X] GAN: PatchGAN Discriminator (Based on UNet Contracting Path)
-- [X] GAN: Add MASK fot the non-interesting parts of the RGB (eg. sky)  -> does no
+- [X] GAN: Add MASK for the non-interesting parts of the RGB (eg. sky)  -> does not
 - [ ] GAN: Conditional GAN for balancing classes.
 - [ ] GAN: Pix2Pix to convert from road mask to RGB. (connected to 'futuristic wannabe'? see below)
 - [X] GAN: StyleGAN2 (https://github.com/invett/stylegan2-pytorch/) /   
