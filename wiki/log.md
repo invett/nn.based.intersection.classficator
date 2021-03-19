@@ -17,11 +17,11 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
 - [x] GAN: UNet Generator : update 12.03.2021 ... should be ok. need to test ; gave us artistic results...
 - [X] GAN: PatchGAN Discriminator (Based on UNet Contracting Path)
 - [X] GAN: Add MASK for the non-interesting parts of the RGB (eg. sky)  -> does not
-- [ ] GAN: Conditional GAN for balancing classes.
 - [ ] GAN: Pix2Pix to convert from road mask to RGB. (connected to 'futuristic wannabe'? see below)
 - [X] GAN: StyleGAN2 (https://github.com/invett/stylegan2-pytorch/) /   
 - [ ] GAN: StyleGAN2-ADA: Training Generative Adversarial Networks with Limited Data  https://github.com/NVlabs/stylegan2-ada-pytorch)
 - [X] GAN: SWAGAN (https://github.com/invett/stylegan2-pytorch/)
+- [ ] GAN: Conditional StyleGAN2 for balancing classes.
 - [ ] GAN: Explore latent space -> Project images to latent space and find clusters -> Generate new geometries
 - [ ] GAN: GauGAN -> https://blog.paperspace.com/gaugan-training-on-custom-datasets
 - [ ] GRU vs LSTM: should be 1-line change
