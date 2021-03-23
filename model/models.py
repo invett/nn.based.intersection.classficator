@@ -61,6 +61,7 @@ class Vgg11(torch.nn.Module):
     def forward(self, data):
         features = self.features(data)
         avg = self.avgpool(features)
+        avg = torch.flatten(avg, start_dim=1)
         prediction = self.classifier(avg)
 
         return prediction
