@@ -816,6 +816,7 @@ def main(args, model=None):
     rgb_image_test_transforms = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(),
                                                     transforms.Normalize((0.485, 0.456, 0.406),
                                                                          (0.229, 0.224, 0.225))])
+
     # Transforms for Three-dimensional images (The DA was made offline)
     threedimensional_transfomrs = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
 
@@ -910,16 +911,27 @@ def main(args, model=None):
 
             train_dataset = Kitti2011_RGB(train_path, transform=rgb_image_train_transforms)
 
-        elif args.dataloader == 'lstm_txt_dataloader':
+        elif args.dataloader == 'lstm_txt_dataloader' and '3D' not in train_path:
             val_dataset = lstm_txt_dataloader(val_path, transform=rgb_image_train_transforms,
                                               all_in_ram=args.all_in_ram)
             train_dataset = lstm_txt_dataloader(train_path, transform=rgb_image_train_transforms,
                                                 all_in_ram=args.all_in_ram)
 
-        elif args.dataloader == 'txt_dataloader':
+        elif args.dataloader == 'lstm_txt_dataloader':
+            val_dataset = lstm_txt_dataloader(val_path, transform=threedimensional_transfomrs,
+                                              all_in_ram=args.all_in_ram)
+            train_dataset = lstm_txt_dataloader(train_path, transform=threedimensional_transfomrs,
+                                                all_in_ram=args.all_in_ram)
+
+        elif args.dataloader == 'txt_dataloader' and '3D' not in train_path:
             val_dataset = txt_dataloader(val_path, transform=rgb_image_test_transforms, decimateStep=args.decimate)
 
             train_dataset = txt_dataloader(train_path, transform=rgb_image_train_transforms, decimateStep=args.decimate)
+
+        elif args.dataloader == 'txt_dataloader':
+            val_dataset = txt_dataloader(val_path, transform=threedimensional_transfomrs, decimateStep=args.decimate)
+
+            train_dataset = txt_dataloader(train_path, transform=threedimensional_transfomrs, decimateStep=args.decimate)
 
         else:
             raise Exception("Dataloader not found")
