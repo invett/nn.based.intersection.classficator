@@ -924,11 +924,13 @@ def main(args, model=None):
                                                 all_in_ram=args.all_in_ram)
 
         elif args.dataloader == 'txt_dataloader' and 'KITTI-360_3D' not in train_path:  # // RGB // Homography
+            print('Training with rgb Data augmentation')
             val_dataset = txt_dataloader(val_path, transform=rgb_image_test_transforms, decimateStep=args.decimate)
 
             train_dataset = txt_dataloader(train_path, transform=rgb_image_train_transforms, decimateStep=args.decimate)
 
         elif args.dataloader == 'txt_dataloader':  # // 3D // 3D-Masked
+            print('Training with three-dimensional Data')
             val_dataset = txt_dataloader(val_path, transform=threedimensional_transfomrs, decimateStep=args.decimate)
 
             train_dataset = txt_dataloader(train_path, transform=threedimensional_transfomrs,
@@ -1137,8 +1139,10 @@ def main(args, model=None):
             test_dataset = lstm_txt_dataloader(test_path, transform=threedimensional_transfomrs)
 
         elif args.dataloader == 'txt_dataloader' and 'KITTI-360_3D' not in train_path:
+            print('Training with rgb Data augmentation')
             test_dataset = txt_dataloader(test_path, transform=rgb_image_test_transforms)
         elif args.dataloader == 'txt_dataloader':
+            print('Training with three-dimensional data')
             test_dataset = txt_dataloader(test_path, transform=threedimensional_transfomrs)
 
         if test_dataset.getIsSequence():

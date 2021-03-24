@@ -225,11 +225,18 @@ The idea is to exploit the trained RESNET, then the train is made as follows:
 
 - Kitti 360 3D (Resnet): 
     - Linear SVM ( ACC)
-      `python train.py --test --metric --dataset=../../DualBiSeNet/KITTI-360_3D/prefix_train_list.txt --dataset_test=../../DualBiSeNet/KITTI-360_3D/prefix_test_list.txt --dataset_val=../../DualBiSeNet/KITTI-360_3D/prefix_validation_list.txt --dataloader txt_dataloader --model resnet18 --load_path ./trainedmodels/model_xny9p5pw_20.pth --test_method svm --svm_mode Linear --telegram`
+      
     - OVO SVM ( ACC)
-      `python train.py --test --metric --dataset=../../DualBiSeNet/KITTI-360_3D/prefix_train_list.txt --dataset_test=../../DualBiSeNet/KITTI-360_3D/prefix_test_list.txt --dataset_val=../../DualBiSeNet/KITTI-360_3D/prefix_validation_list.txt --dataloader txt_dataloader --model resnet18 --load_path ./trainedmodels/model_xny9p5pw_20.pth --test_method svm --svm_mode ovo --telegram`
+      
     - Mahalanobis ( ACC)
-      `python train.py --test --metric --dataset=../../DualBiSeNet/KITTI-360_3D/prefix_train_list.txt --dataset_test=../../DualBiSeNet/KITTI-360_3D/prefix_test_list.txt --dataset_val=../../DualBiSeNet/KITTI-360_3D/prefix_validation_list.txt --dataloader txt_dataloader --model resnet18 --load_path ./trainedmodels/model_xny9p5pw_20.pth --test_method mahalanobis --telegram`
+    
+Kitti 360 3D-Masked (Resnet):  model_8juepfqw_50.pth
+    - Linear SVM (77,68% ACC)
+      `python train.py --test --metric --dataset ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_train_list.txt --dataset_test ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_test_list.txt --dataset_val ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_validation_list.txt --dataloader txt_dataloader --model resnet18 --load_path ./trainedmodels/model_8juepfqw_50.pth --test_method svm --svm_mode Linear --telegram`
+    - OVO SVM ( ACC)
+      `python train.py --test --metric --dataset ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_train_list.txt --dataset_test ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_test_list.txt --dataset_val ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_validation_list.txt --dataloader txt_dataloader --model resnet18 --load_path ./trainedmodels/model_8juepfqw_50.pth --test_method svm --svm_mode ovo --telegram`
+    - Mahalanobis ( ACC)
+      
 
 
 - Kitti 360 (LSTM): model_m5qcz4ha_75.pth 
