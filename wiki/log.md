@@ -223,21 +223,21 @@ The idea is to exploit the trained RESNET, then the train is made as follows:
     - Mahalanobis (72,88% ACC)
       `python train.py --test --metric --dataset ../../DualBiSeNet/KITTI-360_warped/train.prefix/prefix_train_list.txt --dataset_test ../../DualBiSeNet/KITTI-360_warped/test.prefix/prefix_test_list.txt --dataset_val ../../DualBiSeNet/KITTI-360_warped/validation.prefix/prefix_validation_list.txt --dataloader txt_dataloader --model resnet18 --load_path ./trainedmodels/model_m5qcz4ha_75.pth --test_method mahalanobis --telegram`
 
-- Kitti 360 3D (Resnet): 
-    - Linear SVM ( ACC)
-      
-    - OVO SVM ( ACC)
-      
-    - Mahalanobis ( ACC)
-    
-Kitti 360 3D-Masked (Resnet):  model_8juepfqw_50.pth
+- Kitti 360 3D (Resnet): model_y39tv127_35.pth
+    - Linear SVM (77,96% ACC)
+      `python train.py --test --metric --dataset ../../DualBiSeNet/KITTI-360_3D/prefix_train_list.txt --dataset_test ../../DualBiSeNet/KITTI-360_3D/prefix_test_list.txt --dataset_val ../../DualBiSeNet/KITTI-360_3D/prefix_validation_list.txt --dataloader txt_dataloader --model resnet18 --load_path ./trainedmodels/model_y39tv127_35.pth --test_method svm --svm_mode Linear --telegram`
+    - OVO SVM (77,68% ACC)
+      `python train.py --test --metric --dataset ../../DualBiSeNet/KITTI-360_3D/prefix_train_list.txt --dataset_test ../../DualBiSeNet/KITTI-360_3D/prefix_test_list.txt --dataset_val ../../DualBiSeNet/KITTI-360_3D/prefix_validation_list.txt --dataloader txt_dataloader --model resnet18 --load_path ./trainedmodels/model_y39tv127_35.pth --test_method svm --svm_mode ovo --telegram`
+    - Mahalanobis (73,16% ACC)
+      `python train.py --test --metric --dataset ../../DualBiSeNet/KITTI-360_3D/prefix_train_list.txt --dataset_test ../../DualBiSeNet/KITTI-360_3D/prefix_test_list.txt --dataset_val ../../DualBiSeNet/KITTI-360_3D/prefix_validation_list.txt --dataloader txt_dataloader --model resnet18 --load_path ./trainedmodels/model_y39tv127_35.pth --test_method mahalanobis --telegram`
+
+- Kitti 360 3D-Masked (Resnet):  model_8juepfqw_50.pth
     - Linear SVM (77,68% ACC)
       `python train.py --test --metric --dataset ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_train_list.txt --dataset_test ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_test_list.txt --dataset_val ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_validation_list.txt --dataloader txt_dataloader --model resnet18 --load_path ./trainedmodels/model_8juepfqw_50.pth --test_method svm --svm_mode Linear --telegram`
-    - OVO SVM ( ACC)
+    - OVO SVM (76,69% ACC)
       `python train.py --test --metric --dataset ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_train_list.txt --dataset_test ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_test_list.txt --dataset_val ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_validation_list.txt --dataloader txt_dataloader --model resnet18 --load_path ./trainedmodels/model_8juepfqw_50.pth --test_method svm --svm_mode ovo --telegram`
-    - Mahalanobis ( ACC)
-      
-
+    - Mahalanobis (73.02% ACC)
+      `python train.py --test --metric --dataset ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_train_list.txt --dataset_test ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_test_list.txt --dataset_val ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_validation_list.txt --dataloader txt_dataloader --model resnet18 --load_path ./trainedmodels/model_8juepfqw_50.pth --test_method mahalanobis --telegram`
 
 - Kitti 360 (LSTM): model_m5qcz4ha_75.pth 
     - Fully Connected: model_n6tg093u_45.pth (76,59% ACC)
@@ -249,6 +249,25 @@ Kitti 360 3D-Masked (Resnet):  model_8juepfqw_50.pth
     - Mahalanobis: model_7ce52yge_70.pth ( ACC)
       `python train.py --test --metric --dataset ../../DualBiSeNet/KITTI-360_warped/train.prefix/prefix_train_list.txt --dataset_test ../../DualBiSeNet/KITTI-360_warped/test.prefix/prefix_test_list.txt --dataset_val ../../DualBiSeNet/KITTI-360_warped/validation.prefix/prefix_validation_list.txt --dataloader lstm_txt_dataloader --model LSTM --fc_dropout 0.2 --lstm_dropout 0.1 --lstm_hidden 256 --lstm_layers 1 --feature_model resnet18 --feature_detector_path ./trainedmodels/model_m5qcz4ha_75.pth --load_path ./trainedmodels/model_7ce52yge_70.pth --test_method mahalanobis --telegram`
 
+- Kitti 360 3D (LSTM): model_y39tv127_35.pth
+    - Fully Connected: model_896m1nhe_45.pth (76,59% ACC)
+      `python train.py --test --dataset ../../DualBiSeNet/KITTI-360_3D/prefix_train_list.txt --dataset_test ../../DualBiSeNet/KITTI-360_3D/prefix_test_list.txt --dataset_val ../../DualBiSeNet/KITTI-360_3D/prefix_validation_list.txt --dataloader lstm_txt_dataloader --model LSTM --lstm_hidden 256 --lstm_layers 1 --feature_model resnet18 --feature_detector_path ./trainedmodels/model_y39tv127_35.pth --load_path ./trainedmodels/model_896m1nhe_45.pth --telegram`
+    - Linear SVM:
+      
+    - OVO SVM:
+      
+    - Mahalanobis:
+      
+      
+- Kitti 360 3D-Masked (LSTM): model_8juepfqw_50.pth
+    - Fully Connected: model_l6dext72_40.pth (82,97% ACC)
+      `python train.py --test --dataset ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_train_list.txt --dataset_test ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_test_list.txt --dataset_val ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_validation_list.txt --dataloader lstm_txt_dataloader --model LSTM --lstm_hidden 16 --lstm_layers 1 --feature_model resnet18 --feature_detector_path ./trainedmodels/model_8juepfqw_50.pth --load_path ./trainedmodels/model_l6dext72_40.pth --telegram`
+    - Linear SVM:
+      
+    - OVO SVM:
+      
+    - Mahalanobis:
+      
 
 
 ### GAN
