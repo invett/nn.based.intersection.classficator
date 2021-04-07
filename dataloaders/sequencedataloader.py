@@ -100,7 +100,7 @@ class txt_dataloader(AbstractSequence, Dataset):
                     trainimages.append(os.path.join(os.path.split(path_filename)[0], line.strip().split(';')[0]))
                     trainlabels.append(line.strip().split(';')[1])
 
-        print('Images loaded: ' + str(len(trainimages)))
+        print('Images loaded: ' + str(len(trainimages)) + '\n')
 
         self.transform = transform
 
@@ -179,12 +179,14 @@ class txt_dataloader(AbstractSequence, Dataset):
 
             sample = {'data': transformed['data'],
                       'label': label,
-                      'neg_label': neg_label}
+                      'neg_label': neg_label,
+                      'path_of_original_image': imagepath}
 
         else:
             sample = {'data': image,
                       'label': label,
-                      'neg_label': neg_label}
+                      'neg_label': neg_label,
+                      'path_of_original_image': imagepath}
 
             if self.transform:
                 sample['data'] = self.transform(sample['data'])

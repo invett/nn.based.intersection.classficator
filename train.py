@@ -120,18 +120,30 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
             model = model.cuda()
 
     # Start testing
+
+    # LSTM tests
     if args.model == 'LSTM':
         if not args.metric:
+            # lstm con fully-connected to classify
             confusion_matrix, acc_val, loss_val = validation(args, feature_extractor_model, criterion, dataloader_test,
                                                              LSTM=model)
         else:
+            # otherwise instead of the fully-connected classifier, we can test
+            # with a metric-learning approach, and in this case KEVIN libs were used
+
             if args.test_method == 'svm':
                 classifier = svm_generator(args, feature_extractor_model, dataloader_train=dataloader_train,
                                            dataloader_val=dataloader_val, LSTM=model)
                 confusion_matrix, acc_val = svm_testing_lstm(feature_extractor_model, dataloader_test, classifier,
                                                              LSTM=model)
+            else:
+                # What if not == svm ?
+                print('What if not == svm ?')
+                exit(-1)
 
+    # RESNETs test
     elif args.triplet:
+        # TRIPLET IS OUR OLD CODE , FIRST ATTEMPT
         if args.test_method == 'svm':
             # Generates svm with the last train
             classifier = svm_generator(args, model, dataloader_train=dataloader_train, dataloader_val=dataloader_val)
@@ -143,20 +155,37 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
         else:
             print("=> no test method found")
             exit(-1)
+
     elif args.metric:
+        # SIMILAR TO TRIPLET, BUT USING KEVING LIBS
+
+        # these two will be used to report data
+        label_list = []
+        prediction_list = []
+
         if args.test_method == 'svm':
             # Generates svm with the last train
             classifier = svm_generator(args, model, dataloader_train=dataloader_train, dataloader_val=dataloader_val)
-            confusion_matrix, acc_val = svm_testing(args, model, dataloader_test, classifier)
+            confusion_matrix, acc_val, export_data = svm_testing(args, model, dataloader_test, classifier)
+
         elif args.test_method == 'mahalanobis':
             covariances = covmatrix_generator(args, model, dataloader_train=dataloader_train,
                                               dataloader_val=dataloader_val)
-            confusion_matrix, acc_val = mahalanobis_testing(args, model, dataloader_test, covariances)
+            confusion_matrix, acc_val, export_data = mahalanobis_testing(args, model, dataloader_test, covariances)
+
         else:
             print("=> no test method found")
             exit(-1)
+
+        # export data: this list contains data to create a file that is similar to 'test_list.txt' used
+        # in txt_dataloader. will be used to compare RESNET vs LSTM as they are already in 'per-sequence' format.
+        if args.test_method == 'svm':
+            print('saving data')
+        elif args.test_method == 'mahalanobis':
+            print('saving data')
 
     else:
+        # THIS IS OUR BASELINE, WITHOUT TRIPLET FLAVOURS (OURS OR KEVIN)
         confusion_matrix, acc_val, _ = validation(args, model, criterion, dataloader_test, gt_list=gt_list,
                                                   save_embeddings=save_embeddings)
 
@@ -943,10 +972,12 @@ def main(args, model=None):
         # error: each element in list of batch should be of equal size
         # solution found here: https://github.com/pytorch/vision/issues/2624
         if train_dataset.getIsSequence():
+            print("Using a sequence dataset ...")
             dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                           num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True,
                                           collate_fn=lambda x: x)
         else:
+            print("Using a single-frame dataset (not a sequence) ...")
             dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                           num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
 
@@ -1077,6 +1108,9 @@ def main(args, model=None):
             #    | |  |  _ <  / ___ \  | | | |\  |   #
             #    |_|  |_| \_\/_/   \_\|___||_| \_|   #
             ##########################################
+
+            ## >>>>>>>>>>>>>> ENTRY POINT FOR TRAIN <<<<<<<<<<<<<<<<<<<<<<<<
+
             if args.model == 'LSTM':
                 train(args, feature_extractor_model, optimizer, scheduler, dataloader_train, dataloader_val,
                       os.path.basename(val_path[0]), GLOBAL_EPOCH=GLOBAL_EPOCH, LSTM=model)
@@ -1090,6 +1124,14 @@ def main(args, model=None):
             if args.telegram:
                 send_telegram_message("Train finished")
 
+    ###################################
+    #  _______ ______  _____ _______  #
+    # |__   __|  ____|/ ____|__   __| #
+    #    | |  | |__  | (___    | |    #
+    #    | |  |  __|  \___ \   | |    #
+    #    | |  | |____ ____) |  | |    #
+    #    |_|  |______|_____/   |_|    #
+    ###################################
     if args.test:
         if args.dataloader == 'Kitti360':  # Trained with RGB images or Homography
             if args.oposite:
@@ -1146,10 +1188,12 @@ def main(args, model=None):
             test_dataset = txt_dataloader(test_path, transform=threedimensional_transfomrs)
 
         if test_dataset.getIsSequence():
+            print("Using a sequence dataset ...")
             dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
                                          num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=False,
                                          collate_fn=lambda x: x)
         else:
+            print("Using a single-frame dataset (not a sequence) ...")
             dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
                                          num_workers=args.num_workers, worker_init_fn=init_fn)
 
@@ -1157,6 +1201,9 @@ def main(args, model=None):
             wandb.init(project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
                        job_type="eval")
             wandb.config.update(args)
+
+
+        # >>>>>>>>>>>> ENTRY POINT FOR TEST <<<<<<<<<<<<<<<
 
         if args.triplet:
             test(args, dataloader_test, dataloader_train=dataloader_train, dataloader_val=dataloader_val,

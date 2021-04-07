@@ -667,13 +667,18 @@ def embb_data_lstm(model, dataloader_train, dataloader_val, LSTM=None):
 def svm_testing(args, model, dataloader_test, classifier):
     print('Start svm testing')
 
+    # defining the lists that will be used to export data, for RESNET vs LSTM comparison
+    export_filenames = []
+    export_gt_labels = []
+    export_prediction_list = []
+
     label_list = []
     prediction_list = []
 
     with torch.no_grad():
         model.eval()
 
-        all_output = []
+        # all_output = [] TODO: seems that we don't use this...
 
         for sample in dataloader_test:
             if args.embedding or args.metric:
@@ -688,10 +693,11 @@ def svm_testing(args, model, dataloader_test, classifier):
                 data = data.cuda()
 
             output = model(data)  # --> (1 x 512)
-            all_output.append(output.cpu().numpy())
+            # all_output.append(output.cpu().numpy()) TODO: seems that we don't use this...
             dec = classifier.decision_function(output.cpu().numpy())
             prediction = np.argmax(dec, axis=1)
 
+            export_filenames.extend(sample['path_of_original_image'])
             label_list.append(label.cpu().numpy())
             prediction_list.append(prediction)
 
@@ -701,7 +707,15 @@ def svm_testing(args, model, dataloader_test, classifier):
         conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6], fill_value=0.0)
         acc = accuracy_score(np.hstack(label_list), np.hstack(prediction_list))
         print('Accuracy for test : %f\n' % acc)
-        return conf_matrix, acc
+
+        # these three lists will be used to create a file similar to the 'test_list.txt' used with the txt_dataloader.
+        # these will be used to evaluate RESNET vs LSTM on a 'per-sequence' basis
+        export_filenames = export_filenames
+        [export_gt_labels.extend(i) for i in label_list]
+        [export_prediction_list.extend(i) for i in prediction_list]
+        export_overall = [export_filenames, export_gt_labels, export_prediction_list]
+
+        return conf_matrix, acc, export_overall
 
 
 def svm_testing_lstm(model, dataloader_test, classifier, LSTM):
@@ -777,6 +791,11 @@ def covmatrix_generator(args, model, dataloader_train=None, dataloader_val=None)
 def mahalanobis_testing(args, model, dataloader_test, covariances):
     print('Start mahalanobis testing')
 
+    # defining the lists that will be used to export data, for RESNET vs LSTM comparison
+    export_filenames = []
+    export_gt_labels = []
+    export_prediction_list = []
+
     label_list = []
     prediction_list = []
 
@@ -803,6 +822,7 @@ def mahalanobis_testing(args, model, dataloader_test, covariances):
             # prediction = np.argmin(np.array(distance_list))
             prediction = np.argmin(distance_list, axis=0)  # i want 64 labels, given from 7x64
 
+            export_filenames.extend(sample['path_of_original_image'])
             label_list.append(label.cpu().numpy())
             prediction_list.append(prediction)
 
@@ -812,7 +832,15 @@ def mahalanobis_testing(args, model, dataloader_test, covariances):
         conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6], fill_value=0.0)
         acc = accuracy_score(np.hstack(label_list), np.hstack(prediction_list))
         print('Accuracy for test : %f\n' % acc)
-        return conf_matrix, acc
+
+        # these three lists will be used to create a file similar to the 'test_list.txt' used with the txt_dataloader.
+        # these will be used to evaluate RESNET vs LSTM on a 'per-sequence' basis
+        export_filenames = export_filenames
+        [export_gt_labels.extend(i) for i in label_list]
+        [export_prediction_list.extend(i) for i in prediction_list]
+        export_overall = [export_filenames, export_gt_labels, export_prediction_list]
+
+        return conf_matrix, acc, export_overall
 
 
 def get_all_embeddings(dataloader, model):
