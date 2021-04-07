@@ -129,7 +129,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
                 classifier = svm_generator(args, feature_extractor_model, dataloader_train=dataloader_train,
                                            dataloader_val=dataloader_val, LSTM=model)
                 confusion_matrix, acc_val = svm_testing_lstm(feature_extractor_model, dataloader_test, classifier,
-                                                        LSTM=model)
+                                                             LSTM=model)
 
     elif args.triplet:
         if args.test_method == 'svm':
@@ -498,7 +498,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
 
     for epoch in range(args.start_epoch, args.num_epochs):
         print("\n\n===========================================================")
-        print("date and time:", datetime.now().strftime("%m/%d/%Y, %H:%M:%S"))
+        print("date and time:", datetime.now().strftime("%m/%d/%Y, %H:%M:%S"), '\n')
         with GLOBAL_EPOCH.get_lock():
             GLOBAL_EPOCH.value = epoch
         lr = optimizer.param_groups[0]['lr']
@@ -911,27 +911,30 @@ def main(args, model=None):
 
             train_dataset = Kitti2011_RGB(train_path, transform=rgb_image_train_transforms)
 
-        elif args.dataloader == 'lstm_txt_dataloader' and '3D' not in train_path:
+        elif args.dataloader == 'lstm_txt_dataloader' and 'KITTI-360_3D' not in train_path:  # // RGB // Homography
             val_dataset = lstm_txt_dataloader(val_path, transform=rgb_image_train_transforms,
                                               all_in_ram=args.all_in_ram)
             train_dataset = lstm_txt_dataloader(train_path, transform=rgb_image_train_transforms,
                                                 all_in_ram=args.all_in_ram)
 
-        elif args.dataloader == 'lstm_txt_dataloader':
+        elif args.dataloader == 'lstm_txt_dataloader':  # // 3D // 3D-Masked
             val_dataset = lstm_txt_dataloader(val_path, transform=threedimensional_transfomrs,
                                               all_in_ram=args.all_in_ram)
             train_dataset = lstm_txt_dataloader(train_path, transform=threedimensional_transfomrs,
                                                 all_in_ram=args.all_in_ram)
 
-        elif args.dataloader == 'txt_dataloader' and '3D' not in train_path:
+        elif args.dataloader == 'txt_dataloader' and 'KITTI-360_3D' not in train_path:  # // RGB // Homography
+            print('Training with rgb Data augmentation')
             val_dataset = txt_dataloader(val_path, transform=rgb_image_test_transforms, decimateStep=args.decimate)
 
             train_dataset = txt_dataloader(train_path, transform=rgb_image_train_transforms, decimateStep=args.decimate)
 
-        elif args.dataloader == 'txt_dataloader':
+        elif args.dataloader == 'txt_dataloader':  # // 3D // 3D-Masked
+            print('Training with three-dimensional Data')
             val_dataset = txt_dataloader(val_path, transform=threedimensional_transfomrs, decimateStep=args.decimate)
 
-            train_dataset = txt_dataloader(train_path, transform=threedimensional_transfomrs, decimateStep=args.decimate)
+            train_dataset = txt_dataloader(train_path, transform=threedimensional_transfomrs,
+                                           decimateStep=args.decimate)
 
         else:
             raise Exception("Dataloader not found")
@@ -1130,11 +1133,17 @@ def main(args, model=None):
             test_dataset = triplet_BOO([test_path], args.distance, canonical=True,
                                        transform_osm=osmTransforms, transform_bev=threedimensional_transfomrs)
 
-        elif args.dataloader == 'lstm_txt_dataloader':
+        elif args.dataloader == 'lstm_txt_dataloader' and 'KITTI-360_3D' not in train_path:  # // RGB // Homography
             test_dataset = lstm_txt_dataloader(test_path, transform=rgb_image_test_transforms)
+        elif args.dataloader == 'lstm_txt_dataloader':  # // 3D // 3D-Masked
+            test_dataset = lstm_txt_dataloader(test_path, transform=threedimensional_transfomrs)
 
-        elif args.dataloader == 'txt_dataloader':
+        elif args.dataloader == 'txt_dataloader' and 'KITTI-360_3D' not in train_path:
+            print('Training with rgb Data augmentation')
             test_dataset = txt_dataloader(test_path, transform=rgb_image_test_transforms)
+        elif args.dataloader == 'txt_dataloader':
+            print('Training with three-dimensional data')
+            test_dataset = txt_dataloader(test_path, transform=threedimensional_transfomrs)
 
         if test_dataset.getIsSequence():
             dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
@@ -1153,7 +1162,8 @@ def main(args, model=None):
             test(args, dataloader_test, dataloader_train=dataloader_train, dataloader_val=dataloader_val,
                  save_embeddings=args.save_embeddings, test_path=test_path)
         elif args.metric:
-            test(args, dataloader_test, dataloader_train=dataloader_train, dataloader_val=dataloader_val, test_path=test_path)
+            test(args, dataloader_test, dataloader_train=dataloader_train, dataloader_val=dataloader_val,
+                 test_path=test_path)
         elif args.model == 'LSTM':
             test(args, dataloader_test, test_path=test_path)
         else:
