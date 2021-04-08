@@ -147,11 +147,11 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
         if args.test_method == 'svm':
             # Generates svm with the last train
             classifier = svm_generator(args, model, dataloader_train=dataloader_train, dataloader_val=dataloader_val)
-            confusion_matrix, acc_val = svm_testing(args, model, dataloader_test, classifier)
+            confusion_matrix, acc_val, _ = svm_testing(args, model, dataloader_test, classifier)
         elif args.test_method == 'mahalanobis':
             covariances = covmatrix_generator(args, model, dataloader_train=dataloader_train,
                                               dataloader_val=dataloader_val)
-            confusion_matrix, acc_val = mahalanobis_testing(args, model, dataloader_test, covariances)
+            confusion_matrix, acc_val, _ = mahalanobis_testing(args, model, dataloader_test, covariances)
         else:
             print("=> no test method found")
             exit(-1)
@@ -177,12 +177,25 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
             print("=> no test method found")
             exit(-1)
 
-        # export data: this list contains data to create a file that is similar to 'test_list.txt' used
+        # export_data: this list contains data to create a file that is similar to 'test_list.txt' used
         # in txt_dataloader. will be used to compare RESNET vs LSTM as they are already in 'per-sequence' format.
-        if args.test_method == 'svm':
-            print('saving data')
-        elif args.test_method == 'mahalanobis':
-            print('saving data')
+        if args.export_data:
+
+            #sets filename
+            if args.test_method == 'svm':
+                filename = '/tmp/' + os.path.splitext(os.path.split(test_path)[1])[0] + '_resnet_export_svm' + \
+                           os.path.splitext(os.path.split(test_path)[1])[1]
+                print('saving data in: ' + filename)
+            elif args.test_method == 'mahalanobis':
+                filename = '/tmp/' + os.path.splitext(os.path.split(test_path)[1])[0] + '_resnet_export_mahalanobis' + \
+                           os.path.splitext(os.path.split(test_path)[1])[1]
+                print('saving data in: ' + filename)
+
+            # create filename
+            with open(filename, "w") as output:
+                for i in range(len(export_data[0])):
+                    line = export_data[0][i] + ';' + str(export_data[1][i]) + ';' + str(export_data[2][i]) + '\n'
+                    output.write(line)
 
     else:
         # THIS IS OUR BASELINE, WITHOUT TRIPLET FLAVOURS (OURS OR KEVIN)
@@ -1345,6 +1358,10 @@ if __name__ == '__main__':
 
     parser.add_argument('--all_in_ram', type=str2bool, nargs='?', const=True, default=False,
                         help='Whether to keep images in RAM or not')
+
+    parser.add_argument('--export_data', type=str2bool, nargs='?', const=True, default=False,
+                        help='whether to export data or not; this will be used to create .txt files, for comparison '
+                             'with lstm and resnet')
 
     args = parser.parse_args()
 

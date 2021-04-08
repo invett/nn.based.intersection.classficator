@@ -1698,7 +1698,7 @@ class lstm_txt_dataloader(txt_dataloader, Dataset):
 
             img_list.append(image)
 
-        sample = {'sequence': img_list, 'label': label}
+        sample = {'sequence': img_list, 'label': label, 'path_of_original_images': sequence_list}
 
         if len(img_list) == 1:
             print("LENGHT OF IMAGE LIST IS 1 !!!!! TAKE CARE!!!!")

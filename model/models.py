@@ -116,6 +116,29 @@ class LSTM(torch.nn.Module):
 
         return prediction, output
 
+    def export_predictions(self, unpacked_sequence, unpacked_sequence_lenghts):
+        """
+
+        Args:
+            unpacked_sequence: BATCH x MAX_SEQ_LEN x LSTM_HIDDEN_SIZE(32) example 47x50x32
+            unpacked_sequence_lenghts: the 'actual' sequence lenghts
+
+        Returns:
+
+            all the predictions after passing through the FC and argmaxed
+
+        """
+
+        all_predictions = []
+
+        for index in range(unpacked_sequence_lenghts.shape[0]):
+            seq_len = unpacked_sequence_lenghts[index].item()
+            classes = self.fc(unpacked_sequence[index, 0:seq_len, :])
+            predictions = torch.argmax(classes, 1)
+            all_predictions.append(predictions.cpu().tolist())
+
+        return all_predictions
+
 
 class Resnet50_Coco(torch.nn.Module):  # Resnet50 trained in coco segmentation dataset
 
