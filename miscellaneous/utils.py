@@ -477,7 +477,7 @@ def lstm_network_pass(args, batch, criterion, model, lstm, miner=None, acc_metri
 
         filename = '/tmp/' + os.path.splitext(os.path.split(args.dataset_test)[1])[0]  + '_lstm_export_svm' + \
                    os.path.splitext(os.path.split(args.dataset_test)[1])[1]
-        print('saving data in: ' + filename)
+        print('\nsaving data in: ' + filename)
 
         # create filename
         with open(filename, "w") as output:
