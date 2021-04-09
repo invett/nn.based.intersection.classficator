@@ -1747,6 +1747,12 @@ class lstm_txt_dataloader(txt_dataloader, Dataset):
             sequence.append(os.path.join(image_path, file))
             prev_framenumber = frame_number
 
+        # check if we have something that need to add
+        if sequence:
+            seq_dict[sq] = sequence.copy()
+            sequence.clear()
+            sq += 1
+
         print("SequencesDataloader, loaded folder: ", image_path)
         print("Found", len(seq_dict), " sequences; for each sequence, the associated frames are: ")
         print([len(v) for k, v in seq_dict.items()])
