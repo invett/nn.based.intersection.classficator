@@ -446,38 +446,39 @@ def lstm_network_pass(args, batch, criterion, model, lstm, miner=None, acc_metri
                                                batch_first=True, enforce_sorted=False)  # --> (Batch x Max_seq_len x 512)
 
     prediction, output = lstm(packed_padded_batch)
-    # Output contains a packed sequence with the prediction in each timestamp --> (seq_len x batch x hidden_size)
-    # Prediction contains the prediction in the last timestamp --> (batch x hidden_size)
+    if not args.metric:
+        # Output contains a packed sequence with the prediction in each timestamp --> (seq_len x batch x hidden_size)
+        # Prediction contains the prediction in the last timestamp --> (batch x hidden_size)
 
-    # Unpack the sequence (PACK -> PAD...) and then
-    #   output_overall          => BATCH x MAX_SEQ_LEN x LSTM_HIDDEN_SIZE(32) example 47x50x32
-    #   len_of_each_sequence    => how many 'actual' values in each of the batch, since we padded with 0 (pad_sequence)
-    #
-    # so, with overall_output[0, 0:12, :] we retrieve:
-    #       1. given the first sequence (0)
-    #       2. retrieve all 'actual' elements ... 12 elements, which corresponds to len_of_each_sequence(0)
-    #       3. and select all the hidden_vector (hidden_size) of the LSTM (32 for example).
-    #
-    # these are the 'vector' that the LSTM uses to evaluate the actual prediction by means of the FC network!
+        # Unpack the sequence (PACK -> PAD...) and then
+        #   output_overall          => BATCH x MAX_SEQ_LEN x LSTM_HIDDEN_SIZE(32) example 47x50x32
+        #   len_of_each_sequence    => how many 'actual' values in each of the batch, since we padded with 0 (pad_sequence)
+        #
+        # so, with overall_output[0, 0:12, :] we retrieve:
+        #       1. given the first sequence (0)
+        #       2. retrieve all 'actual' elements ... 12 elements, which corresponds to len_of_each_sequence(0)
+        #       3. and select all the hidden_vector (hidden_size) of the LSTM (32 for example).
+        #
+        # these are the 'vector' that the LSTM uses to evaluate the actual prediction by means of the FC network!
 
-    output_overall, len_of_each_sequence = pad_packed_sequence(output, batch_first=True)
+        output_overall, len_of_each_sequence = pad_packed_sequence(output, batch_first=True)
 
-    all_predictions = lstm.export_predictions(output_overall, len_of_each_sequence)
+        all_predictions = lstm.export_predictions(output_overall, len_of_each_sequence)
 
-    # create list to export
-    flat_all_filenames = [filename for item in batch for filename in item['path_of_original_images']]
-    flat_all_labels = [item for sublist in [np.ones(len(item['sequence']), int) * int(item['label']) for item in batch]
-                       for item in sublist]
-    flat_all_predictions = [item for sublist in all_predictions for item in sublist]
-    export_data = [flat_all_filenames, flat_all_labels, flat_all_predictions]
+        # create list to export
+        flat_all_filenames = [filename for item in batch for filename in item['path_of_original_images']]
+        flat_all_labels = [item for sublist in [np.ones(len(item['sequence']), int) * int(item['label']) for item in batch]
+                           for item in sublist]
+        flat_all_predictions = [item for sublist in all_predictions for item in sublist]
+        export_data = [flat_all_filenames, flat_all_labels, flat_all_predictions]
 
-    # export_data: this list contains data to create a file that is similar to 'test_list.txt' used
-    # in txt_dataloader. will be used to compare RESNET vs LSTM as they are already in 'per-sequence' format.
-    if args.export_data:
+        # export_data: this list contains data to create a file that is similar to 'test_list.txt' used
+        # in txt_dataloader. will be used to compare RESNET vs LSTM as they are already in 'per-sequence' format.
+        if args.export_data:
 
-        filename = '/tmp/' + os.path.splitext(os.path.split(args.dataset_test)[1])[0]  + '_lstm_export_svm' + \
-                   os.path.splitext(os.path.split(args.dataset_test)[1])[1]
-        print('\nsaving data in: ' + filename)
+            filename = '/tmp/' + os.path.splitext(os.path.split(args.dataset_test)[1])[0]  + '_lstm_export_svm' + \
+                       os.path.splitext(os.path.split(args.dataset_test)[1])[1]
+            print('\nsaving data in: ' + filename)
 
         # create filename
         with open(filename, "w") as output:
