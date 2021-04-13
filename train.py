@@ -139,7 +139,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
             elif args.test_method == 'mahalanobis':
                 covariances = covmatrix_generator(args, feature_extractor_model, dataloader_train=dataloader_train,
                                                   dataloader_val=dataloader_val, LSTM=model)
-                confusion_matrix, acc_val, export_data = mahalanobis_testing_lstm(feature_extractor_model,
+                confusion_matrix, acc_val = mahalanobis_testing_lstm(feature_extractor_model,
                                                                                   dataloader_test, covariances,
                                                                                   LSTM=model)
             else:
