@@ -880,7 +880,7 @@ def mahalanobis_testing(args, model, dataloader_test, covariances):
         return conf_matrix, acc, export_overall
 
 def mahalanobis_testing_lstm(model, dataloader_test, covariances, LSTM=None):
-    print('Start mahalanobis testing')
+    print('Start mahalanobis testing LSTM')
 
     prediction_list = []
     label_list = []
@@ -911,8 +911,7 @@ def mahalanobis_testing_lstm(model, dataloader_test, covariances, LSTM=None):
 
             distance_list = []
             for lbl in range(7):
-                dist = covariances[lbl].mahalanobis(prediction)
-                # distance_list.append(dist.item())
+                dist = covariances[lbl].mahalanobis(prediction.cpu().numpy())
                 distance_list.append(dist)
             prediction = np.argmin(distance_list, axis=0)  # i want 64 labels, given from 7x64
 
