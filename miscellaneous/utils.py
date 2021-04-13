@@ -446,7 +446,7 @@ def lstm_network_pass(args, batch, criterion, model, lstm, miner=None, acc_metri
                                                batch_first=True, enforce_sorted=False)  # --> (Batch x Max_seq_len x 512)
 
     prediction, output = lstm(packed_padded_batch)
-    if not args.metric:
+    if args.export_data:
         # Output contains a packed sequence with the prediction in each timestamp --> (seq_len x batch x hidden_size)
         # Prediction contains the prediction in the last timestamp --> (batch x hidden_size)
 
@@ -474,11 +474,10 @@ def lstm_network_pass(args, batch, criterion, model, lstm, miner=None, acc_metri
 
         # export_data: this list contains data to create a file that is similar to 'test_list.txt' used
         # in txt_dataloader. will be used to compare RESNET vs LSTM as they are already in 'per-sequence' format.
-        if args.export_data:
 
-            filename = '/tmp/' + os.path.splitext(os.path.split(args.dataset_test)[1])[0]  + '_lstm_export_svm' + \
+        filename = '/tmp/' + os.path.splitext(os.path.split(args.dataset_test)[1])[0]  + '_lstm_export_svm' + \
                        os.path.splitext(os.path.split(args.dataset_test)[1])[1]
-            print('\nsaving data in: ' + filename)
+        print('\nsaving data in: ' + filename)
 
         # create filename
         with open(filename, "w") as output:
