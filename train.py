@@ -31,7 +31,7 @@ from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromGenerate
 from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanobis_testing, lstm_network_pass, \
-    svm_testing_lstm
+    svm_testing_lstm, mahalanobis_testing_lstm
 from model.models import Resnet18, Vgg11, LSTM, Freezed_Resnet
 
 
@@ -136,9 +136,15 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
                                            dataloader_val=dataloader_val, LSTM=model)
                 confusion_matrix, acc_val = svm_testing_lstm(feature_extractor_model, dataloader_test, classifier,
                                                              LSTM=model)
+            elif args.test_method == 'mahalanobis':
+                covariances = covmatrix_generator(args, feature_extractor_model, dataloader_train=dataloader_train,
+                                                  dataloader_val=dataloader_val, LSTM=model)
+                confusion_matrix, acc_val, export_data = mahalanobis_testing_lstm(feature_extractor_model,
+                                                                                  dataloader_test, covariances,
+                                                                                  LSTM=model)
             else:
                 # What if not == svm ?
-                print('What if not == svm ?')
+                print('What if not svm or mahalanobis ?')
                 exit(-1)
 
     # RESNETs test
@@ -181,7 +187,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
         # in txt_dataloader. will be used to compare RESNET vs LSTM as they are already in 'per-sequence' format.
         if args.export_data:
 
-            #sets filename
+            # sets filename
             if args.test_method == 'svm':
                 filename = '/tmp/' + os.path.splitext(os.path.split(test_path)[1])[0] + '_resnet_export_svm' + \
                            os.path.splitext(os.path.split(test_path)[1])[1]
@@ -1214,7 +1220,6 @@ def main(args, model=None):
             wandb.init(project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
                        job_type="eval")
             wandb.config.update(args)
-
 
         # >>>>>>>>>>>> ENTRY POINT FOR TEST <<<<<<<<<<<<<<<
 

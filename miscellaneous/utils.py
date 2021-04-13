@@ -777,7 +777,7 @@ def svm_testing_lstm(model, dataloader_test, classifier, LSTM):
             # Output contains a packed sequence with the prediction in each timestamp --> (seq_len x batch x hidden_size)
             # Prediction contains the prediction in the last timestamp --> (batch x hidden_size)
 
-            #output, lens_output = pad_packed_sequence(output, batch_first=True)
+            # output, lens_output = pad_packed_sequence(output, batch_first=True)
 
             dec = classifier.decision_function(prediction.cpu().numpy())
             prediction = np.argmax(dec, axis=1)
@@ -794,7 +794,7 @@ def svm_testing_lstm(model, dataloader_test, classifier, LSTM):
     return conf_matrix, acc
 
 
-def covmatrix_generator(args, model, dataloader_train=None, dataloader_val=None):
+def covmatrix_generator(args, model, dataloader_train=None, dataloader_val=None, LSTM=None):
     cov_path = args.load_path.replace('.pth', '.cov.sav')
     if os.path.isfile(cov_path):
         print('Covariance matriz already saved in => {}'.format(cov_path))
@@ -803,10 +803,13 @@ def covmatrix_generator(args, model, dataloader_train=None, dataloader_val=None)
         if not args.metric:
             features, labels = embb_data(args, model, dataloader_train, dataloader_val)
         else:
-            train_embeddings, train_labels = get_all_embeddings(dataloader_train, model)
-            val_embeddings, val_labels = get_all_embeddings(dataloader_val, model)
-            features = np.vstack((train_embeddings, val_embeddings))
-            labels = np.vstack((train_labels, val_labels))
+            if LSTM is not None:
+                features, labels = embb_data_lstm(model, dataloader_train, dataloader_val, LSTM=LSTM)
+            else:
+                train_embeddings, train_labels = get_all_embeddings(dataloader_train, model)
+                val_embeddings, val_labels = get_all_embeddings(dataloader_val, model)
+                features = np.vstack((train_embeddings, val_embeddings))
+                labels = np.vstack((train_labels, val_labels))
 
         clusters = {}
         covariances = {}
@@ -875,6 +878,55 @@ def mahalanobis_testing(args, model, dataloader_test, covariances):
         export_overall = [export_filenames, export_gt_labels, export_prediction_list]
 
         return conf_matrix, acc, export_overall
+
+def mahalanobis_testing_lstm(model, dataloader_test, covariances, LSTM=None):
+    print('Start mahalanobis testing')
+
+    prediction_list = []
+    label_list = []
+
+    LSTM.eval()
+
+    with torch.no_grad():
+        for batch in dataloader_test:
+            seq_list = []
+            len_list = []
+            seq_label_list = []
+            for sequence in batch:
+                seq_tensor = model(torch.stack(sequence['sequence']).cuda())
+                seq_list.append(seq_tensor.squeeze())
+                len_list.append(len(sequence['sequence']))
+                seq_label_list.append(int(sequence['label']))
+
+            padded_batch = pad_sequence(seq_list, batch_first=True)
+            packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
+                                                       batch_first=True,
+                                                       enforce_sorted=False)  # --> (Batch x Max_seq_len x 512)
+
+            prediction, output = LSTM(packed_padded_batch)
+            # Output contains a packed sequence with the prediction in each timestamp --> (seq_len x batch x hidden_size)
+            # Prediction contains the prediction in the last timestamp --> (batch x hidden_size)
+
+            # output, lens_output = pad_packed_sequence(output, batch_first=True)
+
+            distance_list = []
+            for lbl in range(7):
+                dist = covariances[lbl].mahalanobis(prediction)
+                # distance_list.append(dist.item())
+                distance_list.append(dist)
+            prediction = np.argmin(distance_list, axis=0)  # i want 64 labels, given from 7x64
+
+            prediction_list.append(prediction)
+            label_list.append(np.array(seq_label_list))
+
+        conf_matrix = pd.crosstab(np.hstack(label_list), np.hstack(prediction_list), rownames=['Actual'],
+                                  colnames=['Predicted'],
+                                  normalize='index')
+        conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6], fill_value=0.0)
+        acc = accuracy_score(np.hstack(label_list), np.hstack(prediction_list))
+        print('Accuracy for test : %f\n' % acc)
+
+        return conf_matrix, acc
 
 
 def get_all_embeddings(dataloader, model):
