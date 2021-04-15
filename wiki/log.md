@@ -283,6 +283,18 @@ The idea is to exploit the trained RESNET, then the train is made as follows:
       `python train.py --test --metric --dataset ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_train_list.txt --dataset_test ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_test_list.txt --dataset_val ../../DualBiSeNet/KITTI-360_3D-MASKED/prefix_validation_list.txt --dataloader lstm_txt_dataloader --model LSTM --lstm_hidden 32 --lstm_layers 1 --feature_model resnet18 --feature_detector_path ./trainedmodels/model_8juepfqw_50.pth --load_path ./trainedmodels/model_fpggf2n0_30.pth --test_method mahalanobis --telegram`
 
 
+### Table Version:
+
+* \*  meaning: the output files for evaluation of results were executed with RESNET/SVM-lin and LSTM/FC. 
+* (number): denotes the first part filename of the experiment (epoch datetime)
+
+|        |                              |    *    |         |             |      |                              |        |    *    |         |             |
+|--------|------------------------------|:-------:|---------|-------------|------|------------------------------|--------|:-------:|---------|-------------|
+|        |                              | svm-lin | svm-ovo | mahalanobis |      |                              | fc     | svm-lin | svm-ovo | mahalanobis |
+| resnet | kitti360-warped: 1618487444  | 75,28%  | 76,69%  | 72,88%      | lstm | kitti360-warped: 1618487481  | 76,59% | 74,46%  | 78,72%  | 72.91%      |
+|        | kitti360-3d: 1618485684      | 77,96%  | 77,68%  | 73,16%      |      | kitti360-3d: 1618486638      | 76,59% | 79,16%  | 79,16%  | 66,66%      |
+|        | kitti360-3d-mask: 1618487354 | 77,68%  | 76,69%  | 73.02%      |      | kitti360-3d-mask: 1618487402 | 82,97% | 85,10%  | 85,10%  | 81,25%      |
+
 ### GAN
 
  - Implementation of DCGAN (BCELoss) and WGAN (Wasserstein Loss)
