@@ -1,5 +1,40 @@
 # comparison beweeen resnet and lstm
 
+# *** RESNET vs LSTM ***
+#
+# 1. naive:
+#     a. per-frame classification with resnet/cnn
+#     b. per-secuence classification with lstm
+#
+# 2. consider sequences also with resnet/cnn, and
+#     a. take the max(sequence) (max number of classifications, ie with 5 frames, 1 1 2 1 2 = 1) as output/cnn, to
+#        compare with the final output/lstm.
+#     b. per-frame comparison between resnet/cnn and lstm; in this way we can assess the temporal effictiveness of
+#        the lstm temporal integration
+#         resnet 1
+#         lstm   1            -->  compare
+#         ---
+#         resnet x 1
+#         lstm   1 1          -->  compare
+#         ---
+#         resnet x x 2
+#         lstm   1 1 2        -->  compare
+#         ---
+#         resnet x x x 1
+#         lstm   1 1 2 1      -->  compare
+#         ---
+#         resnet x x x x 2
+#         lstm   1 1 2 1 1    -->  compare
+#         ---
+#                             min/max/average?
+#
+# 3. put more images in CNN
+#     a. more channels, from Bx3xHxW to Bx3*NxHxW
+#     b. 3D convs: from BxCxHxW to BxCxDxHxW
+#
+# 4. build a temporal integration filter upon the results on resnet/cnn. but in this case the comparison becomes
+#    filter vs lstm...
+
 import csv
 import os
 from sklearn.metrics import accuracy_score, precision_score, precision_recall_fscore_support

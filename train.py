@@ -189,11 +189,11 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
 
             # sets filename
             if args.test_method == 'svm':
-                filename = '/tmp/' + os.path.splitext(os.path.split(test_path)[1])[0] + '_resnet_export_svm' + \
+                filename = '/tmp/' + str(int(time.time())) + '_' +  os.path.splitext(os.path.split(test_path)[1])[0] + '_resnet_export_svm' + \
                            os.path.splitext(os.path.split(test_path)[1])[1]
                 print('saving data in: ' + filename)
             elif args.test_method == 'mahalanobis':
-                filename = '/tmp/' + os.path.splitext(os.path.split(test_path)[1])[0] + '_resnet_export_mahalanobis' + \
+                filename = '/tmp/' + str(int(time.time())) + '_' + os.path.splitext(os.path.split(test_path)[1])[0] + '_resnet_export_mahalanobis' + \
                            os.path.splitext(os.path.split(test_path)[1])[1]
                 print('saving data in: ' + filename)
 
