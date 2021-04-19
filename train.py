@@ -1231,14 +1231,13 @@ def main(args, model=None):
             else:
                 # we're just testing, cant detect the smallest in train/val... so check if we have a value to use
                 if args.defaultsequencelength > 0:
-                    print("Using --defaultsequencelength: ", str(defaultsequencelength))
+                    print("Using --defaultsequencelength: ", str(args.defaultsequencelength))
                     smallest = args.defaultsequencelength
                 else:
                     print('Please set --defaultsequencelength, since TRAIN/VAL datasets are not provided, '
                           '(this sould be a test-only run')
                     exit(-1)
-            train_dataset.min_elements = smallest
-            val_dataset.min_elements = smallest
+            test_dataset.min_elements = smallest
 
         if test_dataset.getIsSequence():
             print("Using a sequence dataset ...")

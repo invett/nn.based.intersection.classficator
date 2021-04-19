@@ -1674,6 +1674,10 @@ class lstm_txt_dataloader(txt_dataloader, Dataset):
         # flag used to print warning in the loop
         warning_flag = True
 
+        if self.min_elements < min([len(v) for k, v in self.sequences.items()]):
+            print("the specified min.elements for this dataloader smaller than the min-sequence-list of all "
+                  "loaded sequences")
+
         if self.fixed_lenght == 1:
             # get the last min_elements
             sequence_list = sequence_list[self.min_elements:]
