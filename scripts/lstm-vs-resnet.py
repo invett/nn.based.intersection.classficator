@@ -41,9 +41,19 @@ from sklearn.metrics import accuracy_score, precision_score, precision_recall_fs
 from collections import Counter
 import numpy as np
 
-base = '/home/ballardini/workspace/nn.based.intersection.classficator/wiki/resnet-vs-lstm/kitti360_warped/'
-resnet = 'prefix_test_list_resnet_export_svm.txt'
-lstm = 'prefix_test_list_lstm_export_svm.txt'
+# base = '/home/ballardini/workspace/nn.based.intersection.classficator/wiki/resnet-vs-lstm/kitti360_warped/'
+# resnet = 'prefix_test_list_resnet_export_svm.txt'
+# lstm = 'prefix_test_list_lstm_export_svm.txt'
+
+base = '/home/ballardini/workspace/nn.based.intersection.classficator/wiki/resnet-vs-lstm/'
+# resnet = '1618487444_prefix_test_list_resnet_export_svm.txt'
+# lstm = '1618487481_prefix_test_list_lstm_export_svm.txt'
+
+# resnet = '1618485684_prefix_test_list_resnet_export_svm.txt'
+# lstm = '1618486638_prefix_test_list_lstm_export_svm.txt'
+#
+resnet = '1618487354_prefix_test_list_resnet_export_svm.txt'
+lstm = '1618487402_prefix_test_list_lstm_export_svm.txt'
 
 
 def dicttolist(dict_):
@@ -189,8 +199,32 @@ print('RESNET improved 2b1       : \t' + str(imp2b1))
 print('LSTM   improved 2b2       : \t' + str(imp2b2))
 
 
-print(precision_recall_fscore_support(resnet_GT, resnet_prediction, average='micro'))
-print(precision_recall_fscore_support(lstm_GT_persequence, naive_last_element_of_sequence(lstm_seq_dict_labels), average='micro'))
-print(precision_recall_fscore_support(resnet_GT_persequence, resnet_persequence_max_accuracy_sequences, average='micro'))
+# print(precision_recall_fscore_support(resnet_GT, resnet_prediction, average='micro'))
+# print(precision_recall_fscore_support(lstm_GT_persequence, naive_last_element_of_sequence(lstm_seq_dict_labels), average='micro'))
+# print(precision_recall_fscore_support(resnet_GT_persequence, resnet_persequence_max_accuracy_sequences, average='micro'))
 
 # print('perseq-a , max per-sequence: \t' + str(persequence_a_accuracy_sequences))
+
+print('\n\n')
+ffmpeg = []
+for i, (a, b), in enumerate(zip(resnet_GT_persequence, resnet_persequence_max_accuracy_sequences)):
+    if a != b:
+        print('SEQ: ' + str(i) + ' -- \tGT: ' + resnet_GT_persequence[i] + ' | max(resnet): ' + str(
+            resnet_persequence_max_accuracy_sequences[i]) + '\t >>> \t' + str(resnet_seq_dict_labels[i]))
+        with open(os.path.join('/tmp', str(i) + '.txt'), "w") as output:
+            for j in resnet_seq_dict[i]:
+                output.write('file ' + os.path.join('/home/ballardini', os.path.relpath(j, '../..')) + '\n')
+
+        # ffmpeg -safe 0 -r 5 -f concat -i 3.txt  -c:v libx264 -profile:v high444 -level:v 4.0 -pix_fmt yuv420p 3.mp4
+        ffmpeg.append('ffmpeg -safe 0 -r 5 -f concat -i ' + str(os.path.join('/tmp', str(
+            i) + '.txt')) + ' -c:v libx264 -profile:v high444 -level:v 4.0 -pix_fmt yuv420p ' + str(
+            os.path.join('/tmp', str(i) + '_gt' + resnet_GT_persequence[i] + '_pred' + str(
+            resnet_persequence_max_accuracy_sequences[i]) + '.mp4')))
+
+[print(line) for line in ffmpeg]
+
+print('\n\n')
+for i, (a, b), in enumerate(zip(lstm_GT_persequence, lstm_persequence_max_accuracy_sequences)):
+    if a != b:
+        print('SEQ: ' + str(i) + ' -- \tGT: ' + lstm_GT_persequence[i] + ' | max(lstm): ' + str(
+            lstm_persequence_max_accuracy_sequences[i]) + '\t >>> \t' + str(lstm_seq_dict_labels[i]))
