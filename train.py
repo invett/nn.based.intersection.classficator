@@ -1008,6 +1008,19 @@ def main(args, model=None):
             dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True,
                                         num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
 
+        # we can change the min-elements of each dataloader here
+        if args.dataloader == 'lstm_txt_dataloader' and args.usesmallest:
+            # check whether to use a fixed number or the min. value within train/val dataset splits.
+            if args.defaultsequencelength > 0:
+                print("Using --defaultsequencelength: " , str(defaultsequencelength))
+                smallest = args.defaultsequencelength
+            else:
+                print("Evaluating min-sequence frame value...")
+                smallest = min(train_dataset.min_elements, val_dataset.min_elements)
+            print("Between the TRAIN and VALIDATION data, the SMALLEST sequence has ", str(smallest), ' frames')
+            train_dataset.min_elements = smallest
+            val_dataset.min_elements = smallest
+
         if args.train:
             # Build model
             # The embeddings should be returned if we are using Techer/Student or triplet loss
@@ -1208,6 +1221,25 @@ def main(args, model=None):
             print('Training with three-dimensional data')
             test_dataset = txt_dataloader(test_path, transform=threedimensional_transfomrs)
 
+        # we can change the min-elements of each dataloader here
+        if args.dataloader == 'lstm_txt_dataloader' and args.usesmallest:
+            if 'train_dataset' in locals() and 'val_dataset' in locals():
+                print("Train/Val/Test all-in-one!")
+                print("Evaluating min-sequence frame value...")
+                smallest = min(train_dataset.min_elements, val_dataset.min_elements)
+                print("Between the TRAIN and VALIDATION data, the SMALLEST sequence has ", str(smallest), ' frames')
+            else:
+                # we're just testing, cant detect the smallest in train/val... so check if we have a value to use
+                if args.defaultsequencelength > 0:
+                    print("Using --defaultsequencelength: ", str(defaultsequencelength))
+                    smallest = args.defaultsequencelength
+                else:
+                    print('Please set --defaultsequencelength, since TRAIN/VAL datasets are not provided, '
+                          '(this sould be a test-only run')
+                    exit(-1)
+            train_dataset.min_elements = smallest
+            val_dataset.min_elements = smallest
+
         if test_dataset.getIsSequence():
             print("Using a sequence dataset ...")
             dataloader_test = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
@@ -1363,7 +1395,14 @@ if __name__ == '__main__':
                                  'Kitti360_3D', 'txt_dataloader', 'lstm_txt_dataloader'],
                         help='One of the supported datasets')
 
-    parser.add_argument('--fixed_length', type=int, default=0, help='fixed length strategy for lstm_txt_dataloader')
+    parser.add_argument('--fixed_length', type=int, default=0,
+                        help='fixed length strategy for lstm_txt_dataloader; '
+                             '0: use all frames (no fixed length)'
+                             '1: get the last min_elements, '
+                             '2: linearize space and take the elements with equal-spaces')
+    parser.add_argument('--defaultsequencelength', type=int, default=0, help='Set fixed length to this value')
+    parser.add_argument('--usesmallest', type=str2bool, nargs='?', const=True, default=True,
+                        help='Use same length for train/valid')
 
     parser.add_argument('--all_in_ram', type=str2bool, nargs='?', const=True, default=False,
                         help='Whether to keep images in RAM or not')
@@ -1373,6 +1412,10 @@ if __name__ == '__main__':
                              'with lstm and resnet')
 
     args = parser.parse_args()
+
+    if args.usesmallest > 0 and args.fixed_length == 0:
+        print("Can't use fixed_length for lstm with --fixed_lengh = 0 (reserved to 'use all frames' behaviour.")
+        exit(-1)
 
     if args.oposite and not args.test:
         print("Parameter --test is REQUIRED when --oposite is set")
