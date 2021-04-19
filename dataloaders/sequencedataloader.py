@@ -1598,7 +1598,8 @@ class lstm_txt_dataloader(txt_dataloader, Dataset):
 
     """
 
-    def __init__(self, path_filename=None, transform=None, usePIL=True, isSequence=True, all_in_ram=False):
+    def __init__(self, path_filename=None, transform=None, usePIL=True, isSequence=True, all_in_ram=False,
+                 fixed_lenght=0):
         """
 
                 THIS IS THE DATALOADER USES the split files generated with labelling-script.py
@@ -1613,6 +1614,10 @@ class lstm_txt_dataloader(txt_dataloader, Dataset):
                     isSequence : this parameter specifies that this dataloader is using sequences! used together with
                                  the abstract class
 
+                    fixed_lenght: if 0 -> use all sequence
+                                  if 1 -> use the last 'min_elements' of the sequence
+                                  if 2 -> use 'equal-spaced' sequence (linear space)
+
         """
 
         # call the super init class. from this we'll have
@@ -1625,11 +1630,13 @@ class lstm_txt_dataloader(txt_dataloader, Dataset):
 
         sequences = {}
         last_seq = 0
-        sequences, last_seq = self.__get_sequences('', self.images, last_seq, sequences)
+        sequences, last_seq, min_elements = self.__get_sequences('', self.images, last_seq, sequences)
 
         self.sequences = sequences
         self.all_in_ram = all_in_ram
         self.images_in_ram = {}
+        self.min_elements = min_elements
+        self.fixed_lenght = fixed_lenght
 
         # workaround to open lot of files
         # https://github.com/python-pillow/Pillow/issues/1237
@@ -1666,6 +1673,16 @@ class lstm_txt_dataloader(txt_dataloader, Dataset):
 
         # flag used to print warning in the loop
         warning_flag = True
+
+        if self.fixed_lenght == 1:
+            # get the last min_elements
+            sequence_list = sequence_list[self.min_elements:]
+
+        if self.fixed_lenght == 2:
+            # linearize space and take the elements with equal-spaces
+            sequence_list = [sequence_list[i] for i in
+                             np.round(np.linspace(0, len(sequence_list), self.min_elements, endpoint=False)).astype(
+                                 int)]
 
         for path in sequence_list:
 
@@ -1756,7 +1773,10 @@ class lstm_txt_dataloader(txt_dataloader, Dataset):
         print("SequencesDataloader, loaded folder: ", image_path)
         print("Found", len(seq_dict), " sequences; for each sequence, the associated frames are: ")
         print([len(v) for k, v in seq_dict.items()])
-        return seq_dict, sq
+
+        # retrieve the min element of all sequences; will be used for LSTM fixed length eval
+        min_elements = min([len(v) for k, v in seq_dict.items()])
+        return seq_dict, sq, min_elements
 
     @staticmethod
     # TODO unused function here

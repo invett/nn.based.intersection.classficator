@@ -961,15 +961,15 @@ def main(args, model=None):
 
         elif args.dataloader == 'lstm_txt_dataloader' and 'KITTI-360_3D' not in train_path:  # // RGB // Homography
             val_dataset = lstm_txt_dataloader(val_path, transform=rgb_image_train_transforms,
-                                              all_in_ram=args.all_in_ram)
+                                              all_in_ram=args.all_in_ram, fixed_lenght=args.fixed_length)
             train_dataset = lstm_txt_dataloader(train_path, transform=rgb_image_train_transforms,
-                                                all_in_ram=args.all_in_ram)
+                                                all_in_ram=args.all_in_ram, fixed_lenght=args.fixed_length)
 
         elif args.dataloader == 'lstm_txt_dataloader':  # // 3D // 3D-Masked
             val_dataset = lstm_txt_dataloader(val_path, transform=threedimensional_transfomrs,
-                                              all_in_ram=args.all_in_ram)
+                                              all_in_ram=args.all_in_ram, fixed_lenght=args.fixed_length)
             train_dataset = lstm_txt_dataloader(train_path, transform=threedimensional_transfomrs,
-                                                all_in_ram=args.all_in_ram)
+                                                all_in_ram=args.all_in_ram, fixed_lenght=args.fixed_length)
 
         elif args.dataloader == 'txt_dataloader' and 'KITTI-360_3D' not in train_path:  # // RGB // Homography
             print('Training with rgb Data augmentation')
@@ -1195,9 +1195,11 @@ def main(args, model=None):
                                        transform_osm=osmTransforms, transform_bev=threedimensional_transfomrs)
 
         elif args.dataloader == 'lstm_txt_dataloader' and 'KITTI-360_3D' not in train_path:  # // RGB // Homography
-            test_dataset = lstm_txt_dataloader(test_path, transform=rgb_image_test_transforms)
+            test_dataset = lstm_txt_dataloader(test_path, transform=rgb_image_test_transforms,
+                                               fixed_lenght=args.fixed_length)
         elif args.dataloader == 'lstm_txt_dataloader':  # // 3D // 3D-Masked
-            test_dataset = lstm_txt_dataloader(test_path, transform=threedimensional_transfomrs)
+            test_dataset = lstm_txt_dataloader(test_path, transform=threedimensional_transfomrs,
+                                               fixed_lenght=args.fixed_length)
 
         elif args.dataloader == 'txt_dataloader' and 'KITTI-360_3D' not in train_path:
             print('Training with rgb Data augmentation')
@@ -1360,6 +1362,8 @@ if __name__ == '__main__':
                                  'triplet_BOO', 'triplet_ROO', 'triplet_ROO_360', 'triplet_3DOO_360', 'Kitti360',
                                  'Kitti360_3D', 'txt_dataloader', 'lstm_txt_dataloader'],
                         help='One of the supported datasets')
+
+    parser.add_argument('--fixed_length', type=int, default=0, help='fixed length strategy for lstm_txt_dataloader')
 
     parser.add_argument('--all_in_ram', type=str2bool, nargs='?', const=True, default=False,
                         help='Whether to keep images in RAM or not')
