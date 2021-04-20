@@ -1418,8 +1418,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    if args.usesmallest and args.fixed_length == 0:
-        print("Can't use fixed_length for lstm with --fixed_lengh = 0 (reserved to 'use all frames' behaviour.")
+    if args.defaultsequencelength > 0 and args.fixed_length == 0:
+        print("Can't use defaultsequencelength > 0 for lstm with --fixed_lengh = 0 (reserved to 'use all frames' behaviour.")
         exit(-1)
 
     if args.oposite and not args.test:
