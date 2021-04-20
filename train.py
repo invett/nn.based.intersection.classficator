@@ -32,7 +32,7 @@ from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTe
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanobis_testing, lstm_network_pass, \
     svm_testing_lstm, mahalanobis_testing_lstm
-from model.models import Resnet18, Vgg11, LSTM, Freezed_Resnet
+from model.models import Resnet18, Vgg11, LSTM, Freezed_Resnet, GRU
 
 
 def str2bool(v):
@@ -140,8 +140,8 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
                 covariances = covmatrix_generator(args, feature_extractor_model, dataloader_train=dataloader_train,
                                                   dataloader_val=dataloader_val, LSTM=model)
                 confusion_matrix, acc_val = mahalanobis_testing_lstm(feature_extractor_model,
-                                                                                  dataloader_test, covariances,
-                                                                                  LSTM=model)
+                                                                     dataloader_test, covariances,
+                                                                     LSTM=model)
             else:
                 # What if not == svm ?
                 print('What if not svm or mahalanobis ?')
@@ -189,11 +189,13 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
 
             # sets filename
             if args.test_method == 'svm':
-                filename = '/tmp/' + str(int(time.time())) + '_' +  os.path.splitext(os.path.split(test_path)[1])[0] + '_resnet_export_svm' + \
+                filename = '/tmp/' + str(int(time.time())) + '_' + os.path.splitext(os.path.split(test_path)[1])[
+                    0] + '_resnet_export_svm' + \
                            os.path.splitext(os.path.split(test_path)[1])[1]
                 print('saving data in: ' + filename)
             elif args.test_method == 'mahalanobis':
-                filename = '/tmp/' + str(int(time.time())) + '_' + os.path.splitext(os.path.split(test_path)[1])[0] + '_resnet_export_mahalanobis' + \
+                filename = '/tmp/' + str(int(time.time())) + '_' + os.path.splitext(os.path.split(test_path)[1])[
+                    0] + '_resnet_export_mahalanobis' + \
                            os.path.splitext(os.path.split(test_path)[1])[1]
                 print('saving data in: ' + filename)
 
@@ -1012,7 +1014,7 @@ def main(args, model=None):
         if args.dataloader == 'lstm_txt_dataloader' and args.usesmallest:
             # check whether to use a fixed number or the min. value within train/val dataset splits.
             if args.defaultsequencelength > 0:
-                print("Using --defaultsequencelength: " , str(defaultsequencelength))
+                print("Using --defaultsequencelength: ", str(args.defaultsequencelength))
                 smallest = args.defaultsequencelength
             else:
                 print("Evaluating min-sequence frame value...")
@@ -1032,9 +1034,13 @@ def main(args, model=None):
                 model = Vgg11(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
             elif args.model == 'freezed_resnet':
                 model = Freezed_Resnet(args.feature_detector_path, args.num_classes)
-            elif args.model == 'LSTM':
-                model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
+            elif args.model == 'LSTM' or args.model == 'GRU':
+                if args.model == 'LSTM':
+                    model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
                              num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
+                else:
+                    model = GRU(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
+                                 num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
                 if args.feature_model == 'resnet18':
                     feature_extractor_model = Resnet18(pretrained=False, embeddings=True, num_classes=args.num_classes)
                 if args.feature_model == 'vgg11':
@@ -1048,7 +1054,7 @@ def main(args, model=None):
                     print("=> loaded checkpoint '{}'".format(args.feature_detector_path))
                 else:
                     print("=> no checkpoint found at '{}'".format(args.feature_detector_path))
-                    print("=> training with ImageNet/COCO weights")
+                    print("=> training all from scratch")
 
                 if torch.cuda.is_available() and args.use_gpu:
                     feature_extractor_model = feature_extractor_model.cuda()
