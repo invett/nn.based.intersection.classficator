@@ -1406,7 +1406,7 @@ if __name__ == '__main__':
                              '1: get the last min_elements, '
                              '2: linearize space and take the elements with equal-spaces')
     parser.add_argument('--defaultsequencelength', type=int, default=0, help='Set fixed length to this value')
-    parser.add_argument('--usesmallest', type=str2bool, nargs='?', const=True, default=True,
+    parser.add_argument('--usesmallest', type=str2bool, nargs='?', const=True, default=False,
                         help='Use same length for train/valid')
 
     parser.add_argument('--all_in_ram', type=str2bool, nargs='?', const=True, default=False,
@@ -1418,7 +1418,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    if args.usesmallest > 0 and args.fixed_length == 0:
+    if args.usesmallest and args.fixed_length == 0:
         print("Can't use fixed_length for lstm with --fixed_lengh = 0 (reserved to 'use all frames' behaviour.")
         exit(-1)
 
