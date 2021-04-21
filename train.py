@@ -1012,7 +1012,7 @@ def main(args, model=None):
         if args.dataloader == 'lstm_txt_dataloader' and args.usesmallest:
             # check whether to use a fixed number or the min. value within train/val dataset splits.
             if args.defaultsequencelength > 0:
-                print("Using --defaultsequencelength: " , str(defaultsequencelength))
+                print("Using --defaultsequencelength: " , str(args.defaultsequencelength))
                 smallest = args.defaultsequencelength
             else:
                 print("Evaluating min-sequence frame value...")
