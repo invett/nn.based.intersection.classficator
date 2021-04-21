@@ -140,28 +140,26 @@ class LSTM(torch.nn.Module):
         return all_predictions
 
 
-class Resnet50_Coco(torch.nn.Module):  # Resnet50 trained in coco segmentation dataset
+class GRU(torch.nn.Module):
 
-    def __init__(self, embeddings_size=512):
+    def __init__(self, num_classes, lstm_dropout, fc_dropout, embeddings=False, num_layers=2, input_size=512,
+                 hidden_size=256):
         super().__init__()
-        self.embeddings_size = embeddings_size  # If embeddings size is 512 the fc should be trained
 
-        model = models.segmentation.fcn_resnet50(pretrained=True, progress=True, num_classes=21, aux_loss=None)
-
-        for param in model.parameters():  # Freeze encoder parameters
-            param.requires_grad = False
-
-        self.encoder = model.backbone
-        self.avgpool = torch.nn.AdaptiveAvgPool2d(output_size=(1, 1))
-        if embeddings_size == 512:
-            self.fc = torch.nn.Linear(2048, 512)
+        self.embeddings = embeddings
+        self.gru = torch.nn.GRU(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers,
+                                  batch_first=True, dropout=lstm_dropout)
+        if not embeddings:
+            self.fc = torch.nn.Linear(hidden_size, num_classes)
+            self.drop = torch.nn.Dropout(p=fc_dropout)
 
     def forward(self, data):
-        x = self.encoder(data)
-        x = self.avgpool(x['out'])  # Selecting the results for the 4th layer
-        if self.embeddings_size == 512:
-            embedding = self.fc(x.squeeze())
-        else:
-            embedding = x
+        output, hn = self.gru(data)  # --> hn shape (layers x batch x hidden)
+        last_hidden = hn[-1]  # -->(batch, hidden)
 
-        return embedding
+        if not self.embeddings:
+            prediction = self.fc(self.drop(last_hidden)).squeeze()
+        else:
+            prediction = last_hidden.squeeze()
+
+        return prediction, output
