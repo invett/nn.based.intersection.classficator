@@ -129,6 +129,7 @@ if show_images_flag == True:
     # model = VGG16(weights='imagenet', include_top=False, pooling='avg')
     # include top false, saca la capa fullyconnected, se queda con la 7x7x512
     model_vgg16 = VGG16(weights='imagenet', include_top=False)
+    # model_EffB0 = EfficientNetB0(weights='imagenet', include_top=False)
 
     # define model
     model_lstm = Sequential()
