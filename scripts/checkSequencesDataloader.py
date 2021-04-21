@@ -57,34 +57,34 @@ valid_loader = DataLoader(dataset_valid, batch_size=1, num_workers=0, shuffle=Fa
 test_loader = DataLoader(dataset_test, batch_size=1, num_workers=0, shuffle=False)
 
 episodes = {}
-for key in train_loader.dataset.sequences:
-    episodes[key] = {'id': key, 'frames': train_loader.dataset.sequences[key], 'gt': train_loader.dataset.labels[key]}
-    print(key, len(episodes[key]['frames']), episodes[key]['gt'])
+for idx, data in enumerate(train_loader):
+    episodes[idx] = {'id': idx, 'gt': data['label'][0], 'frames': data['path_of_original_images']}
+    print(episodes[idx])
 with open(train_filename, 'wb') as handle:
     pickle.dump(episodes, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 episodes = {}
-for key in valid_loader.dataset.sequences:
-    episodes[key] = {'id': key, 'frames': valid_loader.dataset.sequences[key], 'gt': valid_loader.dataset.labels[key]}
-    print(key, len(episodes[key]['frames']), episodes[key]['gt'])
+for idx, data in enumerate(valid_loader):
+    episodes[idx] = {'id': idx, 'gt': data['label'][0], 'frames': data['path_of_original_images']}
+    print(episodes[idx])
 with open(valid_filename, 'wb') as handle:
     pickle.dump(episodes, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 episodes = {}
-for key in test_loader.dataset.sequences:
-    episodes[key] = {'id': key, 'frames': test_loader.dataset.sequences[key], 'gt': test_loader.dataset.labels[key]}
-    print(key, len(episodes[key]['frames']), episodes[key]['gt'])
+for idx, data in enumerate(test_loader):
+    episodes[idx] = {'id': idx, 'gt': data['label'][0], 'frames': data['path_of_original_images']}
+    print(episodes[idx])
 with open(test_filename, 'wb') as handle:
     pickle.dump(episodes, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-for idx, data in enumerate(test_loader):
-        print(data['label'], data['path_of_original_images'])
+# for idx, data in enumerate(test_loader):
+#         print(data['label'], data['path_of_original_images'])
 
-
-
-
-for idx, data in enumerate(loader):
-        print(idx)
+#
+#
+#
+# for idx, data in enumerate(loader):
+#         print(idx)
 
 print("End")
