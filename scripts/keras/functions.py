@@ -41,7 +41,7 @@ def tensor_evaluation(train_index, episodes, model):
 
         timesteps = features_episode.shape[0]
         features = features_episode.shape[1] * features_episode.shape[2] * features_episode.shape[3]
-        input_data_episode = np.reshape(features_episode, (1, timesteps, features))
+        input_data_episode = np.reshape(features_episode, (1, timesteps, features))     # SEQUENCE x FRAMES x FEATURES
 
         print('Count: ', count)
         print('Input shape: ', input_data_episode.shape)

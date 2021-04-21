@@ -13,7 +13,9 @@ import os
 import functions
 import pickle
 import tensorflow as tf
+from tensorflow import keras
 from tensorflow.keras.applications.vgg16 import VGG16
+from tensorflow.keras.applications import EfficientNetB0
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.vgg16 import preprocess_input
 import numpy as np
@@ -114,8 +116,10 @@ if show_images_flag == True:
     if gpus:
         # Restrict TensorFlow to only allocate 4GB of memory on the first GPU
         try:
+            # tf.config.experimental.set_virtual_device_configuration(gpus[0], [
+            #     tf.config.experimental.VirtualDeviceConfiguration(memory_limit=2096)])
             tf.config.experimental.set_virtual_device_configuration(gpus[0], [
-                tf.config.experimental.VirtualDeviceConfiguration(memory_limit=2096)])
+                tf.config.experimental.VirtualDeviceConfiguration(memory_limit=20096)])
             logical_gpus = tf.config.experimental.list_logical_devices('GPU')
             print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
         except RuntimeError as e:
@@ -129,26 +133,38 @@ if show_images_flag == True:
     # define model
     model_lstm = Sequential()
     # Add a LSTM layer with 50 internal units.
-    model_lstm.add(GRU(50, activation='relu'))
-    # Add a Dense layer with 1 units.
-    model_lstm.add(Dense(1))
-    model_lstm.compile(optimizer='adam', loss='mse')
+    #model_lstm.add(GRU(units=50, activation='relu', dropout=0.2)) # GRU IVAN
+    model_lstm.add(GRU(units=50, activation='relu', dropout=0.5, recurrent_dropout=0.5))
+    #model_lstm.add(LSTM(units=50, activation='tanh', dropout=0.5, recurrent_dropout=0.5))
+    # Add a Dense layer with 7 units.
+    model_lstm.add(Dense(units=7, activation='softmax'))
+    optimizer = keras.optimizers.Adam(learning_rate=0.00001)
+    model_lstm.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-    input_data_training, target_training = functions.tensor_evaluation(train_index, episodes_train, model_vgg16)
-    input_data_validation, target_validation = functions.tensor_evaluation(valid_index, episodes_valid, model_vgg16)
+    if False:
+        input_data_training = np.load('input_data_training.npy')
+        input_data_validation = np.load('input_data_validation.npy')
+        target_training = np.load('target_training.npy')
+        target_validation = np.load('target_validation.npy')
+    else:
+        input_data_training, target_training = functions.tensor_evaluation(train_index, episodes_train, model_vgg16)
+        input_data_validation, target_validation = functions.tensor_evaluation(valid_index, episodes_valid, model_vgg16)
 
-    np.save('input_data_training.npy', input_data_training)
-    np.save('input_data_validation.npy', input_data_validation)
-    np.save('target_training.npy', target_training)
-    np.save('target_validation.npy', target_validation)
+        #input_data_training, target_training = functions.tensor_evaluation(train_index, episodes_train, model_EffB0)
+        #input_data_validation, target_validation = functions.tensor_evaluation(valid_index, episodes_valid, model_EffB0)
+
+        np.save('input_data_training.npy', input_data_training)
+        np.save('input_data_validation.npy', input_data_validation)
+        np.save('target_training.npy', target_training)
+        np.save('target_validation.npy', target_validation)
 
     print('Target Training: ', target_training)
     print('Input shape: ', input_data_training.shape)
     print('Target  Training Size: ', target_training.shape)
     print('Training ...')
     output_model = model_lstm.fit(input_data_training, target_training,
-                                  validation_data=(input_data_validation, target_validation), epochs=150, verbose=2,
-                                  batch_size=3)
+                                  validation_data=(input_data_validation, target_validation), epochs=1000, verbose=2,
+                                  batch_size=64, shuffle=True, workers=4)
 
     # Save the weights
     model_lstm.save('./my_model_speed_variable_new')
