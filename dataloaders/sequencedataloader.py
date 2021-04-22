@@ -32,7 +32,8 @@ class AbstractSequence:
 
 
 class txt_dataloader(AbstractSequence, Dataset):
-    def __init__(self, path_filename_list=None, transform=None, usePIL=True, isSequence=False, decimateStep=1):
+    def __init__(self, path_filename_list=None, transform=None, usePIL=True, isSequence=False, decimateStep=1,
+                 verbose=True):
         """
 
                 THIS IS THE DATALOADER USES the split files generated with labelling-script.py
@@ -76,6 +77,7 @@ class txt_dataloader(AbstractSequence, Dataset):
             exit(-1)
 
         super().__init__(isSequence=isSequence)
+        self.verbose = verbose
 
         trainimages = []
         trainlabels = []
@@ -86,7 +88,8 @@ class txt_dataloader(AbstractSequence, Dataset):
         # cycle through list of path_filename_list.. this was introduced to allow multi-dataset loadings
         for path_filename in path_filename_list:
 
-            print('Loading: ' + str(path_filename) + ' ...')
+            if self.verbose:
+                print('Loading: ' + str(path_filename) + ' ...')
 
             # Check the file containing all the images! This dataloader does not work walking a folder!
             if not os.path.isfile(path_filename):
@@ -100,13 +103,15 @@ class txt_dataloader(AbstractSequence, Dataset):
                     trainimages.append(os.path.join(os.path.split(path_filename)[0], line.strip().split(';')[0]))
                     trainlabels.append(line.strip().split(';')[1])
 
-        print('Images loaded: ' + str(len(trainimages)) + '\n')
+        if self.verbose:
+            print('Images loaded: ' + str(len(trainimages)) + '\n')
 
         self.transform = transform
 
         # decimate
         if decimateStep != 1:
-            print("The dataset will be decimated taking 1 out of " + str(decimateStep) + " elements")
+            if self.verbose:
+                print("The dataset will be decimated taking 1 out of " + str(decimateStep) + " elements")
             trainimages = trainimages[::decimateStep]
             trainlabels = trainlabels[::decimateStep]
 
@@ -1599,7 +1604,7 @@ class lstm_txt_dataloader(txt_dataloader, Dataset):
     """
 
     def __init__(self, path_filename=None, transform=None, usePIL=True, isSequence=True, all_in_ram=False,
-                 fixed_lenght=0):
+                 fixed_lenght=0, verbose=True):
         """
 
                 THIS IS THE DATALOADER USES the split files generated with labelling-script.py
@@ -1626,11 +1631,11 @@ class lstm_txt_dataloader(txt_dataloader, Dataset):
         # self.labels = trainlabels
         # self.usePIL = usePIL
         # Sequences_alcala26012021_Dataloader.__init__(self, path_filename_list, transform, usePIL)
-        super().__init__(path_filename, transform, usePIL, isSequence=isSequence)
+        super().__init__(path_filename, transform, usePIL, isSequence=isSequence, verbose=verbose)
 
         sequences = {}
         last_seq = 0
-        sequences, last_seq, min_elements = self.__get_sequences('', self.images, last_seq, sequences)
+        sequences, last_seq, min_elements = self.__get_sequences(self, '', self.images, last_seq, sequences)
 
         self.sequences = sequences
         self.all_in_ram = all_in_ram
@@ -1727,7 +1732,7 @@ class lstm_txt_dataloader(txt_dataloader, Dataset):
         return sample
 
     @staticmethod
-    def __get_sequences(image_path, filelist, last_seq, seq_dict):
+    def __get_sequences(self, image_path, filelist, last_seq, seq_dict):
         """
 
         Args:
@@ -1774,9 +1779,10 @@ class lstm_txt_dataloader(txt_dataloader, Dataset):
             sequence.clear()
             sq += 1
 
-        print("SequencesDataloader, loaded folder: ", image_path)
-        print("Found", len(seq_dict), " sequences; for each sequence, the associated frames are: ")
-        print([len(v) for k, v in seq_dict.items()])
+        if self.verbose:
+            print("SequencesDataloader, loaded folder: ", image_path)
+            print("Found", len(seq_dict), " sequences; for each sequence, the associated frames are: ")
+            print([len(v) for k, v in seq_dict.items()])
 
         # retrieve the min element of all sequences; will be used for LSTM fixed length eval
         min_elements = min([len(v) for k, v in seq_dict.items()])
