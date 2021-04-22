@@ -8,7 +8,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
-import cv2
+#import cv2
 import os
 import functions
 import pickle
@@ -28,9 +28,12 @@ from tensorflow.keras.layers import TimeDistributed
 
 from tensorflow.python.client import device_lib
 
+print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+#exit(1)
+
 print(device_lib.list_local_devices())
 
-exit(1)
+#exit(1)
 
 # json que ivan tiene para cada dataset, una linea por cada una de las imgs.
 {"delta_seconds": 0.00956112239509821, "frame": 2412, "platform_timestamp": 42899.437407493, "velocity": 0.0,
@@ -144,25 +147,31 @@ if show_images_flag == True:
     #  tf.config.experimental.set_memory_growth(gpu, True)
     # tf.config.experimental.per_process_gpu_memory_fraction = 0.9
 
-    gpus = tf.config.experimental.list_physical_devices('GPU')
-    if gpus:
-        # Restrict TensorFlow to only allocate 4GB of memory on the first GPU
-        try:
-            # tf.config.experimental.set_virtual_device_configuration(gpus[0], [
-            #     tf.config.experimental.VirtualDeviceConfiguration(memory_limit=2096)])
-            tf.config.experimental.set_virtual_device_configuration(gpus[0], [
-                tf.config.experimental.VirtualDeviceConfiguration(memory_limit=2096)])
-            logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-            print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
-        except RuntimeError as e:
-            # Virtual devices must be set before GPUs have been initialized
-            print(e)
-            exit(-1)
+    # gpus = tf.config.experimental.list_physical_devices('GPU')
+    # if gpus:
+    #     # Restrict TensorFlow to only allocate 4GB of memory on the first GPU
+    #     try:
+    #         # tf.config.experimental.set_virtual_device_configuration(gpus[0], [
+    #         #     tf.config.experimental.VirtualDeviceConfiguration(memory_limit=2096)])
+    #         tf.config.experimental.set_virtual_device_configuration(gpus[0], [
+    #             tf.config.experimental.VirtualDeviceConfiguration(memory_limit=2096)])
+    #         logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+    #         print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+    #     except RuntimeError as e:
+    #         # Virtual devices must be set before GPUs have been initialized
+    #         print(e)
+    #         exit(-1)
 
     # model = VGG16(weights='imagenet', include_top=False, pooling='avg')
     # include top false, saca la capa fullyconnected, se queda con la 7x7x512
-    model_vgg16 = VGG16(weights='imagenet', include_top=False)
-    # model_EffB0 = EfficientNetB0(weights='imagenet', include_top=False)
+
+    model_list = ['vgg', 'efficiennet']
+    model_ = model_list[0]
+
+    if model_ == 'vgg':
+        model = VGG16(weights='imagenet', include_top=False)
+    if model_ == 'efficiennet':
+        model = EfficientNetB0(weights='imagenet', include_top=False)
 
     # define model
     model_lstm = Sequential()
@@ -172,25 +181,27 @@ if show_images_flag == True:
     #model_lstm.add(LSTM(units=50, activation='tanh', dropout=0.5, recurrent_dropout=0.5))
     # Add a Dense layer with 7 units.
     model_lstm.add(Dense(units=7, activation='softmax'))
-    optimizer = keras.optimizers.Adam(learning_rate=0.00001)
+    optimizer = keras.optimizers.Adam(learning_rate=0.000008)
     model_lstm.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
     if True:
-        input_data_training = np.load(train_load+'__'+'input_data_training.npy')
-        input_data_validation = np.load(valid_load+'__'+'input_data_validation.npy')
-        target_training = np.load(train_load+'__'+'target_training.npy')
-        target_validation = np.load(valid_load+'__'+'target_validation.npy')
+        input_data_training = np.load(model_+'__'+train_load+'__'+'input_data_training.npy')
+        input_data_validation = np.load(model_+'__'+valid_load+'__'+'input_data_validation.npy')
+        target_training = np.load(model_+'__'+train_load+'__'+'target_training.npy')
+        target_validation = np.load(model_+'__'+valid_load+'__'+'target_validation.npy')
     else:
-        input_data_training, target_training = functions.tensor_evaluation(train_index, episodes_train, model_vgg16)
-        input_data_validation, target_validation = functions.tensor_evaluation(valid_index, episodes_valid, model_vgg16)
+        input_data_training, target_training = functions.tensor_evaluation(train_index, episodes_train, model)
+        input_data_validation, target_validation = functions.tensor_evaluation(valid_index, episodes_valid, model)
 
         #input_data_training, target_training = functions.tensor_evaluation(train_index, episodes_train, model_EffB0)
         #input_data_validation, target_validation = functions.tensor_evaluation(valid_index, episodes_valid, model_EffB0)
 
-        np.save(train_load+'__'+'input_data_training.npy', input_data_training)
-        np.save(valid_load+'__'+'input_data_validation.npy', input_data_validation)
-        np.save(train_load+'__'+'target_training.npy', target_training)
-        np.save(valid_load+'__'+'target_validation.npy', target_validation)
+        # save the data or not...
+        if True:
+            np.save(model_+'__'+train_load+'__'+'input_data_training.npy', input_data_training)
+            np.save(model_+'__'+valid_load+'__'+'input_data_validation.npy', input_data_validation)
+            np.save(model_+'__'+train_load+'__'+'target_training.npy', target_training)
+            np.save(model_+'__'+valid_load+'__'+'target_validation.npy', target_validation)
 
     print('Target Training: ', target_training)
     print('Input shape: ', input_data_training.shape)
@@ -198,7 +209,7 @@ if show_images_flag == True:
     print('Training ...')
     output_model = model_lstm.fit(input_data_training, target_training,
                                   validation_data=(input_data_validation, target_validation), epochs=750, verbose=2,
-                                  batch_size=32, shuffle=True, workers=4)
+                                  batch_size=64, shuffle=True, workers=4)
 
     # Save the weights
     #model_lstm.save('./my_model_speed_variable_new')

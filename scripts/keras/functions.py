@@ -73,3 +73,13 @@ def show_graphical_results(output):
     plt.xlabel('epoch')
     plt.legend()
     fig1.savefig('./lossValues.png', dpi=300)
+
+    fig1 = plt.figure(figsize=(14.0, 8.0))
+    # summarize history for loss
+    plt.plot(output.history['accuracy'], label='Training')
+    plt.plot(output.history['val_accuracy'], label='Validation')
+    plt.title('model accuracy')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend()
+    fig1.savefig('./AccValues.png', dpi=300)
