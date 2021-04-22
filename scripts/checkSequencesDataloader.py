@@ -44,24 +44,30 @@ rgb_image_test_transforms = transforms.Compose([transforms.Resize((224, 224)), t
 
 to_process = [
 
-    ['/tmp/keras_KITTI-360_warped_train.pickle', '/tmp/keras_KITTI-360_warped_valid.pickle',
-     '/tmp/keras_KITTI-360_warped_test.pickle',
+    ['/tmp/fixedlength6_keras_KITTI-360_warped_train.pickle',
+     '/tmp/fixedlength6_keras_KITTI-360_warped_valid.pickle',
+     '/tmp/fixedlength6_keras_KITTI-360_warped_test.pickle',
      '/home/ballardini/DualBiSeNet/KITTI-360_warped/train.prefix/prefix_train_list.txt',
      '/home/ballardini/DualBiSeNet/KITTI-360_warped/validation.prefix/prefix_validation_list.txt',
      '/home/ballardini/DualBiSeNet/KITTI-360_warped/test.prefix/prefix_test_list.txt'],
 
-    ['/tmp/keras_KITTI-360_3D_train.pickle', '/tmp/keras_KITTI-360_3D_valid.pickle',
-     '/tmp/keras_KITTI-360_3D_test.pickle', '/home/ballardini/DualBiSeNet/KITTI-360_3D/prefix_train_list.txt',
+    ['/tmp/fixedlength6_keras_KITTI-360_3D_train.pickle',
+     '/tmp/fixedlength6_keras_KITTI-360_3D_valid.pickle',
+     '/tmp/fixedlength6_keras_KITTI-360_3D_test.pickle',
+     '/home/ballardini/DualBiSeNet/KITTI-360_3D/prefix_train_list.txt',
      '/home/ballardini/DualBiSeNet/KITTI-360_3D/prefix_validation_list.txt',
      '/home/ballardini/DualBiSeNet/KITTI-360_3D/prefix_test_list.txt'],
 
-    ['/tmp/keras_KITTI-360_3D-MASKED_train.pickle', '/tmp/keras_KITTI-360_3D-MASKED_valid.pickle',
-     '/tmp/keras_KITTI-360_3D-MASKED_test.pickle',
+    ['/tmp/fixedlength6_keras_KITTI-360_3D-MASKED_train.pickle',
+     '/tmp/fixedlength6_keras_KITTI-360_3D-MASKED_valid.pickle',
+     '/tmp/fixedlength6_keras_KITTI-360_3D-MASKED_test.pickle',
      '/home/ballardini/DualBiSeNet/KITTI-360_3D-MASKED/prefix_train_list.txt',
      '/home/ballardini/DualBiSeNet/KITTI-360_3D-MASKED/prefix_validation_list.txt',
      '/home/ballardini/DualBiSeNet/KITTI-360_3D-MASKED/prefix_test_list.txt'],
 
-    ['/tmp/keras_KITTI-360_train.pickle', '/tmp/keras_KITTI-360_valid.pickle', '/tmp/keras_KITTI-360_test.pickle',
+    ['/tmp/fixedlength6_keras_KITTI-360_train.pickle',
+     '/tmp/fixedlength6_keras_KITTI-360_valid.pickle',
+     '/tmp/fixedlength6_keras_KITTI-360_test.pickle',
      '/home/ballardini/DualBiSeNet/KITTI-360/train.prefix/prefix_train_list.txt',
      '/home/ballardini/DualBiSeNet/KITTI-360/validation.prefix/prefix_validation_list.txt',
      '/home/ballardini/DualBiSeNet/KITTI-360/test.prefix/prefix_test_list.txt']
@@ -86,10 +92,19 @@ for i in to_process:
     test_path = i[5]
 
     dataset_train = lstm_txt_dataloader(train_path, transform=rgb_image_test_transforms, all_in_ram=False,
-                                        fixed_lenght=0)
+                                        fixed_lenght=2, verbose=False)
     dataset_valid = lstm_txt_dataloader(valid_path, transform=rgb_image_test_transforms, all_in_ram=False,
-                                        fixed_lenght=0)
-    dataset_test = lstm_txt_dataloader(test_path, transform=rgb_image_test_transforms, all_in_ram=False, fixed_lenght=0)
+                                        fixed_lenght=2, verbose=False)
+    dataset_test = lstm_txt_dataloader(test_path, transform=rgb_image_test_transforms, all_in_ram=False, fixed_lenght=2,
+                                       verbose=False)
+
+    # used to find the number "6" shared with all datasets
+    # print('min elements train/val/test: ', dataset_train.min_elements, dataset_valid.min_elements, dataset_test.min_elements)
+    # continue
+
+    dataset_train.min_elements = 6
+    dataset_valid.min_elements = 6
+    dataset_test.min_elements = 6
 
     train_loader = DataLoader(dataset_train, batch_size=1, num_workers=0, shuffle=False)
     valid_loader = DataLoader(dataset_valid, batch_size=1, num_workers=0, shuffle=False)
