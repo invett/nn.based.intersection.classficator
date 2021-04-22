@@ -7,6 +7,7 @@ from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.vgg16 import preprocess_input
 import numpy as np
+import random
 
 
 def tensor_evaluation(train_index, episodes, model):
@@ -59,7 +60,13 @@ def tensor_evaluation(train_index, episodes, model):
             break
 
     target = np.asarray(target_train)
-    return input_data_training, target
+
+    # shuffle lists https://stackoverflow.com/questions/23289547/shuffle-two-list-at-once-with-same-order
+    support = list(zip(input_data_training, target))
+    random.shuffle(support)
+    input_data_training_randomized, target_randomized = zip(*support)
+
+    return input_data_training_randomized, target_randomized
 
 
 def show_graphical_results(output):

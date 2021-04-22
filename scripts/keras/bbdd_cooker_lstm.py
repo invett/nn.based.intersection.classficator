@@ -109,20 +109,20 @@ if True:
     # 2. RGB
     # 3. WARPED
 
-    lists = [['keras_KITTI-360_3D-MASKED_test.pickle',
-              'keras_KITTI-360_3D-MASKED_train.pickle',
-              'keras_KITTI-360_3D-MASKED_valid.pickle'],
-             ['keras_KITTI-360_3D_test.pickle',
-              'keras_KITTI-360_3D_train.pickle',
-              'keras_KITTI-360_3D_valid.pickle'],
-             ['keras_KITTI-360_test.pickle',
-              'keras_KITTI-360_train.pickle',
-              'keras_KITTI-360_valid.pickle'],
-             ['keras_KITTI-360_warped_test.pickle',
-              'keras_KITTI-360_warped_train.pickle',
-              'keras_KITTI-360_warped_valid.pickle']]
+    lists = [['fixedlength6_keras_KITTI-360_3D-MASKED_test.pickle',
+              'fixedlength6_keras_KITTI-360_3D-MASKED_train.pickle',
+              'fixedlength6_keras_KITTI-360_3D-MASKED_valid.pickle'],
+             ['fixedlength6_keras_KITTI-360_3D_test.pickle',
+              'fixedlength6_keras_KITTI-360_3D_train.pickle',
+              'fixedlength6_keras_KITTI-360_3D_valid.pickle'],
+             ['fixedlength6_keras_KITTI-360_test.pickle',
+              'fixedlength6_keras_KITTI-360_train.pickle',
+              'fixedlength6_keras_KITTI-360_valid.pickle'],
+             ['fixedlength6_keras_KITTI-360_warped_test.pickle',
+              'fixedlength6_keras_KITTI-360_warped_train.pickle',
+              'fixedlength6_keras_KITTI-360_warped_valid.pickle']]
 
-    select = 2
+    select = 3
     train_load = lists[select][1]
     valid_load = lists[select][2]
 
@@ -185,10 +185,10 @@ if show_images_flag == True:
     model_lstm.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
     if True:
-        input_data_training = np.load(model_+'__'+train_load+'__'+'input_data_training.npy')
-        input_data_validation = np.load(model_+'__'+valid_load+'__'+'input_data_validation.npy')
-        target_training = np.load(model_+'__'+train_load+'__'+'target_training.npy')
-        target_validation = np.load(model_+'__'+valid_load+'__'+'target_validation.npy')
+        input_data_training =   np.load(model_+'__'+train_load+'__'+'_shuffled_'+'input_data_training.npy')
+        input_data_validation = np.load(model_+'__'+valid_load+'__'+'_shuffled_'+'input_data_validation.npy')
+        target_training =       np.load(model_+'__'+train_load+'__'+'_shuffled_'+'target_training.npy')
+        target_validation =     np.load(model_+'__'+valid_load+'__'+'_shuffled_'+'target_validation.npy')
     else:
         input_data_training, target_training = functions.tensor_evaluation(train_index, episodes_train, model)
         input_data_validation, target_validation = functions.tensor_evaluation(valid_index, episodes_valid, model)
@@ -198,14 +198,14 @@ if show_images_flag == True:
 
         # save the data or not...
         if True:
-            np.save(model_+'__'+train_load+'__'+'input_data_training.npy', input_data_training)
-            np.save(model_+'__'+valid_load+'__'+'input_data_validation.npy', input_data_validation)
-            np.save(model_+'__'+train_load+'__'+'target_training.npy', target_training)
-            np.save(model_+'__'+valid_load+'__'+'target_validation.npy', target_validation)
+            np.save(model_+'__'+train_load+'__'+'_shuffled_'+'input_data_training.npy', input_data_training)
+            np.save(model_+'__'+valid_load+'__'+'_shuffled_'+'input_data_validation.npy', input_data_validation)
+            np.save(model_+'__'+train_load+'__'+'_shuffled_'+'target_training.npy', target_training)
+            np.save(model_+'__'+valid_load+'__'+'_shuffled_'+'target_validation.npy', target_validation)
 
-    print('Target Training: ', target_training)
-    print('Input shape: ', input_data_training.shape)
-    print('Target  Training Size: ', target_training.shape)
+    # print('Target Training: ', target_training)
+    # print('Input shape: ', input_data_training.shape)
+    # print('Target  Training Size: ', target_training.shape)
     print('Training ...')
     output_model = model_lstm.fit(input_data_training, target_training,
                                   validation_data=(input_data_validation, target_validation), epochs=750, verbose=2,
