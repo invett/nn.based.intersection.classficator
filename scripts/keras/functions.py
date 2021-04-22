@@ -14,6 +14,7 @@ def tensor_evaluation(train_index, episodes, model):
     count = 0
     first_time_input = True
     for index in train_index[1:]:
+        print('------------------------------')
         first_time_flag = True
         count += 1
         # episode = list(filter(lambda episode: episode['id'] == index, episodes))[0]
@@ -65,10 +66,10 @@ def show_graphical_results(output):
     # summarize history for accuracy
     fig1 = plt.figure(figsize=(14.0, 8.0))
     # summarize history for loss
-    plt.plot(output.history['loss'], labels='Training')
-    plt.plot(output.history['val_loss'], labels='Validation')
+    plt.plot(output.history['loss'], label='Training')
+    plt.plot(output.history['val_loss'], label='Validation')
     plt.title('model loss')
     plt.ylabel('loss')
     plt.xlabel('epoch')
     plt.legend()
-    fig1.savefig('./lossValues.eps', dpi=150)
+    fig1.savefig('./lossValues.png', dpi=300)

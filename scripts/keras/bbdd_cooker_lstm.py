@@ -25,6 +25,13 @@ from tensorflow.keras.layers import LSTM, GRU
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import TimeDistributed
 
+
+from tensorflow.python.client import device_lib
+
+print(device_lib.list_local_devices())
+
+exit(1)
+
 # json que ivan tiene para cada dataset, una linea por cada una de las imgs.
 {"delta_seconds": 0.00956112239509821, "frame": 2412, "platform_timestamp": 42899.437407493, "velocity": 0.0,
  "player_id": 259, "player_type": "vehicle.tesla.model3",
@@ -94,9 +101,34 @@ if False:
 # AUGUSTO
 if True:
 
-    with open('ivan_kitti360_warped_train.pickle', 'rb') as handle:
+    # 0. 3D-MASKED
+    # 1. 3D
+    # 2. RGB
+    # 3. WARPED
+
+    lists = [['keras_KITTI-360_3D-MASKED_test.pickle',
+              'keras_KITTI-360_3D-MASKED_train.pickle',
+              'keras_KITTI-360_3D-MASKED_valid.pickle'],
+             ['keras_KITTI-360_3D_test.pickle',
+              'keras_KITTI-360_3D_train.pickle',
+              'keras_KITTI-360_3D_valid.pickle'],
+             ['keras_KITTI-360_test.pickle',
+              'keras_KITTI-360_train.pickle',
+              'keras_KITTI-360_valid.pickle'],
+             ['keras_KITTI-360_warped_test.pickle',
+              'keras_KITTI-360_warped_train.pickle',
+              'keras_KITTI-360_warped_valid.pickle']]
+
+    select = 2
+    train_load = lists[select][1]
+    valid_load = lists[select][2]
+
+    print('train on: ', train_load)
+    print('valid on: ', valid_load)
+
+    with open(train_load, 'rb') as handle:
         episodes_train = pickle.load(handle)
-    with open('ivan_kitti360_warped_valid.pickle', 'rb') as handle:
+    with open(valid_load, 'rb') as handle:
         episodes_valid = pickle.load(handle)
 
     # data to populate
@@ -119,12 +151,13 @@ if show_images_flag == True:
             # tf.config.experimental.set_virtual_device_configuration(gpus[0], [
             #     tf.config.experimental.VirtualDeviceConfiguration(memory_limit=2096)])
             tf.config.experimental.set_virtual_device_configuration(gpus[0], [
-                tf.config.experimental.VirtualDeviceConfiguration(memory_limit=20096)])
+                tf.config.experimental.VirtualDeviceConfiguration(memory_limit=2096)])
             logical_gpus = tf.config.experimental.list_logical_devices('GPU')
             print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
         except RuntimeError as e:
             # Virtual devices must be set before GPUs have been initialized
             print(e)
+            exit(-1)
 
     # model = VGG16(weights='imagenet', include_top=False, pooling='avg')
     # include top false, saca la capa fullyconnected, se queda con la 7x7x512
@@ -135,18 +168,18 @@ if show_images_flag == True:
     model_lstm = Sequential()
     # Add a LSTM layer with 50 internal units.
     #model_lstm.add(GRU(units=50, activation='relu', dropout=0.2)) # GRU IVAN
-    model_lstm.add(GRU(units=50, activation='relu', dropout=0.5, recurrent_dropout=0.5))
+    model_lstm.add(GRU(units=50, activation='tanh', dropout=0.5, recurrent_dropout=0.5))
     #model_lstm.add(LSTM(units=50, activation='tanh', dropout=0.5, recurrent_dropout=0.5))
     # Add a Dense layer with 7 units.
     model_lstm.add(Dense(units=7, activation='softmax'))
     optimizer = keras.optimizers.Adam(learning_rate=0.00001)
     model_lstm.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-    if False:
-        input_data_training = np.load('input_data_training.npy')
-        input_data_validation = np.load('input_data_validation.npy')
-        target_training = np.load('target_training.npy')
-        target_validation = np.load('target_validation.npy')
+    if True:
+        input_data_training = np.load(train_load+'__'+'input_data_training.npy')
+        input_data_validation = np.load(valid_load+'__'+'input_data_validation.npy')
+        target_training = np.load(train_load+'__'+'target_training.npy')
+        target_validation = np.load(valid_load+'__'+'target_validation.npy')
     else:
         input_data_training, target_training = functions.tensor_evaluation(train_index, episodes_train, model_vgg16)
         input_data_validation, target_validation = functions.tensor_evaluation(valid_index, episodes_valid, model_vgg16)
@@ -154,32 +187,34 @@ if show_images_flag == True:
         #input_data_training, target_training = functions.tensor_evaluation(train_index, episodes_train, model_EffB0)
         #input_data_validation, target_validation = functions.tensor_evaluation(valid_index, episodes_valid, model_EffB0)
 
-        np.save('input_data_training.npy', input_data_training)
-        np.save('input_data_validation.npy', input_data_validation)
-        np.save('target_training.npy', target_training)
-        np.save('target_validation.npy', target_validation)
+        np.save(train_load+'__'+'input_data_training.npy', input_data_training)
+        np.save(valid_load+'__'+'input_data_validation.npy', input_data_validation)
+        np.save(train_load+'__'+'target_training.npy', target_training)
+        np.save(valid_load+'__'+'target_validation.npy', target_validation)
 
     print('Target Training: ', target_training)
     print('Input shape: ', input_data_training.shape)
     print('Target  Training Size: ', target_training.shape)
     print('Training ...')
     output_model = model_lstm.fit(input_data_training, target_training,
-                                  validation_data=(input_data_validation, target_validation), epochs=1000, verbose=2,
-                                  batch_size=64, shuffle=True, workers=4)
+                                  validation_data=(input_data_validation, target_validation), epochs=750, verbose=2,
+                                  batch_size=32, shuffle=True, workers=4)
 
     # Save the weights
-    model_lstm.save('./my_model_speed_variable_new')
+    #model_lstm.save('./my_model_speed_variable_new')
 
     functions.show_graphical_results(output_model)
 
-    print('Testing')
-    input_data_test, target_test = functions.tensor_evaluation(test_index, episodes, model_vgg16)
+    print('end!')
 
-    np.save('input_data_test.npy', input_data_test)
-    np.save('target_test.npy', target_test)
-
-    for episode_elem, target_episode in zip(input_data_test, target_test):
-        episode_elem = np.reshape(episode_elem, (1, episode_elem.shape[0], episode_elem.shape[1]))
-        print(episode_elem.shape)
-        yhat = model_lstm.predict(episode_elem, verbose=1)
-        print([yhat, target_episode])
+    # print('Testing')
+    # input_data_test, target_test = functions.tensor_evaluation(test_index, episodes, model_vgg16)
+    #
+    # np.save('input_data_test.npy', input_data_test)
+    # np.save('target_test.npy', target_test)
+    #
+    # for episode_elem, target_episode in zip(input_data_test, target_test):
+    #     episode_elem = np.reshape(episode_elem, (1, episode_elem.shape[0], episode_elem.shape[1]))
+    #     print(episode_elem.shape)
+    #     yhat = model_lstm.predict(episode_elem, verbose=1)
+    #     print([yhat, target_episode])

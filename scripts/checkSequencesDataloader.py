@@ -41,41 +41,80 @@ data_path = '/home/ballardini/Desktop/alcala-26.01.2021/'
 
 rgb_image_test_transforms = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(),
                                                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
-train_filename = '/tmp/ivan_kitti360_warped_train.pickle'
-valid_filename = '/tmp/ivan_kitti360_warped_valid.pickle'
-test_filename = '/tmp/ivan_kitti360_warped_test.pickle'
-train_path = '/home/ballardini/DualBiSeNet/KITTI-360_warped/train.prefix/prefix_train_list.txt'
-valid_path = '/home/ballardini/DualBiSeNet/KITTI-360_warped/validation.prefix/prefix_validation_list.txt'
-test_path = '/home/ballardini/DualBiSeNet/KITTI-360_warped/test.prefix/prefix_test_list.txt'
 
-dataset_train = lstm_txt_dataloader(train_path, transform=rgb_image_test_transforms, all_in_ram=False, fixed_lenght=0)
-dataset_valid = lstm_txt_dataloader(valid_path, transform=rgb_image_test_transforms, all_in_ram=False, fixed_lenght=0)
-dataset_test = lstm_txt_dataloader(test_path, transform=rgb_image_test_transforms, all_in_ram=False, fixed_lenght=0)
+to_process = [
 
-train_loader = DataLoader(dataset_train, batch_size=1, num_workers=0, shuffle=False)
-valid_loader = DataLoader(dataset_valid, batch_size=1, num_workers=0, shuffle=False)
-test_loader = DataLoader(dataset_test, batch_size=1, num_workers=0, shuffle=False)
+    ['/tmp/keras_KITTI-360_warped_train.pickle', '/tmp/keras_KITTI-360_warped_valid.pickle',
+     '/tmp/keras_KITTI-360_warped_test.pickle',
+     '/home/ballardini/DualBiSeNet/KITTI-360_warped/train.prefix/prefix_train_list.txt',
+     '/home/ballardini/DualBiSeNet/KITTI-360_warped/validation.prefix/prefix_validation_list.txt',
+     '/home/ballardini/DualBiSeNet/KITTI-360_warped/test.prefix/prefix_test_list.txt'],
 
-episodes = {}
-for idx, data in enumerate(train_loader):
-    episodes[idx] = {'id': idx, 'gt': data['label'][0], 'frames': data['path_of_original_images']}
-    print(episodes[idx])
-with open(train_filename, 'wb') as handle:
-    pickle.dump(episodes, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    ['/tmp/keras_KITTI-360_3D_train.pickle', '/tmp/keras_KITTI-360_3D_valid.pickle',
+     '/tmp/keras_KITTI-360_3D_test.pickle', '/home/ballardini/DualBiSeNet/KITTI-360_3D/prefix_train_list.txt',
+     '/home/ballardini/DualBiSeNet/KITTI-360_3D/prefix_validation_list.txt',
+     '/home/ballardini/DualBiSeNet/KITTI-360_3D/prefix_test_list.txt'],
 
-episodes = {}
-for idx, data in enumerate(valid_loader):
-    episodes[idx] = {'id': idx, 'gt': data['label'][0], 'frames': data['path_of_original_images']}
-    print(episodes[idx])
-with open(valid_filename, 'wb') as handle:
-    pickle.dump(episodes, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    ['/tmp/keras_KITTI-360_3D-MASKED_train.pickle', '/tmp/keras_KITTI-360_3D-MASKED_valid.pickle',
+     '/tmp/keras_KITTI-360_3D-MASKED_test.pickle',
+     '/home/ballardini/DualBiSeNet/KITTI-360_3D-MASKED/prefix_train_list.txt',
+     '/home/ballardini/DualBiSeNet/KITTI-360_3D-MASKED/prefix_validation_list.txt',
+     '/home/ballardini/DualBiSeNet/KITTI-360_3D-MASKED/prefix_test_list.txt'],
 
-episodes = {}
-for idx, data in enumerate(test_loader):
-    episodes[idx] = {'id': idx, 'gt': data['label'][0], 'frames': data['path_of_original_images']}
-    print(episodes[idx])
-with open(test_filename, 'wb') as handle:
-    pickle.dump(episodes, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    ['/tmp/keras_KITTI-360_train.pickle', '/tmp/keras_KITTI-360_valid.pickle', '/tmp/keras_KITTI-360_test.pickle',
+     '/home/ballardini/DualBiSeNet/KITTI-360/train.prefix/prefix_train_list.txt',
+     '/home/ballardini/DualBiSeNet/KITTI-360/validation.prefix/prefix_validation_list.txt',
+     '/home/ballardini/DualBiSeNet/KITTI-360/test.prefix/prefix_test_list.txt']
+
+]
+
+
+# train_filename = '/tmp/ivan_kitti360_warped_train.pickle'
+# valid_filename = '/tmp/ivan_kitti360_warped_valid.pickle'
+# test_filename = '/tmp/ivan_kitti360_warped_test.pickle'
+# train_path = '/home/ballardini/DualBiSeNet/KITTI-360_warped/train.prefix/prefix_train_list.txt'
+# valid_path = '/home/ballardini/DualBiSeNet/KITTI-360_warped/validation.prefix/prefix_validation_list.txt'
+# test_path = '/home/ballardini/DualBiSeNet/KITTI-360_warped/test.prefix/prefix_test_list.txt'
+
+for i in to_process:
+
+    train_filename = i[0]
+    valid_filename = i[1]
+    test_filename = i[2]
+    train_path = i[3]
+    valid_path = i[4]
+    test_path = i[5]
+
+    dataset_train = lstm_txt_dataloader(train_path, transform=rgb_image_test_transforms, all_in_ram=False,
+                                        fixed_lenght=0)
+    dataset_valid = lstm_txt_dataloader(valid_path, transform=rgb_image_test_transforms, all_in_ram=False,
+                                        fixed_lenght=0)
+    dataset_test = lstm_txt_dataloader(test_path, transform=rgb_image_test_transforms, all_in_ram=False, fixed_lenght=0)
+
+    train_loader = DataLoader(dataset_train, batch_size=1, num_workers=0, shuffle=False)
+    valid_loader = DataLoader(dataset_valid, batch_size=1, num_workers=0, shuffle=False)
+    test_loader = DataLoader(dataset_test, batch_size=1, num_workers=0, shuffle=False)
+
+    episodes = {}
+    for idx, data in enumerate(train_loader):
+        episodes[idx] = {'id': idx, 'gt': data['label'][0], 'frames': data['path_of_original_images']}
+        print(episodes[idx])
+    with open(train_filename, 'wb') as handle:
+        pickle.dump(episodes, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    episodes = {}
+    for idx, data in enumerate(valid_loader):
+        episodes[idx] = {'id': idx, 'gt': data['label'][0], 'frames': data['path_of_original_images']}
+        print(episodes[idx])
+    with open(valid_filename, 'wb') as handle:
+        pickle.dump(episodes, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    episodes = {}
+    for idx, data in enumerate(test_loader):
+        episodes[idx] = {'id': idx, 'gt': data['label'][0], 'frames': data['path_of_original_images']}
+        print(episodes[idx])
+    with open(test_filename, 'wb') as handle:
+        pickle.dump(episodes, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 # for idx, data in enumerate(test_loader):
