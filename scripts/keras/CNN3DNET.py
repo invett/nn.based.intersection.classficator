@@ -1,18 +1,22 @@
-import numpy as np
-import torch.utils.data
-import torch.nn as nn
-import torch
-import torch.optim as optim
-import torchvision
-import torchvision.transforms as transf
-import json
-import matplotlib
-import torchvision.models as models
-#matplotlib.use('TkAgg')
-import matplotlib.pyplot as plt
-import sys
+# matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 import argparse
+
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.utils.data
+import torch.utils.data
+import torch.utils.data
+import torch.utils.data
+import torchvision.models as models
+import torchvision.transforms as transf
 from PIL import Image
+
+
+# matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
+
 
 def data_proc(datapath):
     
@@ -23,9 +27,8 @@ def data_proc(datapath):
     seq_player_id = eval(data[0])['player_id'] 
     sequence = [] 
     for frame in data: 
-        frame = eval(frame) 
-        player_id = frame['player_id']  
-        if frame['player_id'] == seq_player_id: 
+        frame = eval(frame)
+        if frame['player_id'] == seq_player_id:
             if frame['velocity'] >= 0.0: 
                 sequence.append({"id":frame["player_id"], "vehicle type":frame["player_type"], 'frame': frame['frame'], 'velocity': frame['velocity']}) 
         else: 
@@ -37,8 +40,6 @@ def data_proc(datapath):
                 sequences.append(sequence) 
                 
     normalized_seq=[]
-    step=0
-    seq_aux = []
     for i in sequences:
         if len(i) < 16:
             continue
@@ -47,7 +48,6 @@ def data_proc(datapath):
             while len(seq_aux) < 16:
                 seq_aux.append(seq_aux[-1])
             normalized_seq.append(seq_aux[0:16])
-            seq_aux = []
     return normalized_seq
 
 def set_divisor(p_train,p_val,normalized_seq):
@@ -62,8 +62,7 @@ def get_targets(train_set ,test_set ,val_set):
     trspeed=0
     tsspeed=0
     valspeed=0
-    cont=0
-    
+
     train_target = []
     test_target = []
     val_target = []
@@ -178,8 +177,6 @@ def main():
     parser.add_argument("--pretrained", help="The model is pretrained?", action="store_true")
     parser.add_argument("--patience", type=int, default=7, help="patience of Early Stopping")
     args = parser.parse_args()
-    pretrained_kinetics_mean = [0.43216, 0.394666, 0.37645]
-    pretrained_kinetics_std = [0.22803, 0.22145, 0.216989]
     # 2. Obtener el modelo a partir de ellos
     model = models.video.r3d_18(pretrained=args.pretrained, progress=True)
     model.fc = nn.Linear(model.fc.in_features, 1)

@@ -1,32 +1,21 @@
-import json
-import matplotlib
-
 # apt-get install ffmpeg libsm6 libxext6  -y
 
 
-# matplotlib.use('TkAgg')
-import matplotlib.pyplot as plt
-import numpy as np
-import sys
-#import cv2
-import os
-import functions
 import pickle
+
+import numpy as np
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.applications import EfficientNetB0
-from tensorflow.keras.preprocessing import image
-from tensorflow.keras.applications.vgg16 import preprocess_input
-import numpy as np
-
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, GRU
+from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.layers import Dense
-from tensorflow.keras.layers import TimeDistributed
-
-
+from tensorflow.keras.layers import GRU
+from tensorflow.keras.models import Sequential
 from tensorflow.python.client import device_lib
+
+# matplotlib.use('TkAgg')
+# import cv2
+import functions
 
 print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 #exit(1)
