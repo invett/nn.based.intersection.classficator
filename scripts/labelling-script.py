@@ -84,7 +84,7 @@ if dataset == 'GAN':
 
     folders = ['1', '2', '3', '4', '5', '6']
 
-    pickle_filenames = ['gan.pickle']
+    pickle_filenames = ['gan.1.pickle', 'gan.2.pickle', 'gan.3.pickle', 'gan.4.pickle', 'gan.5.pickle', 'gan.6.pickle']
 
     csv_filenames = ['gan.csv']
 
@@ -509,12 +509,13 @@ if pickle_filenames:
         else:
             if not annotations:
                 # create the pickle(s)
+                for sequence in files:
+                    annotations.append(np.ones(len(sequence), dtype=np.int8) * -1)
                 for pickle_filename_ in pickle_filenames:
-                    for sequence in files:
-                        annotations.append(np.ones(len(sequence), dtype=np.int8) * -1)
-                    with open(annotations_file, 'wb') as f:
+                    with open(os.path.join(base_folder, pickle_filename_), 'wb') as f:
                         pickle.dump(annotations, f)
                         annotations_filenames.append(os.path.join(base_folder, pickle_filename_))
+                break
             else:
                 annotations_file = os.path.join(base_folder, pickle_filename)
                 print('At least one of the provided pickles file is missing, so we won\'t continue')
