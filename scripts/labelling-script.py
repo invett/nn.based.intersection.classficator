@@ -39,17 +39,61 @@ from miscellaneous.utils import split_dataset
 
 # datasets: KITTI360 | ALCALA | OXFORD | KITTI-ROAD
 # dataset = 'KITTI-ROAD'
-dataset = 'KITTI360'
+# dataset = 'KITTI360'
 # dataset = 'ALCALA'
 # dataset = 'AQP'
 # dataset = 'alcala-26.01.2021'
 # dataset = 'alcala-12.02.2021'
+dataset = 'GAN'
 
 # definitions, will be specialized later .. but just to avoid warnings
 resizeme = 0
 
 pickle_filenames = []
 extract_field_from_path = -1
+
+if dataset == 'GAN':
+
+    # create a folder with all the GAN images in the same folder. like: /tmp/generated_samples; then generate inside
+    # that folder N folders, with the typologies. The structure should be like this:
+    # ├── generated_samples
+    # │ ├── 1
+    # │ ├── 2
+    # │ ├── 3
+    # │ ├── 4
+    # │ ├── 5
+    # │ └── 6
+    # move the files to the correspondent folder with
+    # mv conditional-1* 1/
+    # mv conditional-2* 2/
+    # mv conditional-3* 3/
+    # mv conditional-4* 4/
+    # mv conditional-5* 5/
+    # mv conditional-6* 6/
+    #
+    # in each folder, execute  (install rename: sudo apt install rename)
+    #         rename  's/conditional-1-//g' *.png
+    #         rename  's/conditional-2-//g' *.png
+    #         rename  's/conditional-3-//g' *.png
+    #         rename  's/conditional-4-//g' *.png
+    #         rename  's/conditional-5-//g' *.png
+    #         rename  's/conditional-6-//g' *.png
+
+    base_folder = '/tmp/generated_samples'
+    extract_field_from_path = 14
+
+    folders = ['1', '2', '3', '4', '5', '6']
+
+    pickle_filenames = ['gan.pickle']
+
+    csv_filenames = ['gan.csv']
+
+    width = 1408
+    height = 376
+    position1 = (10, 30)
+    position2 = (950, 30)
+    position3 = (950, 60)
+    resizeme = 800  # resizeme = 0 does not perform the resize
 
 if dataset == 'KITTI-ROAD':
     base_folder = '/home/ballardini/Desktop/KITTI-ROAD/'
@@ -434,6 +478,8 @@ for folder in folders:
     if dataset == 'AQP':
         path = os.path.join(base_folder, folder, 'image_02')
     if dataset == 'OXFORD':
+        path = os.path.join(base_folder, folder)
+    if dataset == 'GAN':
         path = os.path.join(base_folder, folder)
     # list all files ending in .png
     files.append(sorted([path + '/' + f for f in listdir(path) if f.endswith('.png')]))
