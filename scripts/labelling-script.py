@@ -80,7 +80,7 @@ if dataset == 'GAN':
     #         rename  's/conditional-6-//g' *.png
 
     base_folder = '/tmp/generated_samples'
-    extract_field_from_path = 14
+    extract_field_from_path = 5
 
     folders = ['1', '2', '3', '4', '5', '6']
 
