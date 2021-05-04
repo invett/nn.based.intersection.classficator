@@ -1,5 +1,11 @@
 # comparison beweeen resnet and lstm
 
+# HOW-TO:
+#
+#     1. run train.py with --test .. see examples and history in wiki/resnet-vs-lstm/readme.txt !
+#
+#
+
 # *** RESNET vs LSTM ***
 #
 # 1. naive:
@@ -45,15 +51,18 @@ import numpy as np
 # resnet = 'prefix_test_list_resnet_export_svm.txt'
 # lstm = 'prefix_test_list_lstm_export_svm.txt'
 
-base = '/home/ballardini/workspace/nn.based.intersection.classficator/wiki/resnet-vs-lstm/'
+base = '/home/ballardini/workspace/nn.based.intersection.classficator.pycharm/wiki/resnet-vs-lstm/'
 # resnet = '1618487444_prefix_test_list_resnet_export_svm.txt'
 # lstm = '1618487481_prefix_test_list_lstm_export_svm.txt'
 
 # resnet = '1618485684_prefix_test_list_resnet_export_svm.txt'
 # lstm = '1618486638_prefix_test_list_lstm_export_svm.txt'
 #
-resnet = '1618487354_prefix_test_list_resnet_export_svm.txt'
-lstm = '1618487402_prefix_test_list_lstm_export_svm.txt'
+# resnet = '1618487354_prefix_test_list_resnet_export_svm.txt'
+# lstm = '1618487402_prefix_test_list_lstm_export_svm.txt'
+
+resnet = '1619171509_test_list_resnet_export_svm.txt'
+lstm = '1619172540_test_list_lstm_export_svm.txt'
 
 
 def dicttolist(dict_):
@@ -207,24 +216,97 @@ print('LSTM   improved 2b2       : \t' + str(imp2b2))
 
 print('\n\n')
 ffmpeg = []
+print('*** RESNET vs GT *** (max lstm & last lstm)')
 for i, (a, b), in enumerate(zip(resnet_GT_persequence, resnet_persequence_max_accuracy_sequences)):
     if a != b:
-        print('SEQ: ' + str(i) + ' -- \tGT: ' + resnet_GT_persequence[i] + ' | max(resnet): ' + str(
-            resnet_persequence_max_accuracy_sequences[i]) + '\t >>> \t' + str(resnet_seq_dict_labels[i]))
-        with open(os.path.join('/tmp', str(i) + '.txt'), "w") as output:
+        print('RESNET*:' + str(i) + ' -- \tGT: ' + resnet_GT_persequence[i] + ' | max(resnet): ' + str(
+            resnet_persequence_max_accuracy_sequences[i]) + '\t\t\t\t\t >>> \t' + str(resnet_seq_dict_labels[i]))
+        print('LSTM:   ' + str(i) + ' -- \tGT: ' + lstm_GT_persequence[i] + ' | max(lstm): ' + str(
+            lstm_persequence_max_accuracy_sequences[i]) + ' |  last(lstm): ' + str(
+            lstm_seq_dict_labels[i][-1]) + '\t >>> \t' + str(lstm_seq_dict_labels[i]))
+        with open(os.path.join('/tmp', 'resnet_' + str(i) + '.txt'), "w") as output:
             for j in resnet_seq_dict[i]:
                 output.write('file ' + os.path.join('/home/ballardini', os.path.relpath(j, '../..')) + '\n')
+        print('---')
 
         # ffmpeg -safe 0 -r 5 -f concat -i 3.txt  -c:v libx264 -profile:v high444 -level:v 4.0 -pix_fmt yuv420p 3.mp4
-        ffmpeg.append('ffmpeg -safe 0 -r 5 -f concat -i ' + str(os.path.join('/tmp', str(
+        ffmpeg.append('ffmpeg -safe 0 -r 5 -f concat -i ' + str(os.path.join('/tmp', 'resnet_' + str(
             i) + '.txt')) + ' -c:v libx264 -profile:v high444 -level:v 4.0 -pix_fmt yuv420p ' + str(
-            os.path.join('/tmp', str(i) + '_gt' + resnet_GT_persequence[i] + '_pred' + str(
+            os.path.join('/tmp', 'resnet_' + str(i) + '_gt' + resnet_GT_persequence[i] + '_pred' + str(
             resnet_persequence_max_accuracy_sequences[i]) + '.mp4')))
 
 [print(line) for line in ffmpeg]
 
+# print('\n\n')
+# ffmpeg = []
+# print('*** RESNET vs GT *** (last lstm)')
+# for i, (a, b), in enumerate(zip(resnet_GT_persequence, naive_last_element_of_sequence(lstm_seq_dict_labels))):
+#     if a != b:
+#         print('RESNET*:' + str(i) + ' -- \tGT: ' + resnet_GT_persequence[i] + ' | max(resnet): ' + str(
+#             resnet_persequence_max_accuracy_sequences[i]) + '\t\t\t\t\t >>> \t' + str(resnet_seq_dict_labels[i]))
+#         print('LSTM*:  ' + str(i) + ' -- \tGT: ' + lstm_GT_persequence[i] + ' | max(lstm): ' + str(
+#             lstm_persequence_max_accuracy_sequences[i]) + ' |  last(lstm): ' + str(
+#             lstm_seq_dict_labels[i][-1]) + '\t >>> \t' + str(lstm_seq_dict_labels[i]))
+#         with open(os.path.join('/tmp', 'resnet_' + str(i) + '.txt'), "w") as output:
+#             for j in resnet_seq_dict[i]:
+#                 output.write('file ' + os.path.join('/home/ballardini', os.path.relpath(j, '../..')) + '\n')
+#         print('---')
+#
+#         # ffmpeg -safe 0 -r 5 -f concat -i 3.txt  -c:v libx264 -profile:v high444 -level:v 4.0 -pix_fmt yuv420p 3.mp4
+#         ffmpeg.append('ffmpeg -safe 0 -r 5 -f concat -i ' + str(os.path.join('/tmp', 'resnet_' + str(
+#             i) + '.txt')) + ' -c:v libx264 -profile:v high444 -level:v 4.0 -pix_fmt yuv420p ' + str(
+#             os.path.join('/tmp', 'resnet_' + str(i) + '_gt' + resnet_GT_persequence[i] + '_pred' + str(
+#             resnet_persequence_max_accuracy_sequences[i]) + '.mp4')))
+#
+# [print(line) for line in ffmpeg]
+
+ffmpeg = []
+
 print('\n\n')
+print('*** LSTM vs GT *** (max lstm)')
 for i, (a, b), in enumerate(zip(lstm_GT_persequence, lstm_persequence_max_accuracy_sequences)):
     if a != b:
-        print('SEQ: ' + str(i) + ' -- \tGT: ' + lstm_GT_persequence[i] + ' | max(lstm): ' + str(
-            lstm_persequence_max_accuracy_sequences[i]) + '\t >>> \t' + str(lstm_seq_dict_labels[i]))
+        print('LSTM*:  ' + str(i) + ' -- \tGT: ' + lstm_GT_persequence[i] + ' | max(lstm): ' + str(
+            lstm_persequence_max_accuracy_sequences[i]) + ' |  last(lstm): ' + str(lstm_GT_persequence_full[i][-1])
+              + '\t >>> \t' + str(lstm_seq_dict_labels[i]))
+        print('RESNET: ' + str(i) + ' -- \tGT: ' + resnet_GT_persequence[i] + ' | max(resnet): ' + str(
+            resnet_persequence_max_accuracy_sequences[i]) + '\t\t\t\t\t >>> \t' + str(resnet_seq_dict_labels[i]))
+        with open(os.path.join('/tmp', 'lstm_' + str(i) + '.txt'), "w") as output:
+            for j in lstm_seq_dict[i]:
+                output.write('file ' + os.path.join('/home/ballardini', os.path.relpath(j, '../..')) + '\n')
+        print('---')
+        # ffmpeg -safe 0 -r 5 -f concat -i 3.txt  -c:v libx264 -profile:v high444 -level:v 4.0 -pix_fmt yuv420p 3.mp4
+        ffmpeg.append('ffmpeg -safe 0 -r 5 -f concat -i ' + str(os.path.join('/tmp', 'lstm_' + str(
+            i) + '.txt')) + ' -c:v libx264 -profile:v high444 -level:v 4.0 -pix_fmt yuv420p ' + str(
+            os.path.join('/tmp', 'lstm_' + str(i) + '_gt' + lstm_GT_persequence[i] + '_pred' + str(
+            lstm_persequence_max_accuracy_sequences[i]) + '.mp4')))
+
+[print(line) for line in ffmpeg]
+
+ffmpeg = []
+print('\n\n')
+print('*** LSTM vs GT *** (last lstm)')
+for i, (a, b), in enumerate(zip(lstm_GT_persequence, naive_last_element_of_sequence(lstm_seq_dict_labels))):
+    if a != b:
+        print('LSTM*:  ' + str(i) + ' -- \tGT: ' + lstm_GT_persequence[i] + ' | max(lstm): ' + str(
+            lstm_persequence_max_accuracy_sequences[i]) + ' |  last(lstm): ' + str(
+            lstm_seq_dict_labels[i][-1]) + '\t >>> \t' + str(lstm_seq_dict_labels[i]))
+        print('RESNET: ' + str(i) + ' -- \tGT: ' + resnet_GT_persequence[i] + ' | max(resnet): ' + str(
+            resnet_persequence_max_accuracy_sequences[i]) + '\t\t\t\t\t >>> \t' + str(resnet_seq_dict_labels[i]))
+        with open(os.path.join('/tmp', 'lstm_' + str(i) + '.txt'), "w") as output:
+            for j in lstm_seq_dict[i]:
+                output.write('file ' + os.path.join('/home/ballardini', os.path.relpath(j, '../..')) + '\n')
+        print('---')
+        # ffmpeg -safe 0 -r 5 -f concat -i 3.txt  -c:v libx264 -profile:v high444 -level:v 4.0 -pix_fmt yuv420p 3.mp4
+        ffmpeg.append('ffmpeg -safe 0 -r 5 -f concat -i ' + str(os.path.join('/tmp', 'lstm_' + str(
+            i) + '.txt')) + ' -c:v libx264 -profile:v high444 -level:v 4.0 -pix_fmt yuv420p ' + str(
+            os.path.join('/tmp', 'lstm_' + str(i) + '_gt' + lstm_GT_persequence[i] + '_pred' + str(
+            lstm_persequence_max_accuracy_sequences[i]) + '.mp4')))
+
+[print(line) for line in ffmpeg]
+
+
+
+
+
+

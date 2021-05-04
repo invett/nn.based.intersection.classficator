@@ -816,6 +816,13 @@ def main(args, model=None):
             val_path = os.path.join(args.dataset, 'validation/validation_list.txt')
             test_path = os.path.join(args.dataset, 'test/test_list.txt')
 
+            # for some reason, in some cases, if we're using lstm_txt_dataloader than test_path is not in the args.xxxx
+            # instead we use data_path, or data_path = args.dataset previously defined.
+            if not args.dataset_test:
+                args.dataset_test = test_path
+            if not args.dataset_val:
+                args.dataset_val = val_path
+
     elif '360' not in args.dataloader:
         # All sequence folders
         folders = np.array([os.path.join(data_path, folder) for folder in os.listdir(data_path) if

@@ -5,7 +5,7 @@
 ###
 ###     this little script was used to check/develope the sequence dataloader. nothing special here.
 ###
-###
+###     ALSO TO CREATE THE INPUT TO THE KERAS SCRIPT!
 ###
 
 import os

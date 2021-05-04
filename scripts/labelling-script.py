@@ -39,18 +39,19 @@ from miscellaneous.utils import split_dataset
 
 # datasets: KITTI360 | ALCALA | OXFORD | KITTI-ROAD
 # dataset = 'KITTI-ROAD'
-# dataset = 'KITTI360'
+dataset = 'KITTI360'
 # dataset = 'ALCALA'
 # dataset = 'AQP'
 # dataset = 'alcala-26.01.2021'
 # dataset = 'alcala-12.02.2021'
-dataset = 'GAN'
+# dataset = 'GAN'
 
 # definitions, will be specialized later .. but just to avoid warnings
 resizeme = 0
 
 pickle_filenames = []
 extract_field_from_path = -1
+overwrite_pickles = False
 
 if dataset == 'GAN':
 
@@ -632,8 +633,9 @@ for sequence_number, sequence in enumerate(files):
         if k == 115:  # show statistics
             split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path)
 
-        with open(annotations_filenames[sequence_number], 'wb') as f:
-            pickle.dump(annotations[sequence_number], f)
+        if overwrite_pickles:
+            with open(annotations_filenames[sequence_number], 'wb') as f:
+                pickle.dump(annotations[sequence_number], f)
 
         # RIGHT or F4
         if (k == right or k == 193) and file + 1 < len(sequence) - 1:
@@ -676,4 +678,7 @@ for sequence_number, sequence in enumerate(files):
 
 split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path)
 save_csv(annotations)
+
+if not overwrite_pickles:
+    print("Pickles were not update as requested!")
 
