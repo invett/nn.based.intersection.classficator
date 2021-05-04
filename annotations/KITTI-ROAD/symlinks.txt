@@ -1,0 +1,6 @@
+while read line; do folder=$(echo $line | cut -d '/' -f 1,2,3); filenamewithpath=$(echo $line | cut --d ';' -f 1); filename=$(echo $filenamewithpath | cut --d '/' -f 4); mkdir -p train.prefix/$folder; ln -s ../../../../$filenamewithpath train.prefix/$folder/$filename ; done < prefix_train_list.txt
+
+while read line; do folder=$(echo $line | cut -d '/' -f 1,2,3); filenamewithpath=$(echo $line | cut --d ';' -f 1); filename=$(echo $filenamewithpath | cut --d '/' -f 4); mkdir -p validation.prefix/$folder; ln -s ../../../../$filenamewithpath validation.prefix/$folder/$filename ; done < prefix_validation_list.txt
+
+while read line; do folder=$(echo $line | cut -d '/' -f 1,2,3); filenamewithpath=$(echo $line | cut --d ';' -f 1); filename=$(echo $filenamewithpath | cut --d '/' -f 4); mkdir -p test.prefix/$folder; ln -s ../../../../$filenamewithpath test.prefix/$folder/$filename; done < prefix_test_list.txt
+
