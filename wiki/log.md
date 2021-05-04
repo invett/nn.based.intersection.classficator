@@ -48,6 +48,23 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
     - [x] Warpings No mirror --> warped
     - [x] Stereo + Lidar --> 3D                             ok 12.03.2021
     - [ ] Stereo + Lidar + alvaromask --> 3D_masked
+    
+#### UPDATE
+
+While checking the results of the GANs (version ??? the one trained two weeks, stylegan-conditional) we detected 
+some issues that we thought were related to the labelling. After checking the labels, creating some videos with 
+the annotations etc we can say "yes, we have some issues". Not too many mistakes, but we need to double check at least
+the following files (gonna copy here all the string we used to traing the GAN, the original fact that questioned our 
+labeling):
+
+` python -m torch.distributed.launch --nproc_per_node=8 train_conditional.py --batch 16 --wandb 
+--path /home/ballardini/DualBiSeNet/alcala-12.02.2021/all.seq.120445AA.122302AA.164002AA.165810AA.txt 
+--path /home/ballardini/DualBiSeNet/alcala-26.01.2021_selected/prefix_all.txt 
+--path /home/ballardini/DualBiSeNet/KITTI-360/prefix_all.txt 
+--path /home/ballardini/DualBiSeNet/KITTI-ROAD/prefix_all.txt`
+
+This will "invalidate" all previous results and for this reason I first put all the annotations in form of .pickles and
+.txt files inside the /annotations folder. 
 
 ## Log
 ### TRAIN 15.02.2021
