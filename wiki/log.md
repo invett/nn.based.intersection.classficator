@@ -57,14 +57,52 @@ the annotations etc we can say "yes, we have some issues". Not too many mistakes
 the following files (gonna copy here all the string we used to traing the GAN, the original fact that questioned our 
 labeling):
 
-` python -m torch.distributed.launch --nproc_per_node=8 train_conditional.py --batch 16 --wandb 
+```python -m torch.distributed.launch --nproc_per_node=8 train_conditional.py --batch 16 --wandb 
 --path /home/ballardini/DualBiSeNet/alcala-12.02.2021/all.seq.120445AA.122302AA.164002AA.165810AA.txt 
 --path /home/ballardini/DualBiSeNet/alcala-26.01.2021_selected/prefix_all.txt 
 --path /home/ballardini/DualBiSeNet/KITTI-360/prefix_all.txt 
---path /home/ballardini/DualBiSeNet/KITTI-ROAD/prefix_all.txt`
+--path /home/ballardini/DualBiSeNet/KITTI-ROAD/prefix_all.txt
+```
 
 This will "invalidate" all previous results and for this reason I first put all the annotations in form of .pickles and
 .txt files inside the /annotations folder. 
+
+#### Checking the FIRST version of the dataset
+
+for each of the previous lines with the txt files, to create videos, use this kind of "script":
+
+```cat prefix_all.txt | grep ';0' > check_type_0.txt
+cat prefix_all.txt | grep ';1' > check_type_1.txt  
+cat prefix_all.txt | grep ';2' > check_type_2.txt  
+cat prefix_all.txt | grep ';3' > check_type_3.txt  
+cat prefix_all.txt | grep ';4' > check_type_4.txt  
+cat prefix_all.txt | grep ';5' > check_type_5.txt  
+cat prefix_all.txt | grep ';6' > check_type_6.txt
+
+sed -i 's/;0//' check_type_0.txt
+sed -i 's/;1//' check_type_1.txt
+sed -i 's/;2//' check_type_2.txt
+sed -i 's/;3//' check_type_3.txt
+sed -i 's/;4//' check_type_4.txt
+sed -i 's/;5//' check_type_5.txt
+sed -i 's/;6//' check_type_6.txt
+
+while read line; do echo file $line >> ffmpeg_check_type_0.txt; done < check_type_0.txt
+while read line; do echo file $line >> ffmpeg_check_type_1.txt; done < check_type_1.txt
+while read line; do echo file $line >> ffmpeg_check_type_2.txt; done < check_type_2.txt
+while read line; do echo file $line >> ffmpeg_check_type_3.txt; done < check_type_3.txt
+while read line; do echo file $line >> ffmpeg_check_type_4.txt; done < check_type_4.txt
+while read line; do echo file $line >> ffmpeg_check_type_5.txt; done < check_type_5.txt
+while read line; do echo file $line >> ffmpeg_check_type_6.txt; done < check_type_6.txt
+
+ffmpeg -safe 0 -r 30 -f concat -i ffmpeg_check_type_0.txt -c:v libx264 -profile:v high444 -level:v 4.0 -pix_fmt yuv420p /tmp/alcala-26.01.2021_check_type_0.mp4
+ffmpeg -safe 0 -r 30 -f concat -i ffmpeg_check_type_1.txt -c:v libx264 -profile:v high444 -level:v 4.0 -pix_fmt yuv420p /tmp/alcala-26.01.2021_check_type_1.mp4
+ffmpeg -safe 0 -r 30 -f concat -i ffmpeg_check_type_2.txt -c:v libx264 -profile:v high444 -level:v 4.0 -pix_fmt yuv420p /tmp/alcala-26.01.2021_check_type_2.mp4
+ffmpeg -safe 0 -r 30 -f concat -i ffmpeg_check_type_3.txt -c:v libx264 -profile:v high444 -level:v 4.0 -pix_fmt yuv420p /tmp/alcala-26.01.2021_check_type_3.mp4
+ffmpeg -safe 0 -r 30 -f concat -i ffmpeg_check_type_4.txt -c:v libx264 -profile:v high444 -level:v 4.0 -pix_fmt yuv420p /tmp/alcala-26.01.2021_check_type_4.mp4
+ffmpeg -safe 0 -r 30 -f concat -i ffmpeg_check_type_5.txt -c:v libx264 -profile:v high444 -level:v 4.0 -pix_fmt yuv420p /tmp/alcala-26.01.2021_check_type_5.mp4
+ffmpeg -safe 0 -r 30 -f concat -i ffmpeg_check_type_6.txt -c:v libx264 -profile:v high444 -level:v 4.0 -pix_fmt yuv420p /tmp/alcala-26.01.2021_check_type_6.mp4
+```
 
 ## Log
 ### TRAIN 15.02.2021
