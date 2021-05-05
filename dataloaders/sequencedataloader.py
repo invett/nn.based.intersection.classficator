@@ -15,6 +15,7 @@ from torch.utils.data import Dataset
 from miscellaneous.utils import write_ply
 
 from random import choice
+from collections import Counter
 
 from scripts.OSM_generator import test_crossing_pose, Crossing
 
@@ -78,6 +79,7 @@ class txt_dataloader(AbstractSequence, Dataset):
 
         super().__init__(isSequence=isSequence)
         self.verbose = verbose
+        self.GANflag = False  # this flag is used to control the getItem method
 
         trainimages = []
         trainlabels = []
@@ -125,11 +127,16 @@ class txt_dataloader(AbstractSequence, Dataset):
 
     def __getitem__(self, idx):
         # Select file subset
-        imagepath = self.images[idx]
-        # print(imagepath)
+
+        if self.GANflag:
+            imagepath = self.imgs[idx][0]
+            label = int(self.imgs[idx][1])
+        else:
+            imagepath = self.images[idx]
+            label = int(self.labels[idx])
+
         image = Image.open(imagepath)
 
-        label = int(self.labels[idx])
         neg_label = choice([i for i in range(0, 7) if i != label])
 
         if not self.usePIL:
@@ -196,24 +203,6 @@ class txt_dataloader(AbstractSequence, Dataset):
             if self.transform:
                 sample['data'] = self.transform(sample['data'])
 
-        return sample
-
-
-class txt_dataloader_styleGAN(txt_dataloader):
-    """
-    Adapts txt_dataloader to the structure of Pycharm datasets.ImageFolder
-    """
-    def __init__(self, path_filename_list=None, transform=None, usePIL=True, isSequence=False, decimateStep=1):
-        txt_dataloader.__init__(self, path_filename_list, transform, usePIL, isSequence, decimateStep)
-
-        self.imgs = list(zip(self.images, self.labels))
-
-    def __len__(self):
-        return txt_dataloader.__len__(self.images)
-
-    def __getitem__(self, idx):
-        sample_ = txt_dataloader.__getitem__(self, idx)
-        sample = (sample_['data'], sample_['label'])
         return sample
 
 
@@ -834,7 +823,7 @@ class teacher_tripletloss(Dataset):
 
                                 index = os.path.splitext(file)[0]
 
-                                # little check; ensure the "index" is a number 
+                                # little check; ensure the "index" is a number
                                 assert index.isdigit()
 
                                 osm_data_distance = float(gt_data.loc[gt_data[0] == index][1])
@@ -1779,13 +1768,16 @@ class lstm_txt_dataloader(txt_dataloader, Dataset):
             sequence.clear()
             sq += 1
 
+
+        # retrieve the min element of all sequences; will be used for LSTM fixed length eval
+        min_elements = min([len(v) for k, v in seq_dict.items()])
+
         if self.verbose:
             print("SequencesDataloader, loaded folder: ", image_path)
             print("Found", len(seq_dict), " sequences; for each sequence, the associated frames are: ")
             print([len(v) for k, v in seq_dict.items()])
+            print("Min elements along all sequences: ", str(min_elements))
 
-        # retrieve the min element of all sequences; will be used for LSTM fixed length eval
-        min_elements = min([len(v) for k, v in seq_dict.items()])
         return seq_dict, sq, min_elements
 
     @staticmethod
@@ -1938,3 +1930,75 @@ class SequencesDataloader(AbstractSequence, Dataset):
         label = int(gtdata.loc[gtdata[0] == filename][2])
 
         return label
+
+
+#class txt_dataloader_styleGAN(txt_dataloader):
+class txt_dataloader_styleGAN(lstm_txt_dataloader):
+    """
+    Adapts txt_dataloader to the structure of Pycharm datasets.ImageFolder
+    """
+    def __init__(self, path_filename_list=None, transform=None, usePIL=True, isSequence=False, decimateStep=1):
+
+        version = 2
+
+        if version == 1:
+            # version 1 -- stylegan with all the images from the passed txt files; no decimate
+            txt_dataloader.__init__(self, path_filename_list, transform, usePIL, isSequence)
+            self.imgs = list(zip(self.images, self.labels))
+
+        if version == 2:
+            # version 2 -- stylegan with decimated 'per-sequence' list
+            lstm_txt_dataloader.__init__(self, path_filename=path_filename_list, transform=transform, usePIL=True,
+                                         isSequence=True, all_in_ram=False, fixed_lenght=0, verbose=True)
+
+            # with this flag, the lstm_txt_dataloader GETITEM will change how it works
+            self.GANflag = True
+
+            # create a list of images in a way that:
+            #   1. use the sequences instead of all the list of frames
+            #   2. decimate each list of frames for each of the sequences.
+            images_decimated = []
+            labels_decimated = []
+
+            for key in self.sequences:
+
+                # if decimatestep > 1, then we want to decimate, BUT, alcala and kitti have different fps ... so i have
+                # to do something like this, checking which sequence each of them belongs to...
+                if decimateStep > 1:
+                    if 'alcala' in self.sequences[key][0]:
+                        images_decimated.append(self.sequences[key][::30])  # 30 FPS alcala sequences
+                    elif 'KITTI' in self.sequences[key][0]:
+                        images_decimated.append(self.sequences[key][::10])  # 10 FPS kitti sequences
+                    else:
+                        print('mmm... decimate does not work')
+                        exit(-1)
+                else:
+                    images_decimated.append(self.sequences[key][::decimateStep])
+
+
+            images_decimated = [item for sublist in images_decimated for item in sublist]
+
+            # search the label, given each of the image filenames.. this is for compatibility
+            for image in images_decimated:
+                labels_decimated.append(self.labels[self.images.index(image)])
+
+            print('*************************************')
+            print('Debug info:')
+
+            print('*************************************')
+            print('Number of images: ' + str(len(images_decimated)))
+            print('Number of labels: ' + str(len(labels_decimated)))
+            print(dict(Counter(labels_decimated)))
+            print('*************************************')
+
+            # this list is used with 'generate.py' , added for compatibility only; other behavior = directly use the
+            # the pytorch dataloader with this dataset
+            self.imgs = list(zip(images_decimated, labels_decimated))
+
+    def __len__(self):
+        return txt_dataloader.__len__(self)
+
+    def __getitem__(self, idx):
+        sample_ = txt_dataloader.__getitem__(self, idx)
+        sample = (sample_['data'], sample_['label'])
+        return sample
