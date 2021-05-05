@@ -40,10 +40,10 @@ from miscellaneous.utils import split_dataset
 # datasets: KITTI360 | ALCALA | OXFORD | KITTI-ROAD
 
 # used up to LSTM version of the paper 5/5/21
-# dataset = 'KITTI-ROAD'
+dataset = 'KITTI-ROAD'
 # dataset = 'KITTI360'
 # dataset = 'alcala-26.01.2021'
-dataset = 'alcala-12.02.2021'
+# dataset = 'alcala-12.02.2021'
 
 # needs update / not used
 # dataset = 'ALCALA'
@@ -59,9 +59,13 @@ overwrite_pickles = True
 run_statistics_only = True
 
 # suffix to the labels data; this is an attempt to control the version of the labels
-dataset_version = '.v001'
+# use this to create copies, ex: v001 to v002:
+# for i in `ls *v001`; do echo cp $i `sed "s/v001/v002/g" <<< $i` ; done;
+dataset_version = '.v002'
+
 
 if not 'dataset' in locals():
+
     print('Dataset variable missing. Please select the dataset. End.')
     exit(-1)
 
