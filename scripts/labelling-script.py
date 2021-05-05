@@ -38,12 +38,16 @@ import random
 from miscellaneous.utils import split_dataset
 
 # datasets: KITTI360 | ALCALA | OXFORD | KITTI-ROAD
+
+# used up to LSTM version of the paper 5/5/21
 # dataset = 'KITTI-ROAD'
-dataset = 'KITTI360'
+# dataset = 'KITTI360'
+# dataset = 'alcala-26.01.2021'
+dataset = 'alcala-12.02.2021'
+
+# needs update / not used
 # dataset = 'ALCALA'
 # dataset = 'AQP'
-# dataset = 'alcala-26.01.2021'
-# dataset = 'alcala-12.02.2021'
 # dataset = 'GAN'
 
 # definitions, will be specialized later .. but just to avoid warnings
@@ -51,7 +55,15 @@ resizeme = 0
 
 pickle_filenames = []
 extract_field_from_path = -1
-overwrite_pickles = False
+overwrite_pickles = True
+run_statistics_only = True
+
+# suffix to the labels data; this is an attempt to control the version of the labels
+dataset_version = '.v001'
+
+if not 'dataset' in locals():
+    print('Dataset variable missing. Please select the dataset. End.')
+    exit(-1)
 
 if dataset == 'GAN':
 
@@ -87,6 +99,8 @@ if dataset == 'GAN':
 
     pickle_filenames = ['gan.1.pickle', 'gan.2.pickle', 'gan.3.pickle', 'gan.4.pickle', 'gan.5.pickle', 'gan.6.pickle']
 
+    pickle_filenames = [i + dataset_version for i in pickle_filenames]
+
     csv_filenames = ['gan.csv']
 
     width = 1408
@@ -119,6 +133,8 @@ if dataset == 'KITTI-ROAD':
                         '2011_09_30_drive_0028_sync.pickle', '2011_09_30_drive_0033_sync.pickle',
                         '2011_09_30_drive_0034_sync.pickle', '2011_10_03_drive_0027_sync.pickle',
                         '2011_10_03_drive_0034_sync.pickle']
+
+    pickle_filenames = [i + dataset_version for i in pickle_filenames]
 
     csv_filenames = ['2011_09_26_drive_0019_sync.csv', '2011_09_26_drive_0020_sync.csv',
                      '2011_09_26_drive_0022_sync.csv', '2011_09_26_drive_0023_sync.csv',
@@ -153,6 +169,8 @@ if dataset == 'KITTI360':
                         '2013_05_28_drive_0007_sync.pickle', '2013_05_28_drive_0009_sync.pickle',
                         '2013_05_28_drive_0010_sync.pickle']
 
+    pickle_filenames = [i + dataset_version for i in pickle_filenames]
+
     csv_filenames = ['2013_05_28_drive_0000_sync.csv', '2013_05_28_drive_0002_sync.csv',
                         '2013_05_28_drive_0003_sync.csv', '2013_05_28_drive_0004_sync.csv',
                         '2013_05_28_drive_0005_sync.csv', '2013_05_28_drive_0006_sync.csv',
@@ -168,6 +186,8 @@ if dataset == 'KITTI360':
     resizeme = 0  # resizeme = 0 does not perform the resize
 
 if dataset == 'ALCALA':
+    # TODO: NEEDS UPDATE - see other datasets!!!
+    exit(-1)
     # images from raw files are 1920x1200 - resize as needed.
     # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
     # scale=800:-1 R2_video_0002_camera2_png/%010d.png
@@ -219,6 +239,8 @@ if dataset == 'alcala-26.01.2021':
                         '182858AA.pickle', '183158AA.pickle', '183458AA.pickle', '183758AA.pickle', '184058AA.pickle',
                         '184358AA.pickle', '184658AA.pickle']
 
+    pickle_filenames = [i + dataset_version for i in pickle_filenames]
+
     csv_filenames = ['161604AA.csv', '161657AA.csv', '161957AA.csv', '162257AA.csv', '162557AA.csv', '162857AA.csv',
                      '163157AA.csv', '163457AA.csv', '163757AA.csv', '164057AA.csv', '164357AA.csv', '164657AA.csv',
                      '164957AA.csv', '165257AA.csv', '165557AA.csv', '165857AA.csv', '170157AA.csv', '170457AA.csv',
@@ -250,6 +272,8 @@ if dataset == 'alcala-12.02.2021':
                         'alcala-12.02.2021.164002AA.pickle',
                         'alcala-12.02.2021.165810AA.pickle']
 
+    pickle_filenames = [i + dataset_version for i in pickle_filenames]
+
     csv_filenames = ['alcala-12.02.2021.120445AA.csv',
                      'alcala-12.02.2021.122302AA.csv',
                      'alcala-12.02.2021.164002AA.csv',
@@ -263,6 +287,8 @@ if dataset == 'alcala-12.02.2021':
     width = 800
 
 if dataset == 'OXFORD':
+    # TODO: NEEDS UPDATE - see other datasets!!!
+    exit(-1)
     # images from raw files are 1920x1200 - resize as needed.
     # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
     # scale=800:-1 R2_video_0002_camera2_png/%010d.png
@@ -279,6 +305,9 @@ if dataset == 'OXFORD':
     resizeme = 800
 
 if dataset == 'AQP':
+    # TODO: NEEDS UPDATE - see other datasets!!!
+    exit(-1)
+
     # images from raw files are 1920x1200 - resize as needed.
     # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
     # scale=800:-1 R2_video_0002_camera2_png/%010d.png
@@ -505,7 +534,16 @@ if pickle_filenames:
         annotations_file = os.path.join(base_folder, pickle_filename)
         if os.path.exists(annotations_file):
             with open(annotations_file, 'rb') as f:
-                annotations.append(pickle.load(f))
+                # retrieve the first element of the pickle, the labels (second is filenames)
+                loaded = pickle.load(f)
+
+                # for compatibility with previous versions of the pickle files:
+                if type(loaded) == list and len(loaded) > 1:
+                    loaded = loaded[0]
+
+                annotations.append(loaded)
+
+                # where to save the pickles
                 annotations_filenames.append(annotations_file)
         else:
             if not annotations:
@@ -514,7 +552,7 @@ if pickle_filenames:
                     annotations.append(np.ones(len(sequence), dtype=np.int8) * -1)
                 for pickle_filename_ in pickle_filenames:
                     with open(os.path.join(base_folder, pickle_filename_), 'wb') as f:
-                        pickle.dump(annotations, f)
+                        pickle.dump([annotations, files], f)   #TODO: check if valid
                         annotations_filenames.append(os.path.join(base_folder, pickle_filename_))
                 break
             else:
@@ -539,6 +577,10 @@ print_help()
 print("\nStart\n")
 
 skip = False
+
+if run_statistics_only:
+    split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path)
+    exit(1)
 
 for sequence_number, sequence in enumerate(files):
 
@@ -623,19 +665,19 @@ for sequence_number, sequence in enumerate(files):
         if 48 <= k <= 55 and file < len(sequence) - 1:
             file = file + 1
 
-        if k == 32:  # deselect the frame
+        if k == 32:  # deselect the frame ('space' key)
             annotations[sequence_number][file] = -1
             file = file + 1
 
-        if k == 104:  # print help
+        if k == 104:  # print help ('h' key)
             print_help()
 
-        if k == 115:  # show statistics
+        if k == 115:  # show statistics ('s' key)
             split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path)
 
         if overwrite_pickles:
             with open(annotations_filenames[sequence_number], 'wb') as f:
-                pickle.dump(annotations[sequence_number], f)
+                pickle.dump([annotations[sequence_number], files[sequence_number]], f)
 
         # RIGHT or F4
         if (k == right or k == 193) and file + 1 < len(sequence) - 1:
