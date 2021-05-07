@@ -122,8 +122,10 @@ class txt_dataloader(AbstractSequence, Dataset):
         self.usePIL = usePIL
 
     def __len__(self):
-
-        return len(self.images)
+        if self.GANflag:
+            return len(self.imgs)
+        else:
+            return len(self.images)
 
     def __getitem__(self, idx):
         # Select file subset
@@ -1939,7 +1941,10 @@ class txt_dataloader_styleGAN(lstm_txt_dataloader):
     """
 
     def __init__(self, path_filename_list=None, transform=None, usePIL=True, isSequence=False, decimateStep=1,
-                 decimateAlcala=30, decimateKitti=10):
+                 decimateAlcala=30, decimateKitti=10, conditional=True):
+
+        # this will change the getitem behavior
+        self.conditional = conditional
 
         version = 2
 
@@ -2002,5 +2007,8 @@ class txt_dataloader_styleGAN(lstm_txt_dataloader):
 
     def __getitem__(self, idx):
         sample_ = txt_dataloader.__getitem__(self, idx)
-        sample = (sample_['data'], sample_['label'])
+        if self.conditional:
+            sample = (sample_['data'], sample_['label'])
+        else:
+            sample = sample_['data']
         return sample
