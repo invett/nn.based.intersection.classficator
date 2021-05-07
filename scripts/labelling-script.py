@@ -40,10 +40,10 @@ from miscellaneous.utils import split_dataset
 # datasets: KITTI360 | ALCALA | OXFORD | KITTI-ROAD
 
 # used up to LSTM version of the paper 5/5/21
-dataset = 'KITTI-ROAD'
+# dataset = 'KITTI-ROAD'
 # dataset = 'KITTI360'
 # dataset = 'alcala-26.01.2021'
-# dataset = 'alcala-12.02.2021'
+dataset = 'alcala-12.02.2021'
 
 # needs update / not used
 # dataset = 'ALCALA'
@@ -715,7 +715,7 @@ for sequence_number, sequence in enumerate(files):
             cv2.destroyAllWindows()
             split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path,
                           overwrite_i_dont_care=overwrite_i_dont_care)
-            save_csv(annotations)
+            # save_csv(annotations)
             exit(-1)
 
     cv2.destroyAllWindows()
@@ -723,7 +723,7 @@ for sequence_number, sequence in enumerate(files):
 split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path,
               overwrite_i_dont_care=overwrite_i_dont_care)
 
-save_csv(annotations)
+# save_csv(annotations)
 
 if not overwrite_pickles:
     print("Pickles were not update as requested!")
