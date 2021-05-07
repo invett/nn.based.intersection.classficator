@@ -1937,7 +1937,9 @@ class txt_dataloader_styleGAN(lstm_txt_dataloader):
     """
     Adapts txt_dataloader to the structure of Pycharm datasets.ImageFolder
     """
-    def __init__(self, path_filename_list=None, transform=None, usePIL=True, isSequence=False, decimateStep=1):
+
+    def __init__(self, path_filename_list=None, transform=None, usePIL=True, isSequence=False, decimateStep=1,
+                 decimateAlcala=30, decimateKitti=10):
 
         version = 2
 
@@ -1966,9 +1968,9 @@ class txt_dataloader_styleGAN(lstm_txt_dataloader):
                 # to do something like this, checking which sequence each of them belongs to...
                 if decimateStep > 1:
                     if 'alcala' in self.sequences[key][0]:
-                        images_decimated.append(self.sequences[key][::30])  # 30 FPS alcala sequences
+                        images_decimated.append(self.sequences[key][::decimateAlcala])  # 30 FPS alcala sequences
                     elif 'KITTI' in self.sequences[key][0]:
-                        images_decimated.append(self.sequences[key][::10])  # 10 FPS kitti sequences
+                        images_decimated.append(self.sequences[key][::decimateKitti])  # 10 FPS kitti sequences
                     else:
                         print('mmm... decimate does not work')
                         exit(-1)
