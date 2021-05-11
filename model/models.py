@@ -57,7 +57,7 @@ class Resnet(torch.nn.Module):
                 embedding = self.reducer(embedding.squeeze())
                 return embedding
         else:
-            prediction = self.fc(embedding)
+            prediction = self.fc(embedding.squeeze())
             return prediction
 
 
