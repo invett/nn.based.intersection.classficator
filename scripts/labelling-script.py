@@ -54,18 +54,20 @@ resizeme = 0
 
 pickle_filenames = []
 extract_field_from_path = -1
-overwrite_pickles = True
-run_statistics_only = True
+overwrite_pickles = True  # the pickles. according to dataset_version (see below)
+overwrite_i_dont_care = True  # these is for the output files (the txt)
+run_statistics_only = False
 
 # suffix to the labels data; this is an attempt to control the version of the labels
-dataset_version = '.v001'
+# use this to create copies, ex: v001 to v002:
+# for i in `ls *v001`; do echo cp $i `sed "s/v001/v002/g" <<< $i` ; done;
+dataset_version = '.v002'
 
-if not 'dataset' in locals():
+if 'dataset' not in locals():
     print('Dataset variable missing. Please select the dataset. End.')
     exit(-1)
 
 if dataset == 'GAN':
-
     # create a folder with all the GAN images in the same folder. like: /tmp/generated_samples; then generate inside
     # that folder N folders, with the typologies. The structure should be like this:
     # ├── generated_samples
@@ -171,10 +173,10 @@ if dataset == 'KITTI360':
     pickle_filenames = [i + dataset_version for i in pickle_filenames]
 
     csv_filenames = ['2013_05_28_drive_0000_sync.csv', '2013_05_28_drive_0002_sync.csv',
-                        '2013_05_28_drive_0003_sync.csv', '2013_05_28_drive_0004_sync.csv',
-                        '2013_05_28_drive_0005_sync.csv', '2013_05_28_drive_0006_sync.csv',
-                        '2013_05_28_drive_0007_sync.csv', '2013_05_28_drive_0009_sync.csv',
-                        '2013_05_28_drive_0010_sync.csv']
+                     '2013_05_28_drive_0003_sync.csv', '2013_05_28_drive_0004_sync.csv',
+                     '2013_05_28_drive_0005_sync.csv', '2013_05_28_drive_0006_sync.csv',
+                     '2013_05_28_drive_0007_sync.csv', '2013_05_28_drive_0009_sync.csv',
+                     '2013_05_28_drive_0010_sync.csv']
 
     width = 1408
     height = 376
@@ -266,17 +268,13 @@ if dataset == 'alcala-12.02.2021':
 
     folders = ['120445AA', '122302AA', '164002AA', '165810AA']
 
-    pickle_filenames = ['alcala-12.02.2021.120445AA.pickle',
-                        'alcala-12.02.2021.122302AA.pickle',
-                        'alcala-12.02.2021.164002AA.pickle',
-                        'alcala-12.02.2021.165810AA.pickle']
+    pickle_filenames = ['alcala-12.02.2021.120445AA.pickle', 'alcala-12.02.2021.122302AA.pickle',
+                        'alcala-12.02.2021.164002AA.pickle', 'alcala-12.02.2021.165810AA.pickle']
 
     pickle_filenames = [i + dataset_version for i in pickle_filenames]
 
-    csv_filenames = ['alcala-12.02.2021.120445AA.csv',
-                     'alcala-12.02.2021.122302AA.csv',
-                     'alcala-12.02.2021.164002AA.csv',
-                     'alcala-12.02.2021.165810AA.csv']
+    csv_filenames = ['alcala-12.02.2021.120445AA.csv', 'alcala-12.02.2021.122302AA.csv',
+                     'alcala-12.02.2021.164002AA.csv', 'alcala-12.02.2021.165810AA.csv']
 
     height = 500
     position1 = (10, 30)
@@ -489,6 +487,7 @@ def print_help():
     print("F12               -  exit | the CSV will NOT be generated/updated")
     print("0..6 numbers for 0..6 intersection type")
 
+
 folders.sort()
 
 # read the folders provided, please, only PNG files
@@ -551,7 +550,7 @@ if pickle_filenames:
                     annotations.append(np.ones(len(sequence), dtype=np.int8) * -1)
                 for pickle_filename_ in pickle_filenames:
                     with open(os.path.join(base_folder, pickle_filename_), 'wb') as f:
-                        pickle.dump([annotations, files], f)   #TODO: check if valid
+                        pickle.dump([annotations, files], f)  # TODO: check if valid
                         annotations_filenames.append(os.path.join(base_folder, pickle_filename_))
                 break
             else:
@@ -578,7 +577,8 @@ print("\nStart\n")
 skip = False
 
 if run_statistics_only:
-    split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path)
+    split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path,
+                  overwrite_i_dont_care=overwrite_i_dont_care)
     exit(1)
 
 for sequence_number, sequence in enumerate(files):
@@ -672,7 +672,8 @@ for sequence_number, sequence in enumerate(files):
             print_help()
 
         if k == 115:  # show statistics ('s' key)
-            split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path)
+            split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path,
+                          overwrite_i_dont_care=overwrite_i_dont_care)
 
         if overwrite_pickles:
             with open(annotations_filenames[sequence_number], 'wb') as f:
@@ -711,15 +712,17 @@ for sequence_number, sequence in enumerate(files):
 
         if k == 201:  # pressing F12
             cv2.destroyAllWindows()
-            split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path)
-            save_csv(annotations)
+            split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path,
+                          overwrite_i_dont_care=overwrite_i_dont_care)
+            # save_csv(annotations)
             exit(-1)
 
     cv2.destroyAllWindows()
 
-split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path)
-save_csv(annotations)
+split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path,
+              overwrite_i_dont_care=overwrite_i_dont_care)
+
+# save_csv(annotations)
 
 if not overwrite_pickles:
     print("Pickles were not update as requested!")
-
