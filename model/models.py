@@ -14,13 +14,13 @@ class Resnet(torch.nn.Module):
         if version == 'resnet18':
             model = models.resnet18(pretrained=pretrained)
         if version == 'resnet34':
-            model = models.resnet18(pretrained=pretrained)
+            model = models.resnet34(pretrained=pretrained)
         if version == 'resnet50':
-            model = models.resnet18(pretrained=pretrained)
+            model = models.resnet50(pretrained=pretrained)
         if version == 'resnet101':
-            model = models.resnet18(pretrained=pretrained)
+            model = models.resnet101(pretrained=pretrained)
         if version == 'resnet152':
-            model = models.resnet18(pretrained=pretrained)
+            model = models.resnet152(pretrained=pretrained)
 
         self.conv1 = model.conv1
         self.bn1 = model.bn1
@@ -38,7 +38,7 @@ class Resnet(torch.nn.Module):
             else:
                 self.fc = torch.nn.Linear(2048, num_classes)
         else:
-            if not (version == 'resnet18' or version == 'resnet34'):
+            if version == 'resnet50' or version == 'resnet101' or version == 'resnet152':
                 self.reducer = torch.nn.Linear(2048, 512)
 
     def forward(self, data):
