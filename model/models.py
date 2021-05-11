@@ -54,8 +54,8 @@ class Resnet(torch.nn.Module):
             if self.version == 'resnet18' or self.version == 'resnet34':
                 return embedding.squeeze()
             else:
-                embedding = self.reducer(embedding)
-                return embedding.squeeze()
+                embedding = self.reducer(embedding.squeeze())
+                return embedding
         else:
             prediction = self.fc(embedding)
             return prediction
