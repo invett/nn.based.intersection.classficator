@@ -86,8 +86,7 @@ def main(args):
         model = Mobilenet_v3(pretrained=args.pretrained, embeddings=args.triplet, num_classes=args.num_classes,
                              version=args.model)
     elif 'inception' in args.model:
-        model = Inception_v3(pretrained=args.pretrained, embeddings=args.triplet, num_classes=args.num_classes,
-                             version=args.model)
+        model = Inception_v3(pretrained=args.pretrained, embeddings=args.triplet, num_classes=args.num_classes)
     else:
         print('Wrong model selection')
         exit(-1)
