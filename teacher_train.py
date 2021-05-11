@@ -431,7 +431,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, GLOBAL_EPOCH
         for sample in dataloader_train:
             # network pass for the sample
             if args.triplet:
-                sample_acc, loss = teacher_network_pass(args, sample, model, criterion, gt_list=gtlist)
+                sample_acc, loss, _, _ = teacher_network_pass(args, sample, model, criterion, gt_list=gtlist)
             else:
                 sample_acc, loss, _, _ = teacher_network_pass(args, sample, model, criterion)
 
