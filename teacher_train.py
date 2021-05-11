@@ -110,19 +110,21 @@ def main(args):
             print('not supported optimizer \n')
             exit()
 
+        # Transforms for osm images
+        if args.model == 'inception_v3':
+            osmTransforms = transforms.Compose(
+                [transforms.ToPILImage(), transforms.Resize((229, 229)), transforms.ToTensor()])
+        else:
+            osmTransforms = transforms.Compose(
+                [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
+
         # In both, set canonical to False to speedup the process; canonical won't be used for train/validate.
         dataset_train = teacher_tripletloss_generated(elements=args.dataset_train_elements,
-                                                      transform=transforms.Compose([transforms.ToPILImage(),
-                                                                                    transforms.Resize((224, 224)),
-                                                                                    transforms.ToTensor()
-                                                                                    ]),
+                                                      transform=osmTransforms,
                                                       canonical=False,
                                                       noise=addnoise)
         dataset_val = teacher_tripletloss_generated(elements=args.dataset_val_elements,
-                                                    transform=transforms.Compose([transforms.ToPILImage(),
-                                                                                  transforms.Resize((224, 224)),
-                                                                                  transforms.ToTensor(),
-                                                                                  ]),
+                                                    transform=osmTransforms,
                                                     canonical=False,
                                                     noise=addnoise)
 
@@ -133,12 +135,11 @@ def main(args):
 
         # Create ground truth list
         gt_list = []
-        obsTransforms = transforms.Compose(
-            [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
+
         for crossing_type in range(7):
             gt_OSM = test_crossing_pose(crossing_type=crossing_type, save=False, noise=True, sampling=False,
                                         random_rate=1.0)
-            gt_OSM = obsTransforms(gt_OSM[0])
+            gt_OSM = osmTransforms(gt_OSM[0])
             gt_list.append(gt_OSM.unsqueeze(0))
 
         savepath = train(args, model, optimizer, dataloader_train, dataloader_val, GLOBAL_EPOCH, gt_list)
