@@ -13,16 +13,16 @@ import seaborn as sn
 import torch
 import torchvision.transforms as transforms
 import tqdm
-import wandb
 from sklearn.metrics import accuracy_score
-from torch import nn
 from torch.utils.data import DataLoader
-# from torch.optim.lr_scheduler import MultiStepLR, ReduceLROnPlateau
 
+import wandb
 from dataloaders.sequencedataloader import teacher_tripletloss, teacher_tripletloss_generated
 from miscellaneous.utils import init_function, send_telegram_picture, teacher_network_pass
-from model.resnet_models import get_model_resnet, get_model_vgg
+from model.models import VGG, Resnet, Mobilenet_v3, Inception_v3
 from scripts.OSM_generator import test_crossing_pose
+
+# from torch.optim.lr_scheduler import MultiStepLR, ReduceLROnPlateau
 
 warnings.filterwarnings("ignore")
 
@@ -77,10 +77,21 @@ def main(args):
 
     # Build Model
     if 'vgg' in args.model:
-        model = get_model_vgg(args.model, args.num_classes, pretrained=args.pretrained, embedding=args.triplet)
+        model = VGG(pretrained=args.pretrained, embeddings=args.triplet, num_classes=args.num_classes,
+                    version=args.model)
+    elif 'resnet' in args.model:
+        model = Resnet(pretrained=args.pretrained, embeddings=args.triplet, num_classes=args.num_classes,
+                       version=args.model)
+    elif 'mobilenet' in args.model:
+        model = Mobilenet_v3(pretrained=args.pretrained, embeddings=args.triplet, num_classes=args.num_classes,
+                             version=args.model)
+    elif 'inception' in args.model:
+        model = Inception_v3(pretrained=args.pretrained, embeddings=args.triplet, num_classes=args.num_classes,
+                             version=args.model)
     else:
-        model = get_model_resnet(args.model, args.num_classes, pretrained=args.pretrained, greyscale=False,
-                                 embedding=args.triplet)
+        print('Wrong model selection')
+        exit(-1)
+
     if torch.cuda.is_available() and args.use_gpu:
         model = model.cuda()
 
@@ -131,8 +142,7 @@ def main(args):
             gt_OSM = obsTransforms(gt_OSM[0])
             gt_list.append(gt_OSM.unsqueeze(0))
 
-        savepath = train(args, model, optimizer, dataloader_train, dataloader_val, dataset_train, dataset_val,
-                         GLOBAL_EPOCH, gt_list)
+        savepath = train(args, model, optimizer, dataloader_train, dataloader_val, GLOBAL_EPOCH, gt_list)
 
     # List all test folders
     if args.test:
@@ -356,7 +366,7 @@ def validation(args, model, criterion, dataloader_val, random_rate, gtlist=None)
     return conf_matrix, acc, loss_val_mean
 
 
-def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_train, dataset_val, GLOBAL_EPOCH, gtlist):
+def train(args, model, optimizer, dataloader_train, dataloader_val, GLOBAL_EPOCH, gtlist):
     if not os.path.isdir(args.save_model_path):
         os.mkdir(args.save_model_path)
 
@@ -549,7 +559,8 @@ if __name__ == '__main__':
                                                                  'accuracy through different iterations, ie, '
                                                                  'having the same comparison images every run')
 
-    parser.add_argument('--testdataset', type=str, default='osm', choices=['osm', 'generated'], help='dataloader for test')
+    parser.add_argument('--testdataset', type=str, default='osm', choices=['osm', 'generated'],
+                        help='dataloader for test')
     parser.add_argument('--dataset_train_elements', type=int, default=2000, help='see teacher_tripletloss_generated')
     parser.add_argument('--dataset_val_elements', type=int, default=100, help='see teacher_tripletloss_generated')
     parser.add_argument('--dataset_test_elements', type=int, default=1000, help='see teacher_tripletloss_generated')
@@ -581,11 +592,12 @@ if __name__ == '__main__':
     # NETWORK PARAMETERS (FOR BACKBONE) #
     #####################################
     parser.add_argument('--model', type=str, default="resnet18",
-                        choices=['resnet18', 'vgg11', 'vgg13', 'vgg16', 'vgg19'],
+                        choices=['resnet18', 'vgg11', 'vgg13', 'vgg16', 'vgg19', 'inception_v3', 'mobilenet_v3_large',
+                                 'mobilenet_v3_small'],
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
     parser.add_argument('--num_epochs', type=int, default=15, help='Number of epochs to train for')
-    parser.add_argument('--validation_step', type=int, default=2, help='How often to perform validation and a '
+    parser.add_argument('--validation_step', type=int, default=1, help='How often to perform validation and a '
                                                                        'checkpoint (epochs)')
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate used for train')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum used for train')
