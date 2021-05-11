@@ -26,6 +26,27 @@ from scripts.OSM_generator import test_crossing_pose
 
 warnings.filterwarnings("ignore")
 
+def str2bool(v):
+    """
+    Parsing boolean values with argparse
+    https://stackoverflow.com/questions/15008758/parsing-boolean-values-with-argparse
+
+    Args:
+        v:
+
+    Returns:
+
+    """
+
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 
 def main(args):
     # Try to avoid randomness -- https://pytorch.org/docs/stable/notes/randomness.html
@@ -546,8 +567,7 @@ if __name__ == '__main__':
                                                              'as documented in '
                                                              'in https://docs.wandb.com/sweeps/configuration#command')
     parser.add_argument('--telegram', action='store_true', help='Send info through Telegram')
-
-    parser.add_argument('--triplet', action='store_true', help='Triplet Loss')
+    parser.add_argument('--triplet', type=str2bool, nargs='?', const=True, default=False, help='scheduling lr')
     parser.add_argument('--swap', action='store_true', help='Triplet Loss swap')
     parser.add_argument('--margin', type=float, default=2.0, help='margin in triplet')
     parser.add_argument('--no_noise', action='store_true', help='In case you want to disable the noise injection in '
