@@ -95,7 +95,7 @@ class VGG(torch.nn.Module):
         return prediction
 
 
-class Mobilenet_v3:
+class Mobilenet_v3(torch.nn.Module):
 
     def __init__(self, pretrained=True, embeddings=False, num_classes=None, version='mobilenet_v3_small'):
         super().__init__()
@@ -132,7 +132,7 @@ class Mobilenet_v3:
         return prediction
 
 
-class Inception_v3:
+class Inception_v3(torch.nn.Module):
 
     def __init__(self, pretrained=True, embeddings=False, num_classes=None):
         super().__init__()

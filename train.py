@@ -32,7 +32,7 @@ from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTe
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanobis_testing, lstm_network_pass, \
     svm_testing_lstm, mahalanobis_testing_lstm
-from model.models import Resnet18, LSTM, Freezed_Resnet, GRU, VGG
+from model.models import Resnet, LSTM, Freezed_Resnet, GRU, VGG
 
 
 def str2bool(v):
@@ -81,14 +81,14 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     # The embeddings should be returned if we are using Techer/Student or triplet loss
     return_embeddings = args.embedding or args.triplet or args.metric
     if args.model == 'resnet18':
-        model = Resnet18(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
+        model = Resnet(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
     elif args.model == 'vgg11':
         model = VGG(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
     elif args.model == 'LSTM':
         model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
                      num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
         if args.feature_model == 'resnet18':
-            feature_extractor_model = Resnet18(pretrained=False, embeddings=True, num_classes=args.num_classes)
+            feature_extractor_model = Resnet(pretrained=False, embeddings=True, num_classes=args.num_classes)
         if args.feature_model == 'vgg11':
             feature_extractor_model = VGG(pretrained=False, embeddings=True, num_classes=args.num_classes)
 
@@ -1036,7 +1036,7 @@ def main(args, model=None):
             return_embeddings = args.embedding or args.triplet or args.metric
 
             if args.model == 'resnet18':
-                model = Resnet18(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
+                model = Resnet(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
             elif args.model == 'vgg11':
                 model = VGG(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
             elif args.model == 'freezed_resnet':
@@ -1049,7 +1049,7 @@ def main(args, model=None):
                     model = GRU(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
                                  num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
                 if args.feature_model == 'resnet18':
-                    feature_extractor_model = Resnet18(pretrained=False, embeddings=True, num_classes=args.num_classes)
+                    feature_extractor_model = Resnet(pretrained=False, embeddings=True, num_classes=args.num_classes)
                 if args.feature_model == 'vgg11':
                     feature_extractor_model = VGG(pretrained=False, embeddings=True, num_classes=args.num_classes)
 
