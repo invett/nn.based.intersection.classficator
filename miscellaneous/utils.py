@@ -315,7 +315,12 @@ def teacher_network_pass(args, sample, model, criterion, gt_list=None):
         output = model(data)
 
         # Calculate the loss
-        loss = criterion(output, label)
+        if args.model == 'inception_v3':
+            loss_aux = criterion(output[1], label)
+            loss = criterion(output[0], label)
+            loss = loss + loss_aux * 0.4
+        else:
+            loss = criterion(output, label)
 
         # Calculate the accuracy
         predict = torch.argmax(output, 1)

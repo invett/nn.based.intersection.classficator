@@ -26,6 +26,7 @@ from scripts.OSM_generator import test_crossing_pose
 
 warnings.filterwarnings("ignore")
 
+
 def str2bool(v):
     """
     Parsing boolean values with argparse
@@ -430,7 +431,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, GLOBAL_EPOCH
         for sample in dataloader_train:
             # network pass for the sample
             if args.triplet:
-                sample_acc, loss = teacher_network_pass(args, sample, model, criterion)
+                sample_acc, loss = teacher_network_pass(args, sample, model, criterion, gt_list=gtlist)
             else:
                 sample_acc, loss, _, _ = teacher_network_pass(args, sample, model, criterion)
 
@@ -611,7 +612,8 @@ if __name__ == '__main__':
     # NETWORK PARAMETERS (FOR BACKBONE) #
     #####################################
     parser.add_argument('--model', type=str, default="resnet18",
-                        choices=['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152', 'vgg11', 'vgg13', 'vgg16', 'vgg19', 'inception_v3', 'mobilenet_v3_large',
+                        choices=['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152', 'vgg11', 'vgg13',
+                                 'vgg16', 'vgg19', 'inception_v3', 'mobilenet_v3_large',
                                  'mobilenet_v3_small'],
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
