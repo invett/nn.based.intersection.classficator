@@ -113,13 +113,13 @@ class Mobilenet_v3(torch.nn.Module):
 
         if embeddings:
             self.classifier = model.classifier
-            if version == 'small':
+            if version == 'mobilenet_v3_small':
                 self.classifier[3] = torch.nn.Linear(1024, 512)
             else:
                 self.classifier[3] = torch.nn.Linear(1280, 512)
         else:
             self.classifier = model.classifier
-            if version == 'small':
+            if version == 'mobilenet_v3_small':
                 self.classifier[3] = torch.nn.Linear(1024, num_classes)
             else:
                 self.classifier[3] = torch.nn.Linear(1280, num_classes)
@@ -127,7 +127,7 @@ class Mobilenet_v3(torch.nn.Module):
     def forward(self, data):
         features = self.features(data)
         avg = self.avgpool(features)
-        prediction = self.classifier(avg)
+        prediction = self.classifier(avg.squeeze())
 
         return prediction
 
@@ -143,10 +143,10 @@ class Inception_v3(torch.nn.Module):
 
         if embeddings:
             self.model.fc = torch.nn.Linear(2048, 512)
-            self.model.AuxLogits.fc = torch.nn.Linear(2048, 512)
+            self.model.AuxLogits.fc = torch.nn.Linear(768, 512)
         else:
             self.model.fc = torch.nn.Linear(2048, num_classes)
-            self.model.AuxLogits.fc = torch.nn.Linear(2048, num_classes)
+            self.model.AuxLogits.fc = torch.nn.Linear(768, num_classes)
 
     def forward(self, data):
         prediction, aux_logits = self.model(data)

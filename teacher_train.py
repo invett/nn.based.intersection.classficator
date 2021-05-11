@@ -102,6 +102,8 @@ def main(args):
             optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum)
         elif args.optimizer == 'adam':
             optimizer = torch.optim.Adam(model.parameters(), args.lr)
+        elif args.optimizer == 'adamW':
+            optimizer = torch.optim.AdamW(model.parameters(), args.lr, weight_decay=5e-4)
         elif args.optimizer == 'ASGD':
             optimizer = torch.optim.ASGD(model.parameters(), args.lr)
         elif args.optimizer == 'Adamax':
@@ -113,7 +115,7 @@ def main(args):
         # Transforms for osm images
         if args.model == 'inception_v3':
             osmTransforms = transforms.Compose(
-                [transforms.ToPILImage(), transforms.Resize((229, 229)), transforms.ToTensor()])
+                [transforms.ToPILImage(), transforms.Resize((299, 299)), transforms.ToTensor()])
         else:
             osmTransforms = transforms.Compose(
                 [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
@@ -141,7 +143,6 @@ def main(args):
                                         random_rate=1.0)
             gt_OSM = osmTransforms(gt_OSM[0])
             gt_list.append(gt_OSM.unsqueeze(0))
-
         savepath = train(args, model, optimizer, dataloader_train, dataloader_val, GLOBAL_EPOCH, gt_list)
 
     # List all test folders
@@ -393,7 +394,6 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, GLOBAL_EPOCH
         current_random_rate = 1.0
 
     # scheduler = ReduceLROnPlateau(optimizer, 'min', verbose=True, patience=0, threshold=1e-2)
-
     for epoch in range(args.num_epochs):
         with GLOBAL_EPOCH.get_lock():
             GLOBAL_EPOCH.value = epoch
@@ -406,7 +406,6 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, GLOBAL_EPOCH
         # Optionally update the random rate for teacher_tripletloss_generated
         if args.enable_random_rate:
             random_rate = dataloader_train.dataset.set_random_rate(current_random_rate)
-
         for sample in dataloader_train:
             # network pass for the sample
             if args.triplet:
@@ -592,7 +591,7 @@ if __name__ == '__main__':
     # NETWORK PARAMETERS (FOR BACKBONE) #
     #####################################
     parser.add_argument('--model', type=str, default="resnet18",
-                        choices=['resnet18', 'vgg11', 'vgg13', 'vgg16', 'vgg19', 'inception_v3', 'mobilenet_v3_large',
+                        choices=['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152', 'vgg11', 'vgg13', 'vgg16', 'vgg19', 'inception_v3', 'mobilenet_v3_large',
                                  'mobilenet_v3_small'],
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
