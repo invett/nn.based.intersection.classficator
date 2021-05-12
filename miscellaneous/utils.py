@@ -990,16 +990,20 @@ def gt_validation(output, gt_list, criterion=None):
 
 def gt_triplet_validation(out_anchor, model, gt_list):
     l = []
-    criterion = torch.nn.SmoothL1Loss(reduction='mean')
-    for batch_item in out_anchor:
-        for gt in gt_list:
-            gt = gt.cuda()
-            gt_prediction = model(gt)
-            l.append(criterion(batch_item, gt_prediction).item())  # Revisar esto
-    nplist = np.array(l)
-    nplist = nplist.reshape(-1, 7)
-    classification = np.argmin(nplist, axis=1)
-
+    model.eval()
+    with torch.no_grad():
+        criterion = torch.nn.SmoothL1Loss(reduction='mean')
+        for batch_item in out_anchor:
+            for gt in gt_list:
+                gt = gt.cuda()
+                gt_prediction = model(gt)
+                if isinstance(gt_prediction, tuple):
+                    gt_prediction = gt_prediction[0]
+                l.append(criterion(batch_item, gt_prediction).item())
+        nplist = np.array(l)
+        nplist = nplist.reshape(-1, 7)
+        classification = np.argmin(nplist, axis=1)
+    model.train()
     return classification
 
 
