@@ -453,7 +453,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, GLOBAL_EPOCH
 
         # Calculate metrics
         loss_train_mean = loss_record / len(dataloader_train)
-        if args.triplet:
+        if args.triplet and gtlist is None:
             acc_train = acc_record / (len(dataloader_train) * args.batch_size)
         else:
             acc_train = acc_record / len(dataloader_train)
