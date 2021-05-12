@@ -23,18 +23,17 @@
 """
 SAVING_CALLS = False
 
-import tkinter as tk
-from tkinter import simpledialog
 import os
 import pickle
 import shutil
 from os import listdir
-import imutils
-import json
 
 import cv2
+import imutils
 import numpy as np
-import random
+import tkinter as tk
+from tkinter import simpledialog
+
 from miscellaneous.utils import split_dataset
 
 # datasets: KITTI360 | ALCALA | OXFORD | KITTI-ROAD
@@ -94,7 +93,7 @@ if dataset == 'GAN':
     #         rename  's/conditional-5-//g' *.png
     #         rename  's/conditional-6-//g' *.png
 
-    base_folder = '/tmp/generated_samples'
+    base_folder = '/mnt/d/images'
     extract_field_from_path = 5
 
     folders = ['1', '2', '3', '4', '5', '6']
@@ -350,14 +349,14 @@ f12 = 201
 
 files = []
 
-img_type_0 = cv2.imread('../wiki/images/0.png')
-img_type_1 = cv2.imread('../wiki/images/1.png')
-img_type_2 = cv2.imread('../wiki/images/2.png')
-img_type_3 = cv2.imread('../wiki/images/3.png')
-img_type_4 = cv2.imread('../wiki/images/4.png')
-img_type_5 = cv2.imread('../wiki/images/5.png')
-img_type_6 = cv2.imread('../wiki/images/6.png')
-img_type_all = cv2.imread('../wiki/images/all.png')
+img_type_0 = cv2.imread('./wiki/images/0.png')
+img_type_1 = cv2.imread('./wiki/images/1.png')
+img_type_2 = cv2.imread('./wiki/images/2.png')
+img_type_3 = cv2.imread('./wiki/images/3.png')
+img_type_4 = cv2.imread('./wiki/images/4.png')
+img_type_5 = cv2.imread('./wiki/images/5.png')
+img_type_6 = cv2.imread('./wiki/images/6.png')
+img_type_all = cv2.imread('./wiki/images/all.png')
 
 scale_percent = 200  # percent of original size
 width = int(img_type_0.shape[1] * scale_percent / 100)

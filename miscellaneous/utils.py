@@ -278,13 +278,20 @@ def teacher_network_pass(args, sample, model, criterion, gt_list=None):
             negative = negative.cuda()
 
         # Obtain predicion results
-        out_anchor = model(anchor)
-        out_positive = model(positive)
-        out_negative = model(negative)
+        if args.model == 'inception_v3':
+            out_anchor, aux_anchor = model(anchor)
+            out_positive, aux_positive = model(positive)
+            out_negative, aux_negative = model(negative)
+        else:
+            out_anchor = model(anchor)
+            out_positive = model(positive)
+            out_negative = model(negative)
 
         # Calculate the loss
         loss = criterion(out_anchor, out_positive, out_negative)
-
+        if args.model == 'inception_v3':
+            loss_aux = criterion(aux_anchor, aux_positive, aux_negative)
+            loss = loss + loss_aux * 0.4
         # Calculate the accuracy
         if gt_list is not None:
             predict = gt_triplet_validation(out_anchor, model, gt_list)
@@ -308,7 +315,12 @@ def teacher_network_pass(args, sample, model, criterion, gt_list=None):
         output = model(data)
 
         # Calculate the loss
-        loss = criterion(output, label)
+        if args.model == 'inception_v3':
+            loss_aux = criterion(output[1], label)
+            loss = criterion(output[0], label)
+            loss = loss + loss_aux * 0.4
+        else:
+            loss = criterion(output, label)
 
         # Calculate the accuracy
         predict = torch.argmax(output, 1)
@@ -978,16 +990,20 @@ def gt_validation(output, gt_list, criterion=None):
 
 def gt_triplet_validation(out_anchor, model, gt_list):
     l = []
-    criterion = torch.nn.SmoothL1Loss(reduction='mean')
-    for batch_item in out_anchor:
-        for gt in gt_list:
-            gt = gt.cuda()
-            gt_prediction = model(gt)
-            l.append(criterion(batch_item, gt_prediction).item())  # Revisar esto
-    nplist = np.array(l)
-    nplist = nplist.reshape(-1, 7)
-    classification = np.argmin(nplist, axis=1)
-
+    model.eval()
+    with torch.no_grad():
+        criterion = torch.nn.SmoothL1Loss(reduction='mean')
+        for batch_item in out_anchor:
+            for gt in gt_list:
+                gt = gt.cuda()
+                gt_prediction = model(gt)
+                if isinstance(gt_prediction, tuple):
+                    gt_prediction = gt_prediction[0]
+                l.append(criterion(batch_item, gt_prediction).item())
+        nplist = np.array(l)
+        nplist = nplist.reshape(-1, 7)
+        classification = np.argmin(nplist, axis=1)
+    model.train()
     return classification
 
 

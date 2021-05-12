@@ -4,13 +4,23 @@ import torch
 from torchvision import models
 
 
-class Resnet18(torch.nn.Module):
+class Resnet(torch.nn.Module):
 
-    def __init__(self, pretrained=True, embeddings=False, num_classes=None):
+    def __init__(self, pretrained=True, embeddings=False, num_classes=None, version='resnet18'):
         super().__init__()
         self.embeddings = embeddings
+        self.version = version
 
-        model = models.resnet18(pretrained=pretrained)
+        if version == 'resnet18':
+            model = models.resnet18(pretrained=pretrained)
+        if version == 'resnet34':
+            model = models.resnet34(pretrained=pretrained)
+        if version == 'resnet50':
+            model = models.resnet50(pretrained=pretrained)
+        if version == 'resnet101':
+            model = models.resnet101(pretrained=pretrained)
+        if version == 'resnet152':
+            model = models.resnet152(pretrained=pretrained)
 
         self.conv1 = model.conv1
         self.bn1 = model.bn1
@@ -23,7 +33,13 @@ class Resnet18(torch.nn.Module):
         self.avgpool = model.avgpool
 
         if not embeddings:
-            self.fc = torch.nn.Linear(512, num_classes)
+            if version == 'resnet18' or version == 'resnet34':
+                self.fc = torch.nn.Linear(512, num_classes)
+            else:
+                self.fc = torch.nn.Linear(2048, num_classes)
+        else:
+            if version == 'resnet50' or version == 'resnet101' or version == 'resnet152':
+                self.reducer = torch.nn.Linear(2048, 512)
 
     def forward(self, data):
         x = self.conv1(data)
@@ -35,17 +51,29 @@ class Resnet18(torch.nn.Module):
         feature4 = self.layer4(feature3)
         embedding = self.avgpool(feature4)
         if self.embeddings:
-            return embedding.squeeze()
+            if self.version == 'resnet18' or self.version == 'resnet34':
+                return embedding.squeeze()
+            else:
+                embedding = self.reducer(embedding.squeeze())
+                return embedding
         else:
-            prediction = self.fc(embedding)
+            prediction = self.fc(embedding.squeeze())
             return prediction
 
 
-class Vgg11(torch.nn.Module):
+class VGG(torch.nn.Module):
 
-    def __init__(self, pretrained=True, embeddings=False, num_classes=None):
+    def __init__(self, pretrained=True, embeddings=False, num_classes=None, version='vgg11'):
         super().__init__()
-        model = models.vgg11(pretrained=pretrained)
+        if version == 'vgg11':
+            model = models.vgg11_bn(pretrained=pretrained)
+        if version == 'vgg13':
+            model = models.vgg13_bn(pretrained=pretrained)
+        if version == 'vgg16':
+            model = models.vgg16_bn(pretrained=pretrained)
+        if version == 'vgg19':
+            model = models.vgg19_bn(pretrained=pretrained)
+
         self.embeddings = embeddings
 
         self.features = model.features
@@ -67,28 +95,87 @@ class Vgg11(torch.nn.Module):
         return prediction
 
 
-class Freezed_Resnet(Resnet18, torch.nn.Module):
+class Mobilenet_v3(torch.nn.Module):
+
+    def __init__(self, pretrained=True, embeddings=False, num_classes=None, version='mobilenet_v3_small'):
+        super().__init__()
+
+        self.embeddings = embeddings
+        self.version = version
+
+        if version == 'mobilenet_v3_large':
+            model = models.mobilenet_v3_large(pretrained=pretrained)
+        if version == 'mobilenet_v3_small':
+            model = models.mobilenet_v3_small(pretrained=pretrained)
+
+        self.features = model.features
+        self.avgpool = model.avgpool
+
+        if embeddings:
+            self.classifier = model.classifier
+            if version == 'mobilenet_v3_small':
+                self.classifier[3] = torch.nn.Linear(1024, 512)
+            else:
+                self.classifier[3] = torch.nn.Linear(1280, 512)
+        else:
+            self.classifier = model.classifier
+            if version == 'mobilenet_v3_small':
+                self.classifier[3] = torch.nn.Linear(1024, num_classes)
+            else:
+                self.classifier[3] = torch.nn.Linear(1280, num_classes)
+
+    def forward(self, data):
+        features = self.features(data)
+        avg = self.avgpool(features)
+        prediction = self.classifier(avg.squeeze())
+
+        return prediction
+
+
+class Inception_v3(torch.nn.Module):
+
+    def __init__(self, pretrained=True, embeddings=False, num_classes=None):
+        super().__init__()
+
+        self.embeddings = embeddings
+
+        self.model = models.inception_v3(pretrained=pretrained)
+
+        if embeddings:
+            self.model.fc = torch.nn.Linear(2048, 512)
+            self.model.AuxLogits.fc = torch.nn.Linear(768, 512)
+        else:
+            self.model.fc = torch.nn.Linear(2048, num_classes)
+            self.model.AuxLogits.fc = torch.nn.Linear(768, num_classes)
+
+    def forward(self, data):
+        prediction, aux_logits = self.model(data)
+
+        return prediction, aux_logits
+
+
+class Freezed_Resnet(Resnet, torch.nn.Module):
     def __init__(self, load_path, num_classes):
-        Resnet18.__init__(embeddings=True)
-        self.load_model(Resnet18, load_path)
+        Resnet.__init__(embeddings=True)
+        self.load_model(Resnet, load_path)
         self.fc = torch.nn.Linear(512, num_classes)
 
     def forward(self, data):
-        feature = Resnet18.forward(data)
+        feature = Resnet.forward(data)
         prediction = self.fc(feature)
 
         return prediction
 
-    def load_model(Resnet18, load_path):
+    def load_model(Resnet, load_path):
         if os.path.isfile(load_path):
             print("=> loading checkpoint '{}'".format(load_path))
             checkpoint = torch.load(load_path, map_location='cpu')
-            Resnet18.load_state_dict(checkpoint['model_state_dict'])
+            Resnet.load_state_dict(checkpoint['model_state_dict'])
             print("=> loaded checkpoint {}".format(load_path))
         else:
             print("=> no checkpoint found at {}".format(load_path))
 
-        for param in Resnet18.parameters():
+        for param in Resnet.parameters():
             param.requires_grad = False
 
 
@@ -148,7 +235,7 @@ class GRU(torch.nn.Module):
 
         self.embeddings = embeddings
         self.gru = torch.nn.GRU(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers,
-                                  batch_first=True, dropout=lstm_dropout)
+                                batch_first=True, dropout=lstm_dropout)
         if not embeddings:
             self.fc = torch.nn.Linear(hidden_size, num_classes)
             self.drop = torch.nn.Dropout(p=fc_dropout)

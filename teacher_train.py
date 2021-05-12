@@ -13,18 +13,40 @@ import seaborn as sn
 import torch
 import torchvision.transforms as transforms
 import tqdm
-import wandb
 from sklearn.metrics import accuracy_score
-from torch import nn
 from torch.utils.data import DataLoader
-# from torch.optim.lr_scheduler import MultiStepLR, ReduceLROnPlateau
 
+import wandb
 from dataloaders.sequencedataloader import teacher_tripletloss, teacher_tripletloss_generated
 from miscellaneous.utils import init_function, send_telegram_picture, teacher_network_pass
-from model.resnet_models import get_model_resnet, get_model_vgg
+from model.models import VGG, Resnet, Mobilenet_v3, Inception_v3
 from scripts.OSM_generator import test_crossing_pose
 
+# from torch.optim.lr_scheduler import MultiStepLR, ReduceLROnPlateau
+
 warnings.filterwarnings("ignore")
+
+
+def str2bool(v):
+    """
+    Parsing boolean values with argparse
+    https://stackoverflow.com/questions/15008758/parsing-boolean-values-with-argparse
+
+    Args:
+        v:
+
+    Returns:
+
+    """
+
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
 def main(args):
@@ -58,29 +80,39 @@ def main(args):
     # if nowandb flag was set, skip
     if not args.nowandb:
         if args.sweep:
-            wandb.init(project="nn-based-intersection-classficator", entity="chiringuito", group="Teacher_train_sweep",
+            wandb.init(project="journal_trainings", entity="chiringuito", group="Teacher_train_sweep",
                        job_type="sweep", tags=["Teacher", "sweep", "class", hostname],
                        config=hyperparameter_defaults)
             args = wandb.config
         else:
             if args.test:
-                wandb.init(project="nn-based-intersection-classficator", entity="chiringuito",
-                           group="Teacher_train",
-                           job_type="eval", tags=["Teacher", "ultimate", "class", hostname],
+                wandb.init(project="journal_trainings", entity="chiringuito",
+                           group="Teacher Evaluation",
+                           job_type="eval", tags=["Teacher", "class", hostname],
                            config=hyperparameter_defaults)
             else:
-                wandb.init(project="nn-based-intersection-classficator", entity="chiringuito",
-                           group="Teacher_train",
-                           job_type="training", tags=["Teacher", "ultimate", "class", hostname],
+                wandb.init(project="journal_trainings", entity="chiringuito",
+                           group="Teacher Train",
+                           job_type="training", tags=["Teacher", "class", hostname],
                            config=hyperparameter_defaults)
             wandb.config.update(args, allow_val_change=True)
 
     # Build Model
     if 'vgg' in args.model:
-        model = get_model_vgg(args.model, args.num_classes, pretrained=args.pretrained, embedding=args.triplet)
+        model = VGG(pretrained=args.pretrained, embeddings=args.triplet, num_classes=args.num_classes,
+                    version=args.model)
+    elif 'resnet' in args.model:
+        model = Resnet(pretrained=args.pretrained, embeddings=args.triplet, num_classes=args.num_classes,
+                       version=args.model)
+    elif 'mobilenet' in args.model:
+        model = Mobilenet_v3(pretrained=args.pretrained, embeddings=args.triplet, num_classes=args.num_classes,
+                             version=args.model)
+    elif 'inception' in args.model:
+        model = Inception_v3(pretrained=args.pretrained, embeddings=args.triplet, num_classes=args.num_classes)
     else:
-        model = get_model_resnet(args.model, args.num_classes, pretrained=args.pretrained, greyscale=False,
-                                 embedding=args.triplet)
+        print('Wrong model selection')
+        exit(-1)
+
     if torch.cuda.is_available() and args.use_gpu:
         model = model.cuda()
 
@@ -92,6 +124,8 @@ def main(args):
             optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum)
         elif args.optimizer == 'adam':
             optimizer = torch.optim.Adam(model.parameters(), args.lr)
+        elif args.optimizer == 'adamW':
+            optimizer = torch.optim.AdamW(model.parameters(), args.lr, weight_decay=5e-4)
         elif args.optimizer == 'ASGD':
             optimizer = torch.optim.ASGD(model.parameters(), args.lr)
         elif args.optimizer == 'Adamax':
@@ -100,19 +134,21 @@ def main(args):
             print('not supported optimizer \n')
             exit()
 
+        # Transforms for osm images
+        if args.model == 'inception_v3':
+            osmTransforms = transforms.Compose(
+                [transforms.ToPILImage(), transforms.Resize((299, 299)), transforms.ToTensor()])
+        else:
+            osmTransforms = transforms.Compose(
+                [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
+
         # In both, set canonical to False to speedup the process; canonical won't be used for train/validate.
         dataset_train = teacher_tripletloss_generated(elements=args.dataset_train_elements,
-                                                      transform=transforms.Compose([transforms.ToPILImage(),
-                                                                                    transforms.Resize((224, 224)),
-                                                                                    transforms.ToTensor()
-                                                                                    ]),
+                                                      transform=osmTransforms,
                                                       canonical=False,
                                                       noise=addnoise)
         dataset_val = teacher_tripletloss_generated(elements=args.dataset_val_elements,
-                                                    transform=transforms.Compose([transforms.ToPILImage(),
-                                                                                  transforms.Resize((224, 224)),
-                                                                                  transforms.ToTensor(),
-                                                                                  ]),
+                                                    transform=osmTransforms,
                                                     canonical=False,
                                                     noise=addnoise)
 
@@ -123,16 +159,13 @@ def main(args):
 
         # Create ground truth list
         gt_list = []
-        obsTransforms = transforms.Compose(
-            [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
+
         for crossing_type in range(7):
             gt_OSM = test_crossing_pose(crossing_type=crossing_type, save=False, noise=True, sampling=False,
                                         random_rate=1.0)
-            gt_OSM = obsTransforms(gt_OSM[0])
+            gt_OSM = osmTransforms(gt_OSM[0])
             gt_list.append(gt_OSM.unsqueeze(0))
-
-        savepath = train(args, model, optimizer, dataloader_train, dataloader_val, dataset_train, dataset_val,
-                         GLOBAL_EPOCH, gt_list)
+        savepath = train(args, model, optimizer, dataloader_train, dataloader_val, GLOBAL_EPOCH, gt_list)
 
     # List all test folders
     if args.test:
@@ -356,7 +389,7 @@ def validation(args, model, criterion, dataloader_val, random_rate, gtlist=None)
     return conf_matrix, acc, loss_val_mean
 
 
-def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_train, dataset_val, GLOBAL_EPOCH, gtlist):
+def train(args, model, optimizer, dataloader_train, dataloader_val, GLOBAL_EPOCH, gtlist):
     if not os.path.isdir(args.save_model_path):
         os.mkdir(args.save_model_path)
 
@@ -383,7 +416,6 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
         current_random_rate = 1.0
 
     # scheduler = ReduceLROnPlateau(optimizer, 'min', verbose=True, patience=0, threshold=1e-2)
-
     for epoch in range(args.num_epochs):
         with GLOBAL_EPOCH.get_lock():
             GLOBAL_EPOCH.value = epoch
@@ -396,11 +428,13 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, dataset_trai
         # Optionally update the random rate for teacher_tripletloss_generated
         if args.enable_random_rate:
             random_rate = dataloader_train.dataset.set_random_rate(current_random_rate)
-
         for sample in dataloader_train:
             # network pass for the sample
             if args.triplet:
-                sample_acc, loss = teacher_network_pass(args, sample, model, criterion)
+                if gtlist is not None:
+                    sample_acc, loss, _, _ = teacher_network_pass(args, sample, model, criterion, gt_list=gtlist)
+                else:
+                    sample_acc, loss = teacher_network_pass(args, sample, model, criterion, gt_list=gtlist)
             else:
                 sample_acc, loss, _, _ = teacher_network_pass(args, sample, model, criterion)
 
@@ -537,8 +571,7 @@ if __name__ == '__main__':
                                                              'as documented in '
                                                              'in https://docs.wandb.com/sweeps/configuration#command')
     parser.add_argument('--telegram', action='store_true', help='Send info through Telegram')
-
-    parser.add_argument('--triplet', action='store_true', help='Triplet Loss')
+    parser.add_argument('--triplet', type=str2bool, nargs='?', const=True, default=False, help='scheduling lr')
     parser.add_argument('--swap', action='store_true', help='Triplet Loss swap')
     parser.add_argument('--margin', type=float, default=2.0, help='margin in triplet')
     parser.add_argument('--no_noise', action='store_true', help='In case you want to disable the noise injection in '
@@ -549,7 +582,8 @@ if __name__ == '__main__':
                                                                  'accuracy through different iterations, ie, '
                                                                  'having the same comparison images every run')
 
-    parser.add_argument('--testdataset', type=str, default='osm', choices=['osm', 'generated'], help='dataloader for test')
+    parser.add_argument('--testdataset', type=str, default='osm', choices=['osm', 'generated'],
+                        help='dataloader for test')
     parser.add_argument('--dataset_train_elements', type=int, default=2000, help='see teacher_tripletloss_generated')
     parser.add_argument('--dataset_val_elements', type=int, default=100, help='see teacher_tripletloss_generated')
     parser.add_argument('--dataset_test_elements', type=int, default=1000, help='see teacher_tripletloss_generated')
@@ -581,11 +615,13 @@ if __name__ == '__main__':
     # NETWORK PARAMETERS (FOR BACKBONE) #
     #####################################
     parser.add_argument('--model', type=str, default="resnet18",
-                        choices=['resnet18', 'vgg11', 'vgg13', 'vgg16', 'vgg19'],
+                        choices=['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152', 'vgg11', 'vgg13',
+                                 'vgg16', 'vgg19', 'inception_v3', 'mobilenet_v3_large',
+                                 'mobilenet_v3_small'],
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
     parser.add_argument('--num_epochs', type=int, default=15, help='Number of epochs to train for')
-    parser.add_argument('--validation_step', type=int, default=2, help='How often to perform validation and a '
+    parser.add_argument('--validation_step', type=int, default=1, help='How often to perform validation and a '
                                                                        'checkpoint (epochs)')
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate used for train')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum used for train')
