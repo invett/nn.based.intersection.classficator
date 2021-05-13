@@ -171,12 +171,17 @@ def main(args):
     if args.test:
         # Create ground truth list
         gt_list = []
-        obsTransforms = transforms.Compose(
-            [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
+        # Transforms for osm images
+        if args.model == 'inception_v3':
+            osmTransforms = transforms.Compose(
+                [transforms.ToPILImage(), transforms.Resize((299, 299)), transforms.ToTensor()])
+        else:
+            osmTransforms = transforms.Compose(
+                [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
         for crossing_type in range(7):
             gt_OSM = test_crossing_pose(crossing_type=crossing_type, save=False, noise=True, sampling=False,
                                         random_rate=1.0)
-            gt_OSM = obsTransforms(gt_OSM[0])
+            gt_OSM = osmTransforms(gt_OSM[0])
             gt_list.append(gt_OSM.unsqueeze(0))
 
         if args.testdataset == 'osm':
@@ -184,11 +189,7 @@ def main(args):
                                 os.path.isdir(os.path.join(args.dataset, folder))])
 
             dataset_test = teacher_tripletloss(folders, args.distance,
-                                               transform=transforms.Compose([transforms.ToPILImage(),
-                                                                             transforms.Resize(
-                                                                                 (224, 224)),
-                                                                             transforms.ToTensor()
-                                                                             ]),
+                                               transform=osmTransforms,
                                                noise=addnoise,
                                                canonical=True)
         else:
