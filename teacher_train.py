@@ -240,17 +240,6 @@ def test(args, model, dataloader, gt_list):
             data = sample['anchor']
             label = sample['label_anchor']
 
-        # if args.canonical:
-        #    a = plt.figure()
-        #    plt.imshow(canonical.squeeze().numpy().transpose((1, 2, 0)))
-        #    send_telegram_picture(a, "canonical")
-        #    plt.close('all')
-
-        # a = plt.figure()
-        # plt.imshow(sample['anchor'].squeeze().numpy().transpose((1, 2, 0)))
-        # send_telegram_picture(a, "anchor")
-        # plt.close('all')
-
         if torch.cuda.is_available() and args.use_gpu:
             if args.triplet:
                 anchor = anchor.cuda()
