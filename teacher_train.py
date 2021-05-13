@@ -263,6 +263,9 @@ def test(args, model, dataloader, gt_list):
             for gt in gt_list:  # Compare with the 7 canoncial ground truth ONLY WORKS WITH BATCH 1
                 gt = gt.cuda()
                 gt_prediction = model(gt)
+                if args.model == 'inception_v3':
+                    gt_prediction = gt_prediction[0]
+                    out_anchor = out_anchor[0]
                 l.append(testcriterion(out_anchor, gt_prediction).item())
             nplist = np.array(l)
             nplist = nplist.reshape(-1, 7)
@@ -270,6 +273,8 @@ def test(args, model, dataloader, gt_list):
 
         else:
             output = model(data)
+            if args.model == 'inception_v3':
+                output = output[0]
 
         if args.triplet:
 
