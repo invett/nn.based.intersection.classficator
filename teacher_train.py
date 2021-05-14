@@ -319,6 +319,8 @@ def test(args, model, dataloader, gt_list):
     # This was used to show the vector in https://projector.tensorflow.org/
     if args.saveEmbeddings:
         all_embedding_matrix = np.asarray(all_embedding_matrix)
+        if not os.path.exists(args.saveEmbeddingsPath):
+            os.makedirs(args.saveEmbeddingsPath)
         np.savetxt(os.path.join(args.saveEmbeddingsPath, "all_embedding_matrix.txt"), np.asarray(all_embedding_matrix),
                    delimiter='\t')
         np.savetxt(os.path.join(args.saveEmbeddingsPath, "all_label_embedding_matrix.txt"), labelRecord, delimiter='\t')
