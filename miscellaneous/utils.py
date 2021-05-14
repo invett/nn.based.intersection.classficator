@@ -349,6 +349,9 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
             data = data.cuda()
 
         output = model(data)
+        if args.model == 'inception_v3':
+            output = output[0]
+            output_aux = output[1]
         output_gt = gt_list[label.squeeze()]  # --> Embeddings centroid of the label
 
         # save the embedding vector to return it - used in testing
@@ -361,8 +364,8 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
             loss = criterion(output.squeeze(), output_gt.cuda(), neg_output_gt.cuda())  # --> 128 x 512
         else:
             if args.model == 'inception_v3':
-                loss_aux = criterion(output[1].squeeze(), output_gt.cuda())
-                loss = criterion(output[0].squeeze(), output_gt.cuda())
+                loss_aux = criterion(output_aux.squeeze(), output_gt.cuda())
+                loss = criterion(output.squeeze(), output_gt.cuda())
                 loss = loss + loss_aux * 0.4
             else:
                 loss = criterion(output.squeeze(), output_gt.cuda())  # --> 128 x 512
@@ -372,9 +375,6 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
             weighted_tensor = weights[label.squeeze()]
             loss = loss * weighted_tensor.cuda().unsqueeze(1)
             loss = loss.mean()
-
-        if args.model == 'inception_v3':
-            output = output[0]
 
         if args.lossfunction == 'triplet':
             predict = gt_validation(output, gt_list)
