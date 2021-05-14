@@ -1053,10 +1053,19 @@ def main(args, model=None):
             # The embeddings should be returned if we are using Techer/Student or triplet loss
             return_embeddings = args.embedding or args.triplet or args.metric
 
-            if args.model == 'resnet18':
-                model = Resnet(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
-            elif args.model == 'vgg11':
-                model = VGG(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
+            if 'vgg' in args.model:
+                model = VGG(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
+                            version=args.model)
+            elif 'resnet' in args.model:
+                model = Resnet(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
+                               version=args.model)
+            elif 'mobilenet' in args.model:
+                model = Mobilenet_v3(pretrained=args.pretrained, embeddings=return_embeddings,
+                                     num_classes=args.num_classes,
+                                     version=args.model)
+            elif 'inception' in args.model:
+                model = Inception_v3(pretrained=args.pretrained, embeddings=return_embeddings,
+                                     num_classes=args.num_classes)
             elif args.model == 'freezed_resnet':
                 model = Freezed_Resnet(args.feature_detector_path, args.num_classes)
             elif args.model == 'LSTM' or args.model == 'GRU':
@@ -1083,6 +1092,9 @@ def main(args, model=None):
 
                 if torch.cuda.is_available() and args.use_gpu:
                     feature_extractor_model = feature_extractor_model.cuda()
+            else:
+                print('Wrong model selection')
+                exit(-1)
 
             if args.resume:
                 if os.path.isfile(args.resume):
