@@ -32,7 +32,7 @@ from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTe
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanobis_testing, lstm_network_pass, \
     svm_testing_lstm, mahalanobis_testing_lstm
-from model.models import Resnet, LSTM, Freezed_Resnet, GRU, VGG
+from model.models import Resnet, LSTM, Freezed_Resnet, GRU, VGG, Mobilenet_v3, Inception_v3
 
 
 def str2bool(v):
@@ -80,10 +80,18 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     # Build model
     # The embeddings should be returned if we are using Techer/Student or triplet loss
     return_embeddings = args.embedding or args.triplet or args.metric
-    if args.model == 'resnet18':
-        model = Resnet(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
-    elif args.model == 'vgg11':
-        model = VGG(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
+
+    if 'vgg' in args.model:
+        model = VGG(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
+                    version=args.model)
+    elif 'resnet' in args.model:
+        model = Resnet(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
+                       version=args.model)
+    elif 'mobilenet' in args.model:
+        model = Mobilenet_v3(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
+                             version=args.model)
+    elif 'inception' in args.model:
+        model = Inception_v3(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
     elif args.model == 'LSTM':
         model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
                      num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
@@ -100,6 +108,9 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
             print("=> loaded checkpoint '{}'".format(args.feature_detector_path))
         else:
             print("=> no checkpoint found at '{}'".format(args.feature_detector_path))
+    else:
+        print('Wrong model selection')
+        exit(-1)
 
     # load Saved Model
     loadpath = args.load_path
@@ -859,23 +870,30 @@ def main(args, model=None):
                                   '2013_05_28_drive_0004_sync',
                                   '2013_05_28_drive_0000_sync']
 
+    if args.model == 'inception_v3':
+        img_rescale = transforms.Resize((299, 299))
+    else:
+        img_rescale = transforms.Resize((224, 224))
+
     aanetTransforms = transforms.Compose(
         [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), ToTensor()])
+
     # Transforms for OSM in Triplet_OBB and Triplet_BOO dataloaders
     osmTransforms = transforms.Compose(
-        [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
+        [transforms.ToPILImage(), img_rescale, transforms.ToTensor()])
 
     # Transforms for RGB images (RGB // Homography)
     rgb_image_train_transforms = transforms.Compose(
-        [transforms.Resize((224, 224)), transforms.RandomAffine(15, translate=(0.0, 0.1), shear=(-5, 5)),
+        [img_rescale, transforms.RandomAffine(15, translate=(0.0, 0.1), shear=(-5, 5)),
          transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5), transforms.ToTensor(),
          transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
-    rgb_image_test_transforms = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(),
+
+    rgb_image_test_transforms = transforms.Compose([img_rescale, transforms.ToTensor(),
                                                     transforms.Normalize((0.485, 0.456, 0.406),
                                                                          (0.229, 0.224, 0.225))])
 
     # Transforms for Three-dimensional images (The DA was made offline)
-    threedimensional_transfomrs = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
+    threedimensional_transfomrs = transforms.Compose([img_rescale, transforms.ToTensor()])
 
     if args.train or (args.test and (args.triplet or args.metric)):
 

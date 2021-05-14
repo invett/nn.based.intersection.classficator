@@ -360,13 +360,21 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
             neg_output_gt = gt_list[neg_label.squeeze()]
             loss = criterion(output.squeeze(), output_gt.cuda(), neg_output_gt.cuda())  # --> 128 x 512
         else:
-            loss = criterion(output.squeeze(), output_gt.cuda())  # --> 128 x 512
+            if args.model == 'inception_v3':
+                loss_aux = criterion(output[1].squeeze(), output_gt.cuda())
+                loss = criterion(output[0].squeeze(), output_gt.cuda())
+                loss = loss + loss_aux * 0.4
+            else:
+                loss = criterion(output.squeeze(), output_gt.cuda())  # --> 128 x 512
 
         if args.weighted:
             weights = torch.FloatTensor(weights_param)
             weighted_tensor = weights[label.squeeze()]
             loss = loss * weighted_tensor.cuda().unsqueeze(1)
             loss = loss.mean()
+
+        if args.model == 'inception_v3':
+            output = output[0]
 
         if args.lossfunction == 'triplet':
             predict = gt_validation(output, gt_list)
