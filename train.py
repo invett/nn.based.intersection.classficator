@@ -650,7 +650,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                                                                  weights=weights, miner=miner, acc_metric=acc_metric)
                 model.train()
 
-            if args.scheduler_type == 'ReduceLROnPlateau':
+            if args.scheduler and args.scheduler_type == 'ReduceLROnPlateau':
                 print("ReduceLROnPlateau step call")
                 scheduler.step(loss_val)
 
