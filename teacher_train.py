@@ -290,7 +290,10 @@ def test(args, model, dataloader, gt_list):
             predRecord = np.append(predRecord, predict)
 
         else:  # ie, not triplet
-            predict = torch.argmax(output, 1)
+            if len(output.shape) == 1:
+                predict = torch.argmax(output)
+            else:
+                predict = torch.argmax(output, 1)
             label = label.cpu().numpy()
             predict = predict.cpu().numpy()
 
