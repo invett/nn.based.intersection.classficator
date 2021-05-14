@@ -349,7 +349,7 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
             data = data.cuda()
 
         output = model(data)
-        if args.model == 'inception_v3':
+        if args.model == 'inception_v3' and model.training:
             output = output[0]
             output_aux = output[1]
         output_gt = gt_list[label.squeeze()]  # --> Embeddings centroid of the label
@@ -363,7 +363,7 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
             neg_output_gt = gt_list[neg_label.squeeze()]
             loss = criterion(output.squeeze(), output_gt.cuda(), neg_output_gt.cuda())  # --> 128 x 512
         else:
-            if args.model == 'inception_v3':
+            if args.model == 'inception_v3' and model.training:
                 loss_aux = criterion(output_aux.squeeze(), output_gt.cuda())
                 loss = criterion(output.squeeze(), output_gt.cuda())
                 loss = loss + loss_aux * 0.4
