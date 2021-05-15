@@ -278,7 +278,7 @@ def teacher_network_pass(args, sample, model, criterion, gt_list=None):
             negative = negative.cuda()
 
         # Obtain predicion results
-        if args.model == 'inception_v3':
+        if args.model == 'inception_v3' and model.training:
             out_anchor, aux_anchor = model(anchor)
             out_positive, aux_positive = model(positive)
             out_negative, aux_negative = model(negative)
@@ -289,7 +289,7 @@ def teacher_network_pass(args, sample, model, criterion, gt_list=None):
 
         # Calculate the loss
         loss = criterion(out_anchor, out_positive, out_negative)
-        if args.model == 'inception_v3':
+        if args.model == 'inception_v3' and model.training:
             loss_aux = criterion(aux_anchor, aux_positive, aux_negative)
             loss = loss + loss_aux * 0.4
         # Calculate the accuracy
@@ -315,7 +315,7 @@ def teacher_network_pass(args, sample, model, criterion, gt_list=None):
         output = model(data)
 
         # Calculate the loss
-        if args.model == 'inception_v3':
+        if args.model == 'inception_v3' and model.training:
             loss_aux = criterion(output[1], label)
             loss = criterion(output[0], label)
             loss = loss + loss_aux * 0.4
