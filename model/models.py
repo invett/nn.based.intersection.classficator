@@ -149,10 +149,14 @@ class Inception_v3(torch.nn.Module):
             self.model.AuxLogits.fc = torch.nn.Linear(768, num_classes)
 
     def forward(self, data):
-        prediction, aux_logits = self.model(data)
+        if self.training:
+            prediction, aux_logits = self.model(data)
 
-        return prediction, aux_logits
+            return prediction, aux_logits
+        else:
+            prediction = self.model(data)
 
+            return prediction
 
 class Freezed_Resnet(Resnet, torch.nn.Module):
     def __init__(self, load_path, num_classes):
