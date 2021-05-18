@@ -103,7 +103,7 @@ class VGG(torch.nn.Module):
         avg = torch.flatten(avg, start_dim=1)
         prediction = self.classifier(avg)
 
-        if self.logits:
+        if self.logits and not self.embeddings:
             prediction = self.softmax(prediction)
 
         return prediction
@@ -147,7 +147,7 @@ class Mobilenet_v3(torch.nn.Module):
         avg = self.avgpool(features)
         prediction = self.classifier(avg.squeeze())
 
-        if self.logits:
+        if self.logits and not self.embeddings:
             prediction = self.softmax(prediction)
 
         return prediction
@@ -181,7 +181,7 @@ class Inception_v3(torch.nn.Module):
         else:
             prediction = self.model(data)
 
-            if self.logits:
+            if self.logits and not self.embeddings:
                 prediction = self.softmax(prediction)
 
             return prediction
