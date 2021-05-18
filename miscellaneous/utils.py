@@ -11,6 +11,7 @@ from io import BytesIO
 from math import asin, atan2, cos, pi, sin
 
 from pytorch_metric_learning import testers
+from scipy.special import softmax
 from sklearn import svm
 import pathlib
 import numpy as np
@@ -433,10 +434,13 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
             data = data.cuda()
             label = label.cuda()
 
+        if args.get_scores:
+            criterion = nn.NLLLoss()
+
         output = model(data)
 
         # save the embedding vector to return it - used in testing
-        if return_embedding:
+        if return_embedding or args.get_scores:
             embedding = np.asarray(output.squeeze().cpu().detach().numpy())
 
         loss = criterion(output, label)
@@ -720,7 +724,7 @@ def embb_data_lstm(model, dataloader_train, dataloader_val, LSTM=None):
     return np.vstack(embeddingRecord), np.vstack(labelRecord)
 
 
-def svm_testing(args, model, dataloader_test, classifier):
+def svm_testing(args, model, dataloader_test, classifier, probs=False):
     print('Start svm testing')
 
     # defining the lists that will be used to export data, for RESNET vs LSTM comparison
@@ -730,6 +734,7 @@ def svm_testing(args, model, dataloader_test, classifier):
 
     label_list = []
     prediction_list = []
+    score_list = []
 
     with torch.no_grad():
         model.eval()
@@ -756,6 +761,7 @@ def svm_testing(args, model, dataloader_test, classifier):
             export_filenames.extend(sample['path_of_original_image'])
             label_list.append(label.cpu().numpy())
             prediction_list.append(prediction)
+            score_list.append(dec)
 
         conf_matrix = pd.crosstab(np.hstack(label_list), np.hstack(prediction_list), rownames=['Actual'],
                                   colnames=['Predicted'],
@@ -764,6 +770,9 @@ def svm_testing(args, model, dataloader_test, classifier):
         acc = accuracy_score(np.hstack(label_list), np.hstack(prediction_list))
         print('Accuracy for test : %f\n' % acc)
 
+        # Score for testing dataset
+        full_score = softmax(np.vstack(score_list), axis=1)
+
         # these three lists will be used to create a file similar to the 'test_list.txt' used with the txt_dataloader.
         # these will be used to evaluate RESNET vs LSTM on a 'per-sequence' basis
         export_filenames = export_filenames
@@ -771,7 +780,10 @@ def svm_testing(args, model, dataloader_test, classifier):
         [export_prediction_list.extend(i) for i in prediction_list]
         export_overall = [export_filenames, export_gt_labels, export_prediction_list]
 
-        return conf_matrix, acc, export_overall
+        if probs:
+            return conf_matrix, acc, export_overall, full_score
+        else:
+            return conf_matrix, acc, export_overall
 
 
 def svm_testing_lstm(model, dataloader_test, classifier, LSTM):

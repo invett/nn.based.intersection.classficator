@@ -83,15 +83,16 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
 
     if 'vgg' in args.model:
         model = VGG(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
-                    version=args.model)
+                    version=args.model, logits=args.get_scores)
     elif 'resnet' in args.model:
         model = Resnet(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
-                       version=args.model)
+                       version=args.model, logits=args.get_scores)
     elif 'mobilenet' in args.model:
         model = Mobilenet_v3(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
-                             version=args.model)
+                             version=args.model, logits=args.get_scores)
     elif 'inception' in args.model:
-        model = Inception_v3(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
+        model = Inception_v3(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
+                             logits=args.get_scores)
     elif args.model == 'LSTM':
         model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
                      num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
@@ -176,14 +177,14 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     elif args.metric:
         # SIMILAR TO TRIPLET, BUT USING KEVING LIBS
 
-        # these two will be used to report data
-        label_list = []
-        prediction_list = []
-
         if args.test_method == 'svm':
             # Generates svm with the last train
             classifier = svm_generator(args, model, dataloader_train=dataloader_train, dataloader_val=dataloader_val)
-            confusion_matrix, acc_val, export_data = svm_testing(args, model, dataloader_test, classifier)
+            if args.get_scores:
+                confusion_matrix, acc_val, export_data, scores = svm_testing(args, model, dataloader_test, classifier,
+                                                                             probs=True)
+            else:
+                confusion_matrix, acc_val, export_data = svm_testing(args, model, dataloader_test, classifier)
 
         elif args.test_method == 'mahalanobis':
             covariances = covmatrix_generator(args, model, dataloader_train=dataloader_train,
@@ -215,6 +216,13 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
                 for i in range(len(export_data[0])):
                     line = export_data[0][i] + ';' + str(export_data[1][i]) + ';' + str(export_data[2][i]) + '\n'
                     output.write(line)
+
+        if args.get_scores:
+            # write scores in a log
+            scorespath = './scores'
+            if not os.path.isdir(scorespath):
+                os.makedirs(scorespath)
+            np.save(os.path.join(scorespath, 'scores.npy'), scores)
 
     else:
         # THIS IS OUR BASELINE, WITHOUT TRIPLET FLAVOURS (OURS OR KEVIN)
@@ -338,6 +346,14 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
         np.savetxt(os.path.join(args.saveEmbeddingsPath, save_embeddings), np.asarray(all_embedding_matrix),
                    delimiter='\t')
         np.savetxt(os.path.join(args.saveEmbeddingsPath, save_embeddings), labelRecord, delimiter='\t')
+
+    if args.get_scores:
+        # write scores in a log
+        scorespath = './scores'
+        if not os.path.isdir(scorespath):
+            os.makedirs(scorespath)
+        scores = np.vstack(all_embedding_matrix)
+        np.save(os.path.join(scorespath, 'scores.npy'), scores)
 
     if labelRecord.size != 0 and predRecord.size != 0:
         conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'],
@@ -1072,10 +1088,10 @@ def main(args, model=None):
             elif args.model == 'LSTM' or args.model == 'GRU':
                 if args.model == 'LSTM':
                     model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
-                             num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
+                                 num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
                 else:
                     model = GRU(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
-                                 num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
+                                num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
                 if args.feature_model == 'resnet18':
                     feature_extractor_model = Resnet(pretrained=False, embeddings=True, num_classes=args.num_classes)
                 if args.feature_model == 'vgg11':
@@ -1392,6 +1408,8 @@ if __name__ == '__main__':
                         help='testing classification method')
     parser.add_argument('--svm_mode', type=str, default='Linear', choices=['Linear', 'ovo'],
                         help='svm classification method')
+    parser.add_argument('--get_scores', type=str2bool, nargs='?', const=True, default=False,
+                        help='get the scores for each class')
     parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
     parser.add_argument('--patience_start', type=int, default=50,
                         help='Starting epoch for patience of validation. Default, 50. ')
@@ -1458,8 +1476,13 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    if args.get_scores and args.train:
+        print("Scores are only available during test process.")
+        exit(-1)
+
     if args.defaultsequencelength > 0 and args.fixed_length == 0:
-        print("Can't use defaultsequencelength > 0 for lstm with --fixed_lengh = 0 (reserved to 'use all frames' behaviour.")
+        print(
+            "Can't use defaultsequencelength > 0 for lstm with --fixed_lengh = 0 (reserved to 'use all frames' behaviour.")
         exit(-1)
 
     if args.oposite and not args.test:

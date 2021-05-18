@@ -6,10 +6,11 @@ from torchvision import models
 
 class Resnet(torch.nn.Module):
 
-    def __init__(self, pretrained=True, embeddings=False, num_classes=None, version='resnet18'):
+    def __init__(self, pretrained=True, embeddings=False, num_classes=None, version='resnet18', logits=False):
         super().__init__()
         self.embeddings = embeddings
         self.version = version
+        self.logits = logits
 
         if version == 'resnet18':
             model = models.resnet18(pretrained=pretrained)
@@ -41,6 +42,9 @@ class Resnet(torch.nn.Module):
             if version == 'resnet50' or version == 'resnet101' or version == 'resnet152':
                 self.reducer = torch.nn.Linear(2048, 512)
 
+        if self.logits:
+            self.softmax = torch.nn.LogSoftmax()
+
     def forward(self, data):
         x = self.conv1(data)
         x = self.relu(self.bn1(x))
@@ -58,12 +62,15 @@ class Resnet(torch.nn.Module):
                 return embedding
         else:
             prediction = self.fc(embedding.squeeze())
-            return prediction
+            if self.logits:
+                return self.softmax(prediction)
+            else:
+                return prediction
 
 
 class VGG(torch.nn.Module):
 
-    def __init__(self, pretrained=True, embeddings=False, num_classes=None, version='vgg11'):
+    def __init__(self, pretrained=True, embeddings=False, num_classes=None, version='vgg11', logits=False):
         super().__init__()
         if version == 'vgg11':
             model = models.vgg11_bn(pretrained=pretrained)
@@ -75,6 +82,7 @@ class VGG(torch.nn.Module):
             model = models.vgg19_bn(pretrained=pretrained)
 
         self.embeddings = embeddings
+        self.logits = logits
 
         self.features = model.features
         self.avgpool = model.avgpool
@@ -86,22 +94,29 @@ class VGG(torch.nn.Module):
             self.classifier = model.classifier
             self.classifier[6] = torch.nn.Linear(4096, num_classes)
 
+        if self.logits:
+            self.softmax = torch.nn.LogSoftmax()
+
     def forward(self, data):
         features = self.features(data)
         avg = self.avgpool(features)
         avg = torch.flatten(avg, start_dim=1)
         prediction = self.classifier(avg)
 
+        if self.logits:
+            prediction = self.softmax(prediction)
+
         return prediction
 
 
 class Mobilenet_v3(torch.nn.Module):
 
-    def __init__(self, pretrained=True, embeddings=False, num_classes=None, version='mobilenet_v3_small'):
+    def __init__(self, pretrained=True, embeddings=False, num_classes=None, version='mobilenet_v3_small', logits=False):
         super().__init__()
 
         self.embeddings = embeddings
         self.version = version
+        self.logits = logits
 
         if version == 'mobilenet_v3_large':
             model = models.mobilenet_v3_large(pretrained=pretrained)
@@ -124,20 +139,27 @@ class Mobilenet_v3(torch.nn.Module):
             else:
                 self.classifier[3] = torch.nn.Linear(1280, num_classes)
 
+        if self.logits:
+            self.softmax = torch.nn.LogSoftmax()
+
     def forward(self, data):
         features = self.features(data)
         avg = self.avgpool(features)
         prediction = self.classifier(avg.squeeze())
+
+        if self.logits:
+            prediction = self.softmax(prediction)
 
         return prediction
 
 
 class Inception_v3(torch.nn.Module):
 
-    def __init__(self, pretrained=True, embeddings=False, num_classes=None):
+    def __init__(self, pretrained=True, embeddings=False, num_classes=None, logits=False):
         super().__init__()
 
         self.embeddings = embeddings
+        self.logits = logits
 
         self.model = models.inception_v3(pretrained=pretrained)
 
@@ -148,6 +170,9 @@ class Inception_v3(torch.nn.Module):
             self.model.fc = torch.nn.Linear(2048, num_classes)
             self.model.AuxLogits.fc = torch.nn.Linear(768, num_classes)
 
+        if self.logits:
+            self.softmax = torch.nn.LogSoftmax()
+
     def forward(self, data):
         if self.training:
             prediction, aux_logits = self.model(data)
@@ -156,7 +181,11 @@ class Inception_v3(torch.nn.Module):
         else:
             prediction = self.model(data)
 
+            if self.logits:
+                prediction = self.softmax(prediction)
+
             return prediction
+
 
 class Freezed_Resnet(Resnet, torch.nn.Module):
     def __init__(self, load_path, num_classes):
