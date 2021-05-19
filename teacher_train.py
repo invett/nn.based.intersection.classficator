@@ -171,12 +171,17 @@ def main(args):
     if args.test:
         # Create ground truth list
         gt_list = []
-        obsTransforms = transforms.Compose(
-            [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
+        # Transforms for osm images
+        if args.model == 'inception_v3':
+            osmTransforms = transforms.Compose(
+                [transforms.ToPILImage(), transforms.Resize((299, 299)), transforms.ToTensor()])
+        else:
+            osmTransforms = transforms.Compose(
+                [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
         for crossing_type in range(7):
             gt_OSM = test_crossing_pose(crossing_type=crossing_type, save=False, noise=True, sampling=False,
                                         random_rate=1.0)
-            gt_OSM = obsTransforms(gt_OSM[0])
+            gt_OSM = osmTransforms(gt_OSM[0])
             gt_list.append(gt_OSM.unsqueeze(0))
 
         if args.testdataset == 'osm':
@@ -184,11 +189,7 @@ def main(args):
                                 os.path.isdir(os.path.join(args.dataset, folder))])
 
             dataset_test = teacher_tripletloss(folders, args.distance,
-                                               transform=transforms.Compose([transforms.ToPILImage(),
-                                                                             transforms.Resize(
-                                                                                 (224, 224)),
-                                                                             transforms.ToTensor()
-                                                                             ]),
+                                               transform=osmTransforms,
                                                noise=addnoise,
                                                canonical=True)
         else:
@@ -239,17 +240,6 @@ def test(args, model, dataloader, gt_list):
             data = sample['anchor']
             label = sample['label_anchor']
 
-        # if args.canonical:
-        #    a = plt.figure()
-        #    plt.imshow(canonical.squeeze().numpy().transpose((1, 2, 0)))
-        #    send_telegram_picture(a, "canonical")
-        #    plt.close('all')
-
-        # a = plt.figure()
-        # plt.imshow(sample['anchor'].squeeze().numpy().transpose((1, 2, 0)))
-        # send_telegram_picture(a, "anchor")
-        # plt.close('all')
-
         if torch.cuda.is_available() and args.use_gpu:
             if args.triplet:
                 anchor = anchor.cuda()
@@ -263,6 +253,9 @@ def test(args, model, dataloader, gt_list):
             for gt in gt_list:  # Compare with the 7 canoncial ground truth ONLY WORKS WITH BATCH 1
                 gt = gt.cuda()
                 gt_prediction = model(gt)
+                if args.model == 'inception_v3':
+                    gt_prediction = gt_prediction[0]
+                    out_anchor = out_anchor[0]
                 l.append(testcriterion(out_anchor, gt_prediction).item())
             nplist = np.array(l)
             nplist = nplist.reshape(-1, 7)
@@ -270,6 +263,8 @@ def test(args, model, dataloader, gt_list):
 
         else:
             output = model(data)
+            if args.model == 'inception_v3':
+                output = output[0]
 
         if args.triplet:
 
@@ -295,7 +290,10 @@ def test(args, model, dataloader, gt_list):
             predRecord = np.append(predRecord, predict)
 
         else:  # ie, not triplet
-            predict = torch.argmax(output, 1)
+            if len(output.shape) == 1:
+                predict = torch.argmax(output)
+            else:
+                predict = torch.argmax(output, 1)
             label = label.cpu().numpy()
             predict = predict.cpu().numpy()
 
@@ -321,6 +319,8 @@ def test(args, model, dataloader, gt_list):
     # This was used to show the vector in https://projector.tensorflow.org/
     if args.saveEmbeddings:
         all_embedding_matrix = np.asarray(all_embedding_matrix)
+        if not os.path.exists(args.saveEmbeddingsPath):
+            os.makedirs(args.saveEmbeddingsPath)
         np.savetxt(os.path.join(args.saveEmbeddingsPath, "all_embedding_matrix.txt"), np.asarray(all_embedding_matrix),
                    delimiter='\t')
         np.savetxt(os.path.join(args.saveEmbeddingsPath, "all_label_embedding_matrix.txt"), labelRecord, delimiter='\t')
@@ -453,7 +453,7 @@ def train(args, model, optimizer, dataloader_train, dataloader_val, GLOBAL_EPOCH
 
         # Calculate metrics
         loss_train_mean = loss_record / len(dataloader_train)
-        if args.triplet:
+        if args.triplet and gtlist is None:
             acc_train = acc_record / (len(dataloader_train) * args.batch_size)
         else:
             acc_train = acc_record / len(dataloader_train)

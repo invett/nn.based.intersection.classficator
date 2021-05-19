@@ -11,6 +11,7 @@ from io import BytesIO
 from math import asin, atan2, cos, pi, sin
 
 from pytorch_metric_learning import testers
+from scipy.special import softmax
 from sklearn import svm
 import pathlib
 import numpy as np
@@ -278,7 +279,7 @@ def teacher_network_pass(args, sample, model, criterion, gt_list=None):
             negative = negative.cuda()
 
         # Obtain predicion results
-        if args.model == 'inception_v3':
+        if args.model == 'inception_v3' and model.training:
             out_anchor, aux_anchor = model(anchor)
             out_positive, aux_positive = model(positive)
             out_negative, aux_negative = model(negative)
@@ -289,7 +290,7 @@ def teacher_network_pass(args, sample, model, criterion, gt_list=None):
 
         # Calculate the loss
         loss = criterion(out_anchor, out_positive, out_negative)
-        if args.model == 'inception_v3':
+        if args.model == 'inception_v3' and model.training:
             loss_aux = criterion(aux_anchor, aux_positive, aux_negative)
             loss = loss + loss_aux * 0.4
         # Calculate the accuracy
@@ -315,7 +316,7 @@ def teacher_network_pass(args, sample, model, criterion, gt_list=None):
         output = model(data)
 
         # Calculate the loss
-        if args.model == 'inception_v3':
+        if args.model == 'inception_v3' and model.training:
             loss_aux = criterion(output[1], label)
             loss = criterion(output[0], label)
             loss = loss + loss_aux * 0.4
@@ -349,6 +350,9 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
             data = data.cuda()
 
         output = model(data)
+        if args.model == 'inception_v3' and model.training:
+            output = output[0]
+            output_aux = output[1]
         output_gt = gt_list[label.squeeze()]  # --> Embeddings centroid of the label
 
         # save the embedding vector to return it - used in testing
@@ -360,7 +364,12 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
             neg_output_gt = gt_list[neg_label.squeeze()]
             loss = criterion(output.squeeze(), output_gt.cuda(), neg_output_gt.cuda())  # --> 128 x 512
         else:
-            loss = criterion(output.squeeze(), output_gt.cuda())  # --> 128 x 512
+            if args.model == 'inception_v3' and model.training:
+                loss_aux = criterion(output_aux.squeeze(), output_gt.cuda())
+                loss = criterion(output.squeeze(), output_gt.cuda())
+                loss = loss + loss_aux * 0.4
+            else:
+                loss = criterion(output.squeeze(), output_gt.cuda())  # --> 128 x 512
 
         if args.weighted:
             weights = torch.FloatTensor(weights_param)
@@ -425,10 +434,13 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
             data = data.cuda()
             label = label.cuda()
 
+        if args.get_scores:
+            criterion = nn.NLLLoss()
+
         output = model(data)
 
         # save the embedding vector to return it - used in testing
-        if return_embedding:
+        if return_embedding or args.get_scores:
             embedding = np.asarray(output.squeeze().cpu().detach().numpy())
 
         loss = criterion(output, label)
@@ -712,7 +724,7 @@ def embb_data_lstm(model, dataloader_train, dataloader_val, LSTM=None):
     return np.vstack(embeddingRecord), np.vstack(labelRecord)
 
 
-def svm_testing(args, model, dataloader_test, classifier):
+def svm_testing(args, model, dataloader_test, classifier, probs=False):
     print('Start svm testing')
 
     # defining the lists that will be used to export data, for RESNET vs LSTM comparison
@@ -722,6 +734,7 @@ def svm_testing(args, model, dataloader_test, classifier):
 
     label_list = []
     prediction_list = []
+    score_list = []
 
     with torch.no_grad():
         model.eval()
@@ -748,6 +761,7 @@ def svm_testing(args, model, dataloader_test, classifier):
             export_filenames.extend(sample['path_of_original_image'])
             label_list.append(label.cpu().numpy())
             prediction_list.append(prediction)
+            score_list.append(dec)
 
         conf_matrix = pd.crosstab(np.hstack(label_list), np.hstack(prediction_list), rownames=['Actual'],
                                   colnames=['Predicted'],
@@ -756,6 +770,10 @@ def svm_testing(args, model, dataloader_test, classifier):
         acc = accuracy_score(np.hstack(label_list), np.hstack(prediction_list))
         print('Accuracy for test : %f\n' % acc)
 
+        # Score for testing dataset
+        logit_score = np.vstack(score_list)
+        prob_score = softmax(logit_score, axis=1)
+
         # these three lists will be used to create a file similar to the 'test_list.txt' used with the txt_dataloader.
         # these will be used to evaluate RESNET vs LSTM on a 'per-sequence' basis
         export_filenames = export_filenames
@@ -763,7 +781,10 @@ def svm_testing(args, model, dataloader_test, classifier):
         [export_prediction_list.extend(i) for i in prediction_list]
         export_overall = [export_filenames, export_gt_labels, export_prediction_list]
 
-        return conf_matrix, acc, export_overall
+        if probs:
+            return conf_matrix, acc, export_overall, (prob_score, logit_score)
+        else:
+            return conf_matrix, acc, export_overall
 
 
 def svm_testing_lstm(model, dataloader_test, classifier, LSTM):

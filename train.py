@@ -32,7 +32,7 @@ from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTe
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanobis_testing, lstm_network_pass, \
     svm_testing_lstm, mahalanobis_testing_lstm
-from model.models import Resnet, LSTM, Freezed_Resnet, GRU, VGG
+from model.models import Resnet, LSTM, Freezed_Resnet, GRU, VGG, Mobilenet_v3, Inception_v3
 
 
 def str2bool(v):
@@ -80,10 +80,19 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     # Build model
     # The embeddings should be returned if we are using Techer/Student or triplet loss
     return_embeddings = args.embedding or args.triplet or args.metric
-    if args.model == 'resnet18':
-        model = Resnet(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
-    elif args.model == 'vgg11':
-        model = VGG(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
+
+    if 'vgg' in args.model:
+        model = VGG(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
+                    version=args.model, logits=args.get_scores)
+    elif 'resnet' in args.model:
+        model = Resnet(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
+                       version=args.model, logits=args.get_scores)
+    elif 'mobilenet' in args.model:
+        model = Mobilenet_v3(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
+                             version=args.model, logits=args.get_scores)
+    elif 'inception' in args.model:
+        model = Inception_v3(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
+                             logits=args.get_scores)
     elif args.model == 'LSTM':
         model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
                      num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
@@ -100,6 +109,9 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
             print("=> loaded checkpoint '{}'".format(args.feature_detector_path))
         else:
             print("=> no checkpoint found at '{}'".format(args.feature_detector_path))
+    else:
+        print('Wrong model selection')
+        exit(-1)
 
     # load Saved Model
     loadpath = args.load_path
@@ -165,14 +177,14 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     elif args.metric:
         # SIMILAR TO TRIPLET, BUT USING KEVING LIBS
 
-        # these two will be used to report data
-        label_list = []
-        prediction_list = []
-
         if args.test_method == 'svm':
             # Generates svm with the last train
             classifier = svm_generator(args, model, dataloader_train=dataloader_train, dataloader_val=dataloader_val)
-            confusion_matrix, acc_val, export_data = svm_testing(args, model, dataloader_test, classifier)
+            if args.get_scores:
+                confusion_matrix, acc_val, export_data, scores = svm_testing(args, model, dataloader_test, classifier,
+                                                                             probs=True)
+            else:
+                confusion_matrix, acc_val, export_data = svm_testing(args, model, dataloader_test, classifier)
 
         elif args.test_method == 'mahalanobis':
             covariances = covmatrix_generator(args, model, dataloader_train=dataloader_train,
@@ -204,6 +216,13 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
                 for i in range(len(export_data[0])):
                     line = export_data[0][i] + ';' + str(export_data[1][i]) + ';' + str(export_data[2][i]) + '\n'
                     output.write(line)
+
+        if args.get_scores:
+            # write scores in a log
+            scorespath = './scores'
+            if not os.path.isdir(scorespath):
+                os.makedirs(scorespath)
+            np.savez(os.path.join(scorespath, 'scores.npz'), prob=scores[0], logit=scores[1])
 
     else:
         # THIS IS OUR BASELINE, WITHOUT TRIPLET FLAVOURS (OURS OR KEVIN)
@@ -327,6 +346,14 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
         np.savetxt(os.path.join(args.saveEmbeddingsPath, save_embeddings), np.asarray(all_embedding_matrix),
                    delimiter='\t')
         np.savetxt(os.path.join(args.saveEmbeddingsPath, save_embeddings), labelRecord, delimiter='\t')
+
+    if args.get_scores:
+        # write scores in a log
+        scorespath = './scores'
+        if not os.path.isdir(scorespath):
+            os.makedirs(scorespath)
+        scores = np.vstack(all_embedding_matrix)
+        np.save(os.path.join(scorespath, 'scores.npy'), scores)
 
     if labelRecord.size != 0 and predRecord.size != 0:
         conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'],
@@ -639,7 +666,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                                                                  weights=weights, miner=miner, acc_metric=acc_metric)
                 model.train()
 
-            if args.scheduler_type == 'ReduceLROnPlateau':
+            if args.scheduler and args.scheduler_type == 'ReduceLROnPlateau':
                 print("ReduceLROnPlateau step call")
                 scheduler.step(loss_val)
 
@@ -687,53 +714,54 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                     min_val_loss = loss_val
                     print('Best global loss: {}'.format(min_val_loss))
 
-                if args.nowandb:
-                    loadpath = os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
-                                                                                             args.model,
-                                                                                             epoch))
-                    if args.model == 'LSTM':
-                        print('Saving model: ', loadpath)
-                        torch.save({
-                            'epoch': epoch,
-                            'model_state_dict': LSTM.state_dict(),
-                            'optimizer_state_dict': optimizer.state_dict(),
-                            'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
-                            'loss': loss,
-                        }, os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
-                                                                                         args.model, epoch)))
+                if args.savemodel:
+                    if args.nowandb:
+                        loadpath = os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
+                                                                                                 args.model,
+                                                                                                 epoch))
+                        if args.model == 'LSTM':
+                            print('Saving model: ', loadpath)
+                            torch.save({
+                                'epoch': epoch,
+                                'model_state_dict': LSTM.state_dict(),
+                                'optimizer_state_dict': optimizer.state_dict(),
+                                'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
+                                'loss': loss,
+                            }, os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
+                                                                                             args.model, epoch)))
+                        else:
+                            print('Saving model: ', loadpath)
+                            torch.save({
+                                'epoch': epoch,
+                                'model_state_dict': model.state_dict(),
+                                'optimizer_state_dict': optimizer.state_dict(),
+                                'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
+                                'loss': loss,
+                            }, os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
+                                                                                             args.model, epoch)))
                     else:
-                        print('Saving model: ', loadpath)
-                        torch.save({
-                            'epoch': epoch,
-                            'model_state_dict': model.state_dict(),
-                            'optimizer_state_dict': optimizer.state_dict(),
-                            'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
-                            'loss': loss,
-                        }, os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
-                                                                                         args.model, epoch)))
-                else:
-                    loadpath = os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
-                                                                                             wandb.run.id, epoch))
-                    if args.model == 'LSTM':
-                        print('Saving model: ', os.path.join(loadpath))
-                        torch.save({
-                            'epoch': epoch,
-                            'model_state_dict': LSTM.state_dict(),
-                            'optimizer_state_dict': optimizer.state_dict(),
-                            'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
-                            'loss': loss,
-                        }, os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
-                                                                                         wandb.run.id, epoch)))
-                    else:
-                        print('Saving model: ', os.path.join(loadpath))
-                        torch.save({
-                            'epoch': epoch,
-                            'model_state_dict': model.state_dict(),
-                            'optimizer_state_dict': optimizer.state_dict(),
-                            'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
-                            'loss': loss,
-                        }, os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
-                                                                                         wandb.run.id, epoch)))
+                        loadpath = os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
+                                                                                                 wandb.run.id, epoch))
+                        if args.model == 'LSTM':
+                            print('Saving model: ', os.path.join(loadpath))
+                            torch.save({
+                                'epoch': epoch,
+                                'model_state_dict': LSTM.state_dict(),
+                                'optimizer_state_dict': optimizer.state_dict(),
+                                'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
+                                'loss': loss,
+                            }, os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
+                                                                                             wandb.run.id, epoch)))
+                        else:
+                            print('Saving model: ', os.path.join(loadpath))
+                            torch.save({
+                                'epoch': epoch,
+                                'model_state_dict': model.state_dict(),
+                                'optimizer_state_dict': optimizer.state_dict(),
+                                'scheduler_state_dict': scheduler.state_dict() if args.scheduler else None,
+                                'loss': loss,
+                            }, os.path.join(args.save_model_path, '{}model_{}_{}.pth'.format(args.save_prefix,
+                                                                                             wandb.run.id, epoch)))
 
             elif epoch < args.patience_start:
                 patience = 0
@@ -859,23 +887,30 @@ def main(args, model=None):
                                   '2013_05_28_drive_0004_sync',
                                   '2013_05_28_drive_0000_sync']
 
+    if args.model == 'inception_v3':
+        img_rescale = transforms.Resize((299, 299))
+    else:
+        img_rescale = transforms.Resize((224, 224))
+
     aanetTransforms = transforms.Compose(
         [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), ToTensor()])
+
     # Transforms for OSM in Triplet_OBB and Triplet_BOO dataloaders
     osmTransforms = transforms.Compose(
-        [transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor()])
+        [transforms.ToPILImage(), img_rescale, transforms.ToTensor()])
 
     # Transforms for RGB images (RGB // Homography)
     rgb_image_train_transforms = transforms.Compose(
-        [transforms.Resize((224, 224)), transforms.RandomAffine(15, translate=(0.0, 0.1), shear=(-5, 5)),
+        [img_rescale, transforms.RandomAffine(15, translate=(0.0, 0.1), shear=(-5, 5)),
          transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5), transforms.ToTensor(),
          transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
-    rgb_image_test_transforms = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(),
+
+    rgb_image_test_transforms = transforms.Compose([img_rescale, transforms.ToTensor(),
                                                     transforms.Normalize((0.485, 0.456, 0.406),
                                                                          (0.229, 0.224, 0.225))])
 
     # Transforms for Three-dimensional images (The DA was made offline)
-    threedimensional_transfomrs = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
+    threedimensional_transfomrs = transforms.Compose([img_rescale, transforms.ToTensor()])
 
     if args.train or (args.test and (args.triplet or args.metric)):
 
@@ -1035,19 +1070,28 @@ def main(args, model=None):
             # The embeddings should be returned if we are using Techer/Student or triplet loss
             return_embeddings = args.embedding or args.triplet or args.metric
 
-            if args.model == 'resnet18':
-                model = Resnet(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
-            elif args.model == 'vgg11':
-                model = VGG(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes)
+            if 'vgg' in args.model:
+                model = VGG(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
+                            version=args.model)
+            elif 'resnet' in args.model:
+                model = Resnet(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
+                               version=args.model)
+            elif 'mobilenet' in args.model:
+                model = Mobilenet_v3(pretrained=args.pretrained, embeddings=return_embeddings,
+                                     num_classes=args.num_classes,
+                                     version=args.model)
+            elif 'inception' in args.model:
+                model = Inception_v3(pretrained=args.pretrained, embeddings=return_embeddings,
+                                     num_classes=args.num_classes)
             elif args.model == 'freezed_resnet':
                 model = Freezed_Resnet(args.feature_detector_path, args.num_classes)
             elif args.model == 'LSTM' or args.model == 'GRU':
                 if args.model == 'LSTM':
                     model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
-                             num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
+                                 num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
                 else:
                     model = GRU(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
-                                 num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
+                                num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
                 if args.feature_model == 'resnet18':
                     feature_extractor_model = Resnet(pretrained=False, embeddings=True, num_classes=args.num_classes)
                 if args.feature_model == 'vgg11':
@@ -1065,6 +1109,9 @@ def main(args, model=None):
 
                 if torch.cuda.is_available() and args.use_gpu:
                     feature_extractor_model = feature_extractor_model.cuda()
+            else:
+                print('Wrong model selection')
+                exit(-1)
 
             if args.resume:
                 if os.path.isfile(args.resume):
@@ -1336,6 +1383,8 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
     parser.add_argument('--model', type=str, default="resnet18",
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
+    parser.add_argument('--savemodel', type=str2bool, nargs='?', const=True, default=False,
+                        help='Save pth models')
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate used for train')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum used for train')
 
@@ -1359,6 +1408,8 @@ if __name__ == '__main__':
                         help='testing classification method')
     parser.add_argument('--svm_mode', type=str, default='Linear', choices=['Linear', 'ovo'],
                         help='svm classification method')
+    parser.add_argument('--get_scores', type=str2bool, nargs='?', const=True, default=False,
+                        help='get the scores for each class')
     parser.add_argument('--patience', type=int, default=-1, help='Patience of validation. Default, none. ')
     parser.add_argument('--patience_start', type=int, default=50,
                         help='Starting epoch for patience of validation. Default, 50. ')
@@ -1425,8 +1476,13 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    if args.get_scores and args.train:
+        print("Scores are only available during test process.")
+        exit(-1)
+
     if args.defaultsequencelength > 0 and args.fixed_length == 0:
-        print("Can't use defaultsequencelength > 0 for lstm with --fixed_lengh = 0 (reserved to 'use all frames' behaviour.")
+        print(
+            "Can't use defaultsequencelength > 0 for lstm with --fixed_lengh = 0 (reserved to 'use all frames' behaviour.")
         exit(-1)
 
     if args.oposite and not args.test:
