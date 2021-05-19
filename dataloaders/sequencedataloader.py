@@ -1672,7 +1672,8 @@ class lstm_txt_dataloader(txt_dataloader, Dataset):
 
         if self.min_elements < min([len(v) for k, v in self.sequences.items()]):
             print("the specified min.elements for this dataloader smaller than the min-sequence-list of all "
-                  "loaded sequences")
+                  "loaded sequences. Specified:", str(self.min_elements), "and found:",
+                  min([len(v) for k, v in self.sequences.items()]))
 
         if self.fixed_lenght == 1:
             # get the last min_elements

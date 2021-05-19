@@ -1061,7 +1061,7 @@ def acc_triplet_score(args, out_anchor, out_positive, out_negative):
 
 
 def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/tmp',
-                  overwrite_i_dont_care=False, extract_field_from_path=-1):
+                  overwrite_i_dont_care=False, extract_field_from_path=-1, threshold=5):
     '''
 
     This function is called from the labelling-script and similar scripts.
@@ -1106,6 +1106,7 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
         save_folder:
         overwrite_i_dont_care:
         extract_field_from_path:
+        threshold: min length of the "sequence" . put 0 to use all frames
 
     Returns: nothing
 
@@ -1199,7 +1200,7 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
             current_sequence_filenames.append(frame_filename)
 
     # some sequences of kitti 360 have only one frame, others 2 or 3 ... we need to prune these sequences
-    threshold = 5
+    # set as parameter ---> threshold = 5
     excluded_counter = 0
     type_x_sequences_ = [[], [], [], [], [], [], []]
     for index, val in enumerate(type_x_sequences):
@@ -1288,12 +1289,15 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
             exit(1)
 
     with open(os.path.join(save_folder, train_filename), 'w') as f:
+        print('Creating file... ', os.path.join(save_folder, train_filename))
         for item in train_list:
             f.write("%s\n" % item)
     with open(os.path.join(save_folder, validation_filename), 'w') as f:
+        print('Creating file... ', os.path.join(save_folder, validation_filename),)
         for item in validation_list:
             f.write("%s\n" % item)
     with open(os.path.join(save_folder, test_filename), 'w') as f:
+        print('Creating file... ', os.path.join(save_folder, test_filename))
         for item in test_list:
             f.write("%s\n" % item)
 
@@ -1305,7 +1309,7 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
         'while read line; do folder=$(echo $line | cut -d \'/\' -f 1); filenamewithpath=$(echo $line | cut --d \';\' -f 1); filename=$(echo $filenamewithpath | cut --d \'/\' -f 2); echo mkdir -p test/$folder; echo ln -s ../../$filenamewithpath test/$folder/$filename ; done < test_list.txt')
 
 
-def tokenize(text, token_list=['/', '_', ';'], split=True):
+def tokenize(text, token_list=['/', '_', ';', '-'], split=True):
     text_ = text
     for token in token_list:
         text_ = text_.replace(token, '.')

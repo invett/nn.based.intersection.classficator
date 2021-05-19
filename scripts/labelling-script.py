@@ -26,6 +26,7 @@ SAVING_CALLS = False
 import os
 import pickle
 import shutil
+import re
 from os import listdir
 
 import cv2
@@ -43,11 +44,12 @@ from miscellaneous.utils import split_dataset
 # dataset = 'KITTI360'
 # dataset = 'alcala-26.01.2021'
 dataset = 'alcala-12.02.2021'
+dataset = 'GAN-v2'
 
 # needs update / not used
 # dataset = 'ALCALA'
 # dataset = 'AQP'
-# dataset = 'GAN'
+# dataset = 'GAN-v1'
 
 # definitions, will be specialized later .. but just to avoid warnings
 resizeme = 0
@@ -63,11 +65,14 @@ run_statistics_only = False
 # for i in `ls *v001`; do echo cp $i `sed "s/v001/v002/g" <<< $i` ; done;
 dataset_version = '.v002'
 
+# min sequence list (used in split_dataset, inside utils)
+threshold = 5
+
 if 'dataset' not in locals():
     print('Dataset variable missing. Please select the dataset. End.')
     exit(-1)
 
-if dataset == 'GAN':
+if dataset == 'GAN-v1':
     # create a folder with all the GAN images in the same folder. like: /tmp/generated_samples; then generate inside
     # that folder N folders, with the typologies. The structure should be like this:
     # ├── generated_samples
@@ -109,6 +114,27 @@ if dataset == 'GAN':
     position1 = (10, 30)
     position2 = (950, 30)
     position3 = (950, 60)
+    resizeme = 800  # resizeme = 0 does not perform the resize
+
+if dataset == 'GAN-v2':
+    base_folder = '/tmp/generated/GAN-generated_intersection_dataset/'
+    extract_field_from_path = 9
+    threshold = 0  #since GAN does not have sequences but spare frames... set threshold to zero
+
+    folders = ['alcala26']
+
+    pickle_filenames = ['alcala26.pickle']
+
+    pickle_filenames = [i + dataset_version for i in pickle_filenames]
+
+    csv_filenames = ['alcala26.csv']
+
+    width = 1408
+    height = 376
+    position1 = (10, 30)
+    position2 = (1000, 30)
+    position3 = (1000, 60)
+
     resizeme = 800  # resizeme = 0 does not perform the resize
 
 if dataset == 'KITTI-ROAD':
@@ -507,7 +533,7 @@ for folder in folders:
         path = os.path.join(base_folder, folder, 'image_02')
     if dataset == 'OXFORD':
         path = os.path.join(base_folder, folder)
-    if dataset == 'GAN':
+    if dataset == 'GAN-v2':
         path = os.path.join(base_folder, folder)
     # list all files ending in .png
     files.append(sorted([path + '/' + f for f in listdir(path) if f.endswith('.png')]))
@@ -578,7 +604,7 @@ skip = False
 
 if run_statistics_only:
     split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path,
-                  overwrite_i_dont_care=overwrite_i_dont_care)
+                  overwrite_i_dont_care=overwrite_i_dont_care, threshold=threshold)
     exit(1)
 
 for sequence_number, sequence in enumerate(files):
@@ -587,7 +613,8 @@ for sequence_number, sequence in enumerate(files):
     file = 0
 
     # the file sequence might start not from zero...
-    start_number = int(os.path.splitext(os.path.basename(sequence[file]))[0])
+    start_number = re.sub("[^0-9]", "", os.path.splitext(os.path.basename(sequence[file]))[0])
+    start_number = int(start_number)
 
     cv2.namedWindow('image', cv2.WINDOW_AUTOSIZE)
     while k != 0:
@@ -673,7 +700,7 @@ for sequence_number, sequence in enumerate(files):
 
         if k == 115:  # show statistics ('s' key)
             split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path,
-                          overwrite_i_dont_care=overwrite_i_dont_care)
+                          overwrite_i_dont_care=overwrite_i_dont_care, threshold=threshold)
 
         if overwrite_pickles:
             with open(annotations_filenames[sequence_number], 'wb') as f:
@@ -713,14 +740,14 @@ for sequence_number, sequence in enumerate(files):
         if k == 201:  # pressing F12
             cv2.destroyAllWindows()
             split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path,
-                          overwrite_i_dont_care=overwrite_i_dont_care)
+                          overwrite_i_dont_care=overwrite_i_dont_care, threshold=threshold)
             # save_csv(annotations)
             exit(-1)
 
     cv2.destroyAllWindows()
 
 split_dataset(annotations=annotations, files=files, extract_field_from_path=extract_field_from_path,
-              overwrite_i_dont_care=overwrite_i_dont_care)
+              overwrite_i_dont_care=overwrite_i_dont_care, threshold=threshold)
 
 # save_csv(annotations)
 
