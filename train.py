@@ -222,7 +222,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
             scorespath = './scores'
             if not os.path.isdir(scorespath):
                 os.makedirs(scorespath)
-            np.save(os.path.join(scorespath, 'scores.npy'), scores)
+            np.savez(os.path.join(scorespath, 'scores.npz'), prob=scores[0], logit=scores[1])
 
     else:
         # THIS IS OUR BASELINE, WITHOUT TRIPLET FLAVOURS (OURS OR KEVIN)
@@ -1384,7 +1384,7 @@ if __name__ == '__main__':
     parser.add_argument('--model', type=str, default="resnet18",
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
     parser.add_argument('--savemodel', type=str2bool, nargs='?', const=True, default=False,
-                        help='Send info through Telegram')
+                        help='Save pth models')
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate used for train')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum used for train')
 

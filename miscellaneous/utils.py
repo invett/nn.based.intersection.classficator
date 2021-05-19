@@ -771,7 +771,8 @@ def svm_testing(args, model, dataloader_test, classifier, probs=False):
         print('Accuracy for test : %f\n' % acc)
 
         # Score for testing dataset
-        full_score = softmax(np.vstack(score_list), axis=1)
+        logit_score = np.vstack(score_list)
+        prob_score = softmax(logit_score, axis=1)
 
         # these three lists will be used to create a file similar to the 'test_list.txt' used with the txt_dataloader.
         # these will be used to evaluate RESNET vs LSTM on a 'per-sequence' basis
@@ -781,7 +782,7 @@ def svm_testing(args, model, dataloader_test, classifier, probs=False):
         export_overall = [export_filenames, export_gt_labels, export_prediction_list]
 
         if probs:
-            return conf_matrix, acc, export_overall, full_score
+            return conf_matrix, acc, export_overall, (prob_score, logit_score)
         else:
             return conf_matrix, acc, export_overall
 
