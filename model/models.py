@@ -187,28 +187,32 @@ class Inception_v3(torch.nn.Module):
             return prediction
 
 
-class Freezed_Resnet(Resnet, torch.nn.Module):
-    def __init__(self, load_path, num_classes):
-        Resnet.__init__(embeddings=True)
-        self.load_model(Resnet, load_path)
+class Freezed_Model(torch.nn.Module):
+    def __init__(self, model, load_path, num_classes):
+        self.model = model
+        self.load_model(model, load_path)
         self.fc = torch.nn.Linear(512, num_classes)
 
     def forward(self, data):
-        feature = Resnet.forward(data)
-        prediction = self.fc(feature)
+        feature = self.model(data)
+        if isinstance(feature, tuple):
+            prediction = self.fc(feature[0])
+            aux_prediction = self.fc(feature[1])
+            return prediction, aux_prediction
+        else:
+            prediction = self.fc(feature)
+            return prediction
 
-        return prediction
-
-    def load_model(Resnet, load_path):
+    def load_model(self, load_path):
         if os.path.isfile(load_path):
             print("=> loading checkpoint '{}'".format(load_path))
             checkpoint = torch.load(load_path, map_location='cpu')
-            Resnet.load_state_dict(checkpoint['model_state_dict'])
+            self.model.load_state_dict(checkpoint['model_state_dict'])
             print("=> loaded checkpoint {}".format(load_path))
         else:
             print("=> no checkpoint found at {}".format(load_path))
 
-        for param in Resnet.parameters():
+        for param in self.model.parameters():
             param.requires_grad = False
 
 

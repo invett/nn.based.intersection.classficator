@@ -32,7 +32,7 @@ from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTe
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanobis_testing, lstm_network_pass, \
     svm_testing_lstm, mahalanobis_testing_lstm
-from model.models import Resnet, LSTM, Freezed_Resnet, GRU, VGG, Mobilenet_v3, Inception_v3
+from model.models import Resnet, LSTM, Freezed_Resnet, GRU, VGG, Mobilenet_v3, Inception_v3, Freezed_Model
 
 
 def str2bool(v):
@@ -1068,7 +1068,7 @@ def main(args, model=None):
         if args.train:
             # Build model
             # The embeddings should be returned if we are using Techer/Student or triplet loss
-            return_embeddings = args.embedding or args.triplet or args.metric
+            return_embeddings = args.embedding or args.triplet or args.metric or args.freeze
 
             if 'vgg' in args.model:
                 model = VGG(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
@@ -1083,8 +1083,6 @@ def main(args, model=None):
             elif 'inception' in args.model:
                 model = Inception_v3(pretrained=args.pretrained, embeddings=return_embeddings,
                                      num_classes=args.num_classes)
-            elif args.model == 'freezed_resnet':
-                model = Freezed_Resnet(args.feature_detector_path, args.num_classes)
             elif args.model == 'LSTM' or args.model == 'GRU':
                 if args.model == 'LSTM':
                     model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
@@ -1112,6 +1110,9 @@ def main(args, model=None):
             else:
                 print('Wrong model selection')
                 exit(-1)
+
+            if args.freeze and not args.model == 'LSTM':
+                model = Freezed_Model(model, args.feature_detector_path, args.num_classes)
 
             if args.resume:
                 if os.path.isfile(args.resume):
@@ -1400,6 +1401,7 @@ if __name__ == '__main__':
                         choices=['MSE', 'SmoothL1', 'L1', 'focal', 'triplet'],
                         help='lossfunction selection')
     parser.add_argument('--metric', type=str2bool, nargs='?', const=True, default=False, help='Metric learning losses')
+    parser.add_argument('--freeze', type=str2bool, nargs='?', const=True, default=False, help='freezed model + FC')
     parser.add_argument('--distance_function', type=str, default='pairwise',
                         choices=['pairwise', 'cosine', 'SNR'],
                         help='distance function selection')
