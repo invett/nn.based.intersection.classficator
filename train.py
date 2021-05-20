@@ -1015,7 +1015,7 @@ def main(args, model=None):
             train_dataset = lstm_txt_dataloader(train_path, transform=threedimensional_transfomrs,
                                                 all_in_ram=args.all_in_ram, fixed_lenght=args.fixed_length)
 
-        elif args.dataloader == 'txt_dataloader' and 'KITTI-360_3D' not in train_path:  # // RGB // Homography
+        elif args.dataloader == 'txt_dataloader' and '3D' not in train_path:  # // RGB // Homography
             print('Training with rgb Data augmentation')
             val_dataset = txt_dataloader(val_path, transform=rgb_image_test_transforms, decimateStep=args.decimate)
 
@@ -1112,6 +1112,7 @@ def main(args, model=None):
                 exit(-1)
 
             if args.freeze and not args.model == 'LSTM':
+                print("=> training a fully connected classificator from a metric learning model")
                 model = Freezed_Model(model, args.feature_detector_path, args.num_classes)
 
             if args.resume:
