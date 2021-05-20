@@ -212,11 +212,11 @@ class Freezed_Model(Classifier, torch.nn.Module):
     def forward(self, data):
         feature = self.model(data)
         if isinstance(feature, tuple):
-            prediction = self.fc(feature[0])
-            aux_prediction = self.fc(feature[1])
+            prediction = self.classifier(feature[0])
+            aux_prediction = self.classifier(feature[1])
             return prediction, aux_prediction
         else:
-            prediction = self.fc(feature)
+            prediction = self.classifier(feature)
             return prediction
 
     def load_model(self, load_path):
