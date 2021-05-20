@@ -1350,6 +1350,6 @@ def getFrameNumber(extract_field_from_path, frame_filename):
         print('Current settings does not allow to extract the filename as number. Currently using field: ' + str(
             extract_field_from_path) + '\nExpected a number, but asket to extract field ' +
               str(extract_field_from_path) + ' from the following list. Remember: start to count from zero!')
-        print(frame_filename.replace('_', '.').replace('/', '.').split('.'))
+        print(frame_filename.replace('_', '.','-').replace('/', '.').split('.'))
         exit()
     return current_frame_number
