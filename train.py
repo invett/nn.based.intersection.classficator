@@ -32,7 +32,7 @@ from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTe
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanobis_testing, lstm_network_pass, \
     svm_testing_lstm, mahalanobis_testing_lstm
-from model.models import Resnet, LSTM, Freezed_Resnet, GRU, VGG, Mobilenet_v3, Inception_v3, Freezed_Model
+from model.models import Resnet, LSTM, GRU, VGG, Mobilenet_v3, Inception_v3, Freezed_Model
 
 
 def str2bool(v):
