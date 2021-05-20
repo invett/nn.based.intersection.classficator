@@ -14,6 +14,7 @@ import pickle
 import shutil
 
 from dataloaders.sequencedataloader import lstm_txt_dataloader
+from dataloaders.sequencedataloader import txt_dataloader
 import torchvision.transforms as transforms
 from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
 from torch.utils.data import DataLoader
@@ -87,6 +88,11 @@ to_process = [
 
 ]
 
+txtdataset = txt_dataloader('/media/14TBDISK/ballardini/imagenet/prefix_all_unlabeled.txt',
+                               transform=rgb_image_test_transforms)
+txtdataloader = DataLoader(txtdataset, batch_size=1, num_workers=1, shuffle=False)
+
+
 
 # train_filename = '/tmp/ivan_kitti360_warped_train.pickle'
 # valid_filename = '/tmp/ivan_kitti360_warped_valid.pickle'
@@ -115,9 +121,9 @@ for i in to_process:
                                        fixed_lenght=2, verbose=False)
 
     # AND .... READ HERE!!! >>>> used to find the number "6" shared with all datasets (MAGIC NUMBER)
-    # print('min elements train/val/test: ', dataset_train.min_elements, dataset_valid.min_elements, dataset_test.min_elements)
-    # exit(-21)
-    # continue
+    print('min elements train/val/test: ', dataset_train.min_elements, dataset_valid.min_elements, dataset_test.min_elements)
+    exit(-21)
+    continue
 
     dataset_train.min_elements = 15  # <<<<<< READ ABOVE: HOW TO FIND THIS MAGIC NUMBER
     dataset_valid.min_elements = 15  # <<<<<< READ ABOVE: HOW TO FIND THIS MAGIC NUMBER

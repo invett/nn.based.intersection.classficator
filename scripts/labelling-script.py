@@ -117,8 +117,8 @@ if dataset == 'GAN-v1':
     resizeme = 800  # resizeme = 0 does not perform the resize
 
 if dataset == 'GAN-v2':
-    base_folder = '/tmp/generated/GAN-generated_intersection_dataset/'
-    extract_field_from_path = 9
+    base_folder = '/home/ballardini/Desktop/generated/GAN-generated_intersection_dataset/'
+    extract_field_from_path = 11  # <- CHECK THIS!!!
     threshold = 0  #since GAN does not have sequences but spare frames... set threshold to zero
 
     folders = ['alcala26']
