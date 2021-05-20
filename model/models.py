@@ -189,6 +189,7 @@ class Inception_v3(torch.nn.Module):
 
 class Classifier(torch.nn.Module):
     def __init__(self, num_classes):
+        super().__init__()
         self.fc1 = torch.nn.Linear(512, 256)
         self.fc2 = torch.nn.Linear(256, 128)
         self.fc3 = torch.nn.Linear(128, num_classes)
@@ -203,10 +204,11 @@ class Classifier(torch.nn.Module):
         return prediction
 
 
-class Freezed_Model(Classifier, torch.nn.Module):
+class Freezed_Model(torch.nn.Module):
     def __init__(self, model, load_path, num_classes):
+        super().__init__()
         self.model = model
-        self.load_model(model, load_path)
+        self.load_model(load_path)
         self.classifier = Classifier.__init__(num_classes)
 
     def forward(self, data):
