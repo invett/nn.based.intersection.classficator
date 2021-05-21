@@ -31,7 +31,7 @@ from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromGenerate
 from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanobis_testing, lstm_network_pass, \
-    svm_testing_lstm, mahalanobis_testing_lstm
+    svm_testing_lstm, mahalanobis_testing_lstm, get_distances, get_distances_embb
 from model.models import Resnet, LSTM, GRU, VGG, Mobilenet_v3, Inception_v3, Freezed_Model
 
 
@@ -67,7 +67,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     else:
         criterion = torch.nn.CrossEntropyLoss()
 
-    if args.embedding:
+    if (args.embedding or args.metric) and os.path.isfile(args.centroids_path):
         gt_list = []
         embeddings = np.loadtxt(args.centroids_path, delimiter='\t')
         splits = np.array_split(embeddings, 7)
@@ -195,6 +195,13 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
                                               dataloader_val=dataloader_val)
             confusion_matrix, acc_val, export_data = mahalanobis_testing(args, model, dataloader_test, covariances)
 
+        elif args.test_method == 'distance':
+            distance_array = get_distances(args, dataloader_test, model, gt_list)
+            distancespath = './distances'
+            if not os.path.isdir(distancespath):
+                os.makedirs(distancespath)
+            np.save(os.path.join(distancespath, 'distances.npy'), distance_array)
+
         else:
             print("=> no test method found")
             exit(-1)
@@ -230,6 +237,8 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
 
     else:
         # THIS IS OUR BASELINE, WITHOUT TRIPLET FLAVOURS (OURS OR KEVIN)
+        if args.test_method == 'distance':
+            save_embeddings = True
         confusion_matrix, acc_val, _ = validation(args, model, criterion, dataloader_test, gt_list=gt_list,
                                                   save_embeddings=save_embeddings)
 
@@ -350,6 +359,14 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
         np.savetxt(os.path.join(args.saveEmbeddingsPath, save_embeddings), np.asarray(all_embedding_matrix),
                    delimiter='\t')
         np.savetxt(os.path.join(args.saveEmbeddingsPath, save_embeddings), labelRecord, delimiter='\t')
+
+    if args.test_method == 'distance':
+        distancespath = './distances'
+        if not os.path.isdir(distancespath):
+            os.makedirs(distancespath)
+        embbeding = np.vstack(all_embedding_matrix)
+        distances = get_distances_embb(embbeding, gt_list)
+        np.save(os.path.join(distancespath, 'distances.npy'), distances)
 
     if args.get_scores:
         # write scores in a log
@@ -1117,7 +1134,8 @@ def main(args, model=None):
 
             if args.freeze and not args.model == 'LSTM':
                 print("=> training a fully connected classificator from a metric learning model")
-                model = Freezed_Model(model, args.feature_detector_path, args.num_classes, num_layers=1) #This is hardcoded
+                model = Freezed_Model(model, args.feature_detector_path, args.num_classes,
+                                      num_layers=1)  # This is hardcoded
 
             if args.resume:
                 if os.path.isfile(args.resume):
