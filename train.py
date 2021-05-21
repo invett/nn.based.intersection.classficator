@@ -354,7 +354,7 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
         acc = acc_record / len(dataloader)
         print('Accuracy for test/validation : %f\n' % acc)
 
-    if save_embeddings:
+    if save_embeddings and not args.test_method == 'distance':
         all_embedding_matrix = np.asarray(all_embedding_matrix)
         np.savetxt(os.path.join(args.saveEmbeddingsPath, save_embeddings), np.asarray(all_embedding_matrix),
                    delimiter='\t')
