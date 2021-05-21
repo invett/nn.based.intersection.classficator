@@ -1389,6 +1389,7 @@ if __name__ == '__main__':
     ### save things
     parser.add_argument('--save_embeddings', type=str, default=None,
                         help='Filename to save the embeddings in testing. None for doing nothing')
+    parser.add_argument('--saveEmbeddingsPath', type=str, default='./trainedmodels/embeddings', help='path to save embbedings')
     parser.add_argument('--save_model_path', type=str, default='./trainedmodels/', help='path to save model')
     parser.add_argument('--save_prefix', type=str, default='', help='Prefix to all saved models')
 
