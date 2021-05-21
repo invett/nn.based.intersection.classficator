@@ -356,6 +356,8 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
 
     if save_embeddings and not args.test_method == 'distance':
         all_embedding_matrix = np.asarray(all_embedding_matrix)
+        if not os.path.isdir(args.saveEmbeddingsPath):
+            os.makedirs(args.saveEmbeddingsPath)
         np.savetxt(os.path.join(args.saveEmbeddingsPath, 'embeddings.txt'), np.asarray(all_embedding_matrix),
                    delimiter='\t')
         np.savetxt(os.path.join(args.saveEmbeddingsPath, 'labels.txt'), labelRecord, delimiter='\t')
