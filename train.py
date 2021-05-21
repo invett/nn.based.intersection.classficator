@@ -1429,7 +1429,7 @@ if __name__ == '__main__':
                         choices=['pairwise', 'cosine', 'SNR'],
                         help='distance function selection')
     parser.add_argument('--p', type=float, default=2.0, help='p distance value')
-    parser.add_argument('--test_method', type=str, default='svm', choices=['svm', 'mahalanobis'],
+    parser.add_argument('--test_method', type=str, default='svm', choices=['svm', 'mahalanobis', 'distance'],
                         help='testing classification method')
     parser.add_argument('--svm_mode', type=str, default='Linear', choices=['Linear', 'ovo'],
                         help='svm classification method')
