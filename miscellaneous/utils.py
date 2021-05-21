@@ -11,6 +11,7 @@ from io import BytesIO
 from math import asin, atan2, cos, pi, sin
 
 from pytorch_metric_learning import testers
+from scipy.spatial import distance
 from scipy.special import softmax
 from sklearn import svm
 import pathlib
@@ -1054,10 +1055,9 @@ def get_distances(dataloader_test, model, centroid_list):
 
 def get_distances_embb(embbedings, centroid_list):
     distances = []
-    distance = nn.PairwiseDistance(p=2)
     for embedding in embbedings:
         for ct in centroid_list:
-            distances.append(distance(embedding, ct))
+            distances.append(distance.euclidean(embedding, ct))
 
     npdist = np.array(distances)
     npdist = npdist.reshape(-1, 7)
