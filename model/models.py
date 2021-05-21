@@ -190,16 +190,14 @@ class Inception_v3(torch.nn.Module):
 class Classifier(torch.nn.Module):
     def __init__(self, num_classes=7):
         super().__init__()
-        self.fc1 = torch.nn.Linear(512, 256)
-        self.fc2 = torch.nn.Linear(256, 128)
-        self.fc3 = torch.nn.Linear(128, num_classes)
-        self.dropout = torch.nn.Dropout(p=0.2)
-        self.elu = torch.nn.ELU()
+        self.fc = torch.nn.Linear(512, num_classes)
+        #self.fc2 = torch.nn.Linear(128, num_classes)
+        #self.dropout = torch.nn.Dropout(p=0.2)
+        #self.elu = torch.nn.ELU()
 
     def forward(self, data):
-        x = self.dropout(self.elu(self.fc1(data)))
-        x = self.dropout(self.elu(self.fc2(x)))
-        prediction = self.fc3(x)
+        #x = self.dropout(self.elu(self.fc1(data)))
+        prediction = self.fc(data)
 
         return prediction
 
