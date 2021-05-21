@@ -113,6 +113,10 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
         print('Wrong model selection')
         exit(-1)
 
+    if args.freeze and not args.model == 'LSTM':
+        print("=> training a fully connected classificator from a metric learning model")
+        model = Freezed_Model(model, args.feature_detector_path, args.num_classes, num_layers=1)  # This is hardcoded
+
     # load Saved Model
     loadpath = args.load_path
     if os.path.isfile(loadpath):
@@ -1113,7 +1117,7 @@ def main(args, model=None):
 
             if args.freeze and not args.model == 'LSTM':
                 print("=> training a fully connected classificator from a metric learning model")
-                model = Freezed_Model(model, args.feature_detector_path, args.num_classes)
+                model = Freezed_Model(model, args.feature_detector_path, args.num_classes, num_layers=1) #This is hardcoded
 
             if args.resume:
                 if os.path.isfile(args.resume):
