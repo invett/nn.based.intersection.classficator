@@ -356,9 +356,9 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
 
     if save_embeddings and not args.test_method == 'distance':
         all_embedding_matrix = np.asarray(all_embedding_matrix)
-        np.savetxt(os.path.join(args.saveEmbeddingsPath, save_embeddings), np.asarray(all_embedding_matrix),
+        np.savetxt(os.path.join(args.saveEmbeddingsPath, 'embeddings.txt'), np.asarray(all_embedding_matrix),
                    delimiter='\t')
-        np.savetxt(os.path.join(args.saveEmbeddingsPath, save_embeddings), labelRecord, delimiter='\t')
+        np.savetxt(os.path.join(args.saveEmbeddingsPath, 'labels.txt'), labelRecord, delimiter='\t')
 
     if args.test_method == 'distance':
         distancespath = './distances'
@@ -1387,9 +1387,8 @@ if __name__ == '__main__':
     parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
                                                                        'checkpoint (epochs)')
     ### save things
-    parser.add_argument('--save_embeddings', type=str, default=None,
-                        help='Filename to save the embeddings in testing. None for doing nothing')
-    parser.add_argument('--saveEmbeddingsPath', type=str, default='./trainedmodels/embeddings', help='path to save embbedings')
+    parser.add_argument('--save_embeddings', type=str2bool, nargs='?', const=True, default=False, help='save embeddings')
+    parser.add_argument('--saveEmbeddingsPath', type=str, default='./trainedmodels/embeddings', help='path to save embbedingsf')
     parser.add_argument('--save_model_path', type=str, default='./trainedmodels/', help='path to save model')
     parser.add_argument('--save_prefix', type=str, default='', help='Prefix to all saved models')
 
