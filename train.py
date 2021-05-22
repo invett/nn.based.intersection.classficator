@@ -70,9 +70,9 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     if (args.embedding or args.metric) and os.path.isfile(args.centroids_path):
         gt_list = []
         embeddings = np.loadtxt(args.centroids_path, delimiter='\t')
-        splits = np.array_split(embeddings, 7)
+        labels = np.loadtxt(args.label_centroids_path, delimiter='\t')
         for i in range(7):
-            gt_list.append(np.mean(splits[i], axis=0))
+            gt_list.append(np.mean(embeddings[labels == i], axis=0))
         gt_list = torch.FloatTensor(gt_list)
     else:
         gt_list = None
@@ -358,9 +358,9 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
         all_embedding_matrix = np.asarray(all_embedding_matrix)
         if not os.path.isdir(args.saveEmbeddingsPath):
             os.makedirs(args.saveEmbeddingsPath)
-        np.savetxt(os.path.join(args.saveEmbeddingsPath, 'embeddings.txt'), np.asarray(all_embedding_matrix),
-                   delimiter='\t')
-        np.savetxt(os.path.join(args.saveEmbeddingsPath, 'labels.txt'), labelRecord, delimiter='\t')
+        np.savetxt(os.path.join(args.saveEmbeddingsPath, 'embeddings.txt'), np.vstack(all_embedding_matrix),
+                   delimiter='\t',fmt='%s')
+        np.savetxt(os.path.join(args.saveEmbeddingsPath, 'labels.txt'), labelRecord, delimiter='\t', fmt='%s')
 
     if args.test_method == 'distance':
         distancespath = './distances'
@@ -1473,6 +1473,7 @@ if __name__ == '__main__':
                         help='Use embedding matching')
     parser.add_argument('--triplet', type=str2bool, nargs='?', const=True, default=False, help='Use embedding matching')
     parser.add_argument('--centroids_path', type=str, help='Insert centroids teacher path (for student training)')
+    parser.add_argument('--label_centroids_path', type=str, help='Insert label centroids teacher path (for student training)')
     parser.add_argument('--load_path', type=str, help='Insert path to the testing pth (for network testing)')
     parser.add_argument('--margin', type=float, default=1., help='margin in triplet and embedding')
     parser.add_argument('--feature_model', type=str, help='Feature extractor for lstm model')
