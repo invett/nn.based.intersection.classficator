@@ -31,7 +31,7 @@ from dataloaders.sequencedataloader import fromAANETandDualBisenet, fromGenerate
 from dataloaders.transforms import GenerateBev, Mirror, Normalize, Rescale, ToTensor
 from miscellaneous.utils import init_function, send_telegram_message, send_telegram_picture, \
     student_network_pass, svm_generator, svm_testing, covmatrix_generator, mahalanobis_testing, lstm_network_pass, \
-    svm_testing_lstm, mahalanobis_testing_lstm
+    svm_testing_lstm, mahalanobis_testing_lstm, get_distances, get_distances_embb
 from model.models import Resnet, LSTM, GRU, VGG, Mobilenet_v3, Inception_v3, Freezed_Model
 
 
@@ -67,12 +67,12 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     else:
         criterion = torch.nn.CrossEntropyLoss()
 
-    if args.embedding:
+    if (args.embedding or args.metric) and os.path.isfile(args.centroids_path):
         gt_list = []
         embeddings = np.loadtxt(args.centroids_path, delimiter='\t')
-        splits = np.array_split(embeddings, 7)
+        labels = np.loadtxt(args.label_centroids_path, delimiter='\t')
         for i in range(7):
-            gt_list.append(np.mean(splits[i], axis=0))
+            gt_list.append(np.mean(embeddings[labels == i], axis=0))
         gt_list = torch.FloatTensor(gt_list)
     else:
         gt_list = None
@@ -112,6 +112,10 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     else:
         print('Wrong model selection')
         exit(-1)
+
+    if args.freeze and not args.model == 'LSTM':
+        print("=> training a fully connected classificator from a metric learning model")
+        model = Freezed_Model(model, args.feature_detector_path, args.num_classes, num_layers=1)  # This is hardcoded
 
     # load Saved Model
     loadpath = args.load_path
@@ -191,6 +195,13 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
                                               dataloader_val=dataloader_val)
             confusion_matrix, acc_val, export_data = mahalanobis_testing(args, model, dataloader_test, covariances)
 
+        elif args.test_method == 'distance':
+            distance_array = get_distances(args, dataloader_test, model, gt_list)
+            distancespath = './distances'
+            if not os.path.isdir(distancespath):
+                os.makedirs(distancespath)
+            np.save(os.path.join(distancespath, 'distances.npy'), distance_array)
+
         else:
             print("=> no test method found")
             exit(-1)
@@ -226,6 +237,8 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
 
     else:
         # THIS IS OUR BASELINE, WITHOUT TRIPLET FLAVOURS (OURS OR KEVIN)
+        if args.test_method == 'distance':
+            save_embeddings = True
         confusion_matrix, acc_val, _ = validation(args, model, criterion, dataloader_test, gt_list=gt_list,
                                                   save_embeddings=save_embeddings)
 
@@ -341,11 +354,21 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
         acc = acc_record / len(dataloader)
         print('Accuracy for test/validation : %f\n' % acc)
 
-    if save_embeddings:
+    if save_embeddings and not args.test_method == 'distance':
         all_embedding_matrix = np.asarray(all_embedding_matrix)
-        np.savetxt(os.path.join(args.saveEmbeddingsPath, save_embeddings), np.asarray(all_embedding_matrix),
-                   delimiter='\t')
-        np.savetxt(os.path.join(args.saveEmbeddingsPath, save_embeddings), labelRecord, delimiter='\t')
+        if not os.path.isdir(args.saveEmbeddingsPath):
+            os.makedirs(args.saveEmbeddingsPath)
+        np.savetxt(os.path.join(args.saveEmbeddingsPath, 'embeddings.txt'), np.vstack(all_embedding_matrix),
+                   delimiter='\t',fmt='%s')
+        np.savetxt(os.path.join(args.saveEmbeddingsPath, 'labels.txt'), labelRecord, delimiter='\t', fmt='%s')
+
+    if args.test_method == 'distance':
+        distancespath = './distances'
+        if not os.path.isdir(distancespath):
+            os.makedirs(distancespath)
+        embbeding = np.vstack(all_embedding_matrix)
+        distances = get_distances_embb(embbeding, gt_list)
+        np.save(os.path.join(distancespath, 'distances.npy'), distances)
 
     if args.get_scores:
         # write scores in a log
@@ -1015,7 +1038,7 @@ def main(args, model=None):
             train_dataset = lstm_txt_dataloader(train_path, transform=threedimensional_transfomrs,
                                                 all_in_ram=args.all_in_ram, fixed_lenght=args.fixed_length)
 
-        elif args.dataloader == 'txt_dataloader' and 'KITTI-360_3D' not in train_path:  # // RGB // Homography
+        elif args.dataloader == 'txt_dataloader' and '3D' not in train_path:  # // RGB // Homography
             print('Training with rgb Data augmentation')
             val_dataset = txt_dataloader(val_path, transform=rgb_image_test_transforms, decimateStep=args.decimate)
 
@@ -1112,7 +1135,9 @@ def main(args, model=None):
                 exit(-1)
 
             if args.freeze and not args.model == 'LSTM':
-                model = Freezed_Model(model, args.feature_detector_path, args.num_classes)
+                print("=> training a fully connected classificator from a metric learning model")
+                model = Freezed_Model(model, args.feature_detector_path, args.num_classes,
+                                      num_layers=1)  # This is hardcoded
 
             if args.resume:
                 if os.path.isfile(args.resume):
@@ -1364,8 +1389,8 @@ if __name__ == '__main__':
     parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
                                                                        'checkpoint (epochs)')
     ### save things
-    parser.add_argument('--save_embeddings', type=str, default=None,
-                        help='Filename to save the embeddings in testing. None for doing nothing')
+    parser.add_argument('--save_embeddings', type=str2bool, nargs='?', const=True, default=False, help='save embeddings')
+    parser.add_argument('--saveEmbeddingsPath', type=str, default='./trainedmodels/embeddings', help='path to save embbedingsf')
     parser.add_argument('--save_model_path', type=str, default='./trainedmodels/', help='path to save model')
     parser.add_argument('--save_prefix', type=str, default='', help='Prefix to all saved models')
 
@@ -1406,7 +1431,7 @@ if __name__ == '__main__':
                         choices=['pairwise', 'cosine', 'SNR'],
                         help='distance function selection')
     parser.add_argument('--p', type=float, default=2.0, help='p distance value')
-    parser.add_argument('--test_method', type=str, default='svm', choices=['svm', 'mahalanobis'],
+    parser.add_argument('--test_method', type=str, default='svm', choices=['svm', 'mahalanobis', 'distance'],
                         help='testing classification method')
     parser.add_argument('--svm_mode', type=str, default='Linear', choices=['Linear', 'ovo'],
                         help='svm classification method')
@@ -1448,6 +1473,7 @@ if __name__ == '__main__':
                         help='Use embedding matching')
     parser.add_argument('--triplet', type=str2bool, nargs='?', const=True, default=False, help='Use embedding matching')
     parser.add_argument('--centroids_path', type=str, help='Insert centroids teacher path (for student training)')
+    parser.add_argument('--label_centroids_path', type=str, help='Insert label centroids teacher path (for student training)')
     parser.add_argument('--load_path', type=str, help='Insert path to the testing pth (for network testing)')
     parser.add_argument('--margin', type=float, default=1., help='margin in triplet and embedding')
     parser.add_argument('--feature_model', type=str, help='Feature extractor for lstm model')

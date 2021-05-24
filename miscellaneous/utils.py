@@ -11,6 +11,7 @@ from io import BytesIO
 from math import asin, atan2, cos, pi, sin
 
 from pytorch_metric_learning import testers
+from scipy.spatial import distance
 from scipy.special import softmax
 from sklearn import svm
 import pathlib
@@ -114,6 +115,7 @@ def send_telegram_picture(plt, description):
         print('error sending telegram message')
 
         return -1
+
 
 def euler2mat(z, y, x):
     """
@@ -468,7 +470,8 @@ def lstm_network_pass(args, batch, criterion, model, lstm, miner=None, acc_metri
 
     padded_batch = pad_sequence(seq_list, batch_first=True)
     packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
-                                               batch_first=True, enforce_sorted=False)  # --> (Batch x Max_seq_len x 512)
+                                               batch_first=True,
+                                               enforce_sorted=False)  # --> (Batch x Max_seq_len x 512)
 
     prediction, output = lstm(packed_padded_batch)
 
@@ -493,7 +496,8 @@ def lstm_network_pass(args, batch, criterion, model, lstm, miner=None, acc_metri
 
         # create list to export
         flat_all_filenames = [filename for item in batch for filename in item['path_of_original_images']]
-        flat_all_labels = [item for sublist in [np.ones(len(item['sequence']), int) * int(item['label']) for item in batch]
+        flat_all_labels = [item for sublist in
+                           [np.ones(len(item['sequence']), int) * int(item['label']) for item in batch]
                            for item in sublist]
         flat_all_predictions = [item for sublist in all_predictions for item in sublist]
         export_data = [flat_all_filenames, flat_all_labels, flat_all_predictions]
@@ -501,8 +505,9 @@ def lstm_network_pass(args, batch, criterion, model, lstm, miner=None, acc_metri
         # export_data: this list contains data to create a file that is similar to 'test_list.txt' used
         # in txt_dataloader. will be used to compare RESNET vs LSTM as they are already in 'per-sequence' format.
 
-        filename = '/tmp/' + str(int(time.time())) + '_' + os.path.splitext(os.path.split(args.dataset_test)[1])[0]  + '_lstm_export_svm' + \
-                       os.path.splitext(os.path.split(args.dataset_test)[1])[1]
+        filename = '/tmp/' + str(int(time.time())) + '_' + os.path.splitext(os.path.split(args.dataset_test)[1])[
+            0] + '_lstm_export_svm' + \
+                   os.path.splitext(os.path.split(args.dataset_test)[1])[1]
         print('\nsaving data in: ' + filename)
 
         # create filename
@@ -687,13 +692,14 @@ def embb_data_lstm(model, dataloader_train, dataloader_val, LSTM=None):
 
             padded_batch = pad_sequence(seq_list, batch_first=True)
             packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
-                                                       batch_first=True, enforce_sorted=False)  # --> (Batch x Max_seq_len x 512)
+                                                       batch_first=True,
+                                                       enforce_sorted=False)  # --> (Batch x Max_seq_len x 512)
 
             prediction, output = LSTM(packed_padded_batch)
             # Output contains a packed sequence with the prediction in each timestamp --> (seq_len x batch x hidden_size)
             # Prediction contains the prediction in the last timestamp --> (batch x hidden_size)
 
-            #output, lens_output = pad_packed_sequence(output, batch_first=True)  ## que hacer con output??
+            # output, lens_output = pad_packed_sequence(output, batch_first=True)  ## que hacer con output??
 
             embeddingRecord.append(prediction.cpu().numpy())
             labelRecord.append(np.expand_dims(np.array(label_list), axis=1))
@@ -710,13 +716,14 @@ def embb_data_lstm(model, dataloader_train, dataloader_val, LSTM=None):
 
             padded_batch = pad_sequence(seq_list, batch_first=True)
             packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
-                                                       batch_first=True, enforce_sorted=False)  # --> (Batch x Max_seq_len x 512)
+                                                       batch_first=True,
+                                                       enforce_sorted=False)  # --> (Batch x Max_seq_len x 512)
 
             prediction, output = LSTM(packed_padded_batch)
             # Output contains a packed sequence with the prediction in each timestamp --> (seq_len x batch x hidden_size)
             # Prediction contains the prediction in the last timestamp --> (batch x hidden_size)
 
-            #output, lens_output = pad_packed_sequence(output, batch_first=True)  ## que hacer con output??
+            # output, lens_output = pad_packed_sequence(output, batch_first=True)  ## que hacer con output??
 
             embeddingRecord.append(prediction.cpu().numpy())
             labelRecord.append(np.expand_dims(np.array(label_list), axis=1))
@@ -806,7 +813,8 @@ def svm_testing_lstm(model, dataloader_test, classifier, LSTM):
 
             padded_batch = pad_sequence(seq_list, batch_first=True)
             packed_padded_batch = pack_padded_sequence(padded_batch, len_list,
-                                                       batch_first=True, enforce_sorted=False)  # --> (Batch x Max_seq_len x 512)
+                                                       batch_first=True,
+                                                       enforce_sorted=False)  # --> (Batch x Max_seq_len x 512)
 
             prediction, output = LSTM(packed_padded_batch)
             # Output contains a packed sequence with the prediction in each timestamp --> (seq_len x batch x hidden_size)
@@ -913,6 +921,7 @@ def mahalanobis_testing(args, model, dataloader_test, covariances):
         export_overall = [export_filenames, export_gt_labels, export_prediction_list]
 
         return conf_matrix, acc, export_overall
+
 
 def mahalanobis_testing_lstm(model, dataloader_test, covariances, LSTM=None):
     print('Start mahalanobis testing LSTM')
@@ -1026,6 +1035,34 @@ def gt_triplet_validation(out_anchor, model, gt_list):
         classification = np.argmin(nplist, axis=1)
     model.train()
     return classification
+
+
+def get_distances(dataloader_test, model, centroid_list):
+    distances = []
+    model.eval()
+    with torch.no_grad():
+        distance = nn.PairwiseDistance(p=2)
+        for sample in dataloader_test:
+            output = model(sample)
+            for batch_item in output:
+                for ct in centroid_list:
+                    distances.append(distance(batch_item.squeeze(), ct.cuda()))
+    npdist = np.array(distances)
+    npdist = npdist.reshape(-1, 7)
+
+    return npdist
+
+
+def get_distances_embb(embbedings, centroid_list):
+    distances = []
+    for embedding in embbedings:
+        for ct in centroid_list:
+            distances.append(distance.euclidean(embedding, ct))
+
+    npdist = np.array(distances)
+    npdist = npdist.reshape(-1, 7)
+
+    return npdist
 
 
 def getCameraRototraslation(pitchCorrection_, yawCorrection_, rollCorrection_, dx_, dy_, dz_):
@@ -1322,7 +1359,7 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
         for item in train_list:
             f.write("%s\n" % item)
     with open(os.path.join(save_folder, validation_filename), 'w') as f:
-        print('Creating file... ', os.path.join(save_folder, validation_filename),)
+        print('Creating file... ', os.path.join(save_folder, validation_filename), )
         for item in validation_list:
             f.write("%s\n" % item)
     with open(os.path.join(save_folder, test_filename), 'w') as f:
@@ -1362,6 +1399,6 @@ def getFrameNumber(extract_field_from_path, frame_filename):
         print('Current settings does not allow to extract the filename as number. Currently using field: ' + str(
             extract_field_from_path) + '\nExpected a number, but asket to extract field ' +
               str(extract_field_from_path) + ' from the following list. Remember: start to count from zero!')
-        print(frame_filename.replace('_', '.','-').replace('/', '.').split('.'))
+        print(frame_filename.replace('_', '.', '-').replace('/', '.').split('.'))
         exit()
     return current_frame_number

@@ -187,20 +187,52 @@ class Inception_v3(torch.nn.Module):
             return prediction
 
 
+class Classifier(torch.nn.Module):
+    def __init__(self, num_classes=7, num_layers=1):
+        super().__init__()
+        self.num_layers = num_layers
+        self.dropout = torch.nn.Dropout(p=0.2)
+        self.elu = torch.nn.ELU()
+
+        if num_layers == 1:
+            self.fc1 = torch.nn.Linear(512, num_classes)
+        elif num_layers == 2:
+            self.fc1 = torch.nn.Linear(512, 256)
+            self.fc2 = torch.nn.Linear(256, num_classes)
+        else:
+            self.fc1 = torch.nn.Linear(512, 256)
+            self.fc2 = torch.nn.Linear(256, 128)
+            self.fc3 = torch.nn.Linear(256, num_classes)
+
+    def forward(self, data):
+        if self.num_layers == 1:
+            prediction = self.fc1(data)
+        elif self.num_layers == 2:
+            x = self.dropout(self.elu(self.fc1(data)))
+            prediction = self.fc2(x)
+        else:
+            x = self.dropout(self.elu(self.fc1(data)))
+            x = self.dropout(self.elu(self.fc2(x)))
+            prediction = self.fc3(x)
+
+        return prediction
+
+
 class Freezed_Model(torch.nn.Module):
-    def __init__(self, model, load_path, num_classes):
+    def __init__(self, model, load_path, num_classes, num_layers):
+        super().__init__()
         self.model = model
-        self.load_model(model, load_path)
-        self.fc = torch.nn.Linear(512, num_classes)
+        self.load_model(load_path)
+        self.classifier = Classifier(num_classes=num_classes, num_layers=num_layers)
 
     def forward(self, data):
         feature = self.model(data)
         if isinstance(feature, tuple):
-            prediction = self.fc(feature[0])
-            aux_prediction = self.fc(feature[1])
+            prediction = self.classifier(feature[0])
+            aux_prediction = self.classifier(feature[1])
             return prediction, aux_prediction
         else:
-            prediction = self.fc(feature)
+            prediction = self.classifier(feature)
             return prediction
 
     def load_model(self, load_path):
