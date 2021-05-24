@@ -1145,6 +1145,7 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
     type_x_frames = type_0 + type_1 + type_2 + type_3 + type_4 + type_5 + type_6
 
     type_x_sequences = [[], [], [], [], [], [], []]
+    type_all_sequences = []
 
     sequences = 0
     sequences_frame_number = []
@@ -1203,6 +1204,9 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
                     type_x_sequences[5].append(current_sequence_filenames.copy())
                 if prev_frame_class == 6:
                     type_x_sequences[6].append(current_sequence_filenames.copy())
+
+                if prev_frame_class != None:
+                    type_all_sequences.append([current_sequence_filenames.copy(), prev_frame_class])
 
                 if len(current_sequence_filenames) != current_sequence_frames:
                     print("Error")
@@ -1297,6 +1301,7 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
     train_filename = prefix_filename + 'train_list.txt'
     validation_filename = prefix_filename + 'validation_list.txt'
     test_filename = prefix_filename + 'test_list.txt'
+    all_filename = prefix_filename + 'all_list.txt'
 
     if not overwrite_i_dont_care:
         if os.path.isfile(os.path.join(save_folder, train_filename)):
@@ -1307,6 +1312,9 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
             exit(1)
         if os.path.isfile(os.path.join(save_folder, test_filename)):
             print('File already exists' + os.path.join(save_folder, test_filename))
+            exit(1)
+        if os.path.isfile(os.path.join(save_folder, all_filename)):
+            print('File already exists' + os.path.join(save_folder, all_filename))
             exit(1)
 
     with open(os.path.join(save_folder, train_filename), 'w') as f:
@@ -1321,6 +1329,10 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
         print('Creating file... ', os.path.join(save_folder, test_filename))
         for item in test_list:
             f.write("%s\n" % item)
+    with open(os.path.join(save_folder, all_filename), 'w') as f:
+        print('Creating file... ', os.path.join(save_folder, all_filename))
+        for item in type_all_sequences:
+            f.write(item[0][0] + ';' + str(item[1]) + '\n')
 
     print("Finish")
 
