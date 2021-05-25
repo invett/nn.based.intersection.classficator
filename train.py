@@ -910,10 +910,7 @@ def main(args, model=None):
                                   '2013_05_28_drive_0004_sync',
                                   '2013_05_28_drive_0000_sync']
 
-    if args.model == 'inception_v3':
-        img_rescale = transforms.Resize((299, 299))
-    else:
-        img_rescale = transforms.Resize((224, 224))
+    img_rescale = transforms.Resize(args.image_size)
 
     aanetTransforms = transforms.Compose(
         [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), ToTensor()])
@@ -1403,12 +1400,14 @@ if __name__ == '__main__':
 
     parser.add_argument('--telegram', type=str2bool, nargs='?', const=True, default=False,
                         help='Send info through Telegram')
-    parser.add_argument('--dataset', action="extend", nargs="+", type=str, help='path to the dataset you are using. (Train or full split)')
+    parser.add_argument('--dataset', action="extend", nargs="+", type=str,
+                        help='path to the dataset you are using. (Train or full split)')
     parser.add_argument('--dataset_val', action="extend", nargs="+", type=str, default=None,
                         help='path to the validation dataset that you are using if is different to the training one')
     parser.add_argument('--dataset_test', action="extend", nargs="+", type=str, default=None,
                         help='path to the testing dataset that you are using if is different to the training one')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
+    parser.add_argument('--image_size', nargs='+', type=int, help='Number of images in each batch')
     parser.add_argument('--model', type=str, default="resnet18",
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
     parser.add_argument('--savemodel', type=str2bool, nargs='?', const=True, default=False,
@@ -1556,6 +1555,8 @@ if __name__ == '__main__':
         group_id = args.wandb_group_id
     else:
         group_id = 'Kitti360_Ultimate_student'
+
+    args.image_size = tuple(args.image_size)
 
     print(args)
     warnings.filterwarnings("ignore")
