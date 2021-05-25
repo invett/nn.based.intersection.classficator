@@ -853,19 +853,19 @@ def main(args, model=None):
         # args.dataset_val      >>> path to the folder
         # args.dataset_test     >>> path to the folder
 
-        if all(map(os.path.exists, args.dataset)) and all(map(os.path.exists, args.dataset_val)) and all(
-                map(os.path.exists, args.dataset_test)):
+        if all(map(os.path.isfile, args.dataset)) and all(map(os.path.isfile, args.dataset_val)) and all(
+                map(os.path.isfile, args.dataset_test)):
             train_path = args.dataset  # Path list to train dataset
             val_path = args.dataset_val  # Path list to validation dataset
             test_path = args.dataset_test  # Path list to test dataset
         else:
-            assert os.path.isfile(os.path.join(args.dataset, 'train/train_list.txt')), "Error in train dataset"
+            assert os.path.isfile(os.path.join(args.dataset[0], 'train/train_list.txt')), "Error in train dataset"
             assert os.path.isfile(
-                os.path.join(args.dataset, 'validation/validation_list.txt')), "Error in validation dataset"
-            assert os.path.isfile(os.path.join(args.dataset, 'test/test_list.txt')), "Error in test dataset"
-            train_path = os.path.join(args.dataset, 'train/train_list.txt')
-            val_path = os.path.join(args.dataset, 'validation/validation_list.txt')
-            test_path = os.path.join(args.dataset, 'test/test_list.txt')
+                os.path.join(args.dataset[0], 'validation/validation_list.txt')), "Error in validation dataset"
+            assert os.path.isfile(os.path.join(args.dataset[0], 'test/test_list.txt')), "Error in test dataset"
+            train_path = os.path.join(args.dataset[0], 'train/train_list.txt')
+            val_path = os.path.join(args.dataset[0], 'validation/validation_list.txt')
+            test_path = os.path.join(args.dataset[0], 'test/test_list.txt')
 
             # for some reason, in some cases, if we're using lstm_txt_dataloader than test_path is not in the args.xxxx
             # instead we use data_path, or data_path = args.dataset previously defined.
@@ -910,10 +910,7 @@ def main(args, model=None):
                                   '2013_05_28_drive_0004_sync',
                                   '2013_05_28_drive_0000_sync']
 
-    if args.model == 'inception_v3':
-        img_rescale = transforms.Resize((299, 299))
-    else:
-        img_rescale = transforms.Resize((224, 224))
+    img_rescale = transforms.Resize(args.image_size)
 
     aanetTransforms = transforms.Compose(
         [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), ToTensor()])
@@ -1403,12 +1400,14 @@ if __name__ == '__main__':
 
     parser.add_argument('--telegram', type=str2bool, nargs='?', const=True, default=False,
                         help='Send info through Telegram')
-    parser.add_argument('--dataset', action="extend", nargs="+", type=str, help='path to the dataset you are using. (Train or full split)')
+    parser.add_argument('--dataset', action="extend", nargs="+", type=str,
+                        help='path to the dataset you are using. (Train or full split)')
     parser.add_argument('--dataset_val', action="extend", nargs="+", type=str, default=None,
                         help='path to the validation dataset that you are using if is different to the training one')
     parser.add_argument('--dataset_test', action="extend", nargs="+", type=str, default=None,
                         help='path to the testing dataset that you are using if is different to the training one')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
+    parser.add_argument('--image_size', nargs='+', type=int, help='Number of images in each batch')
     parser.add_argument('--model', type=str, default="resnet18",
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
     parser.add_argument('--savemodel', type=str2bool, nargs='?', const=True, default=False,
@@ -1556,6 +1555,8 @@ if __name__ == '__main__':
         group_id = args.wandb_group_id
     else:
         group_id = 'Kitti360_Ultimate_student'
+
+    args.image_size = tuple(args.image_size)
 
     print(args)
     warnings.filterwarnings("ignore")
