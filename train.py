@@ -853,19 +853,19 @@ def main(args, model=None):
         # args.dataset_val      >>> path to the folder
         # args.dataset_test     >>> path to the folder
 
-        if all(map(os.path.exists, args.dataset)) and all(map(os.path.exists, args.dataset_val)) and all(
-                map(os.path.exists, args.dataset_test)):
+        if all(map(os.path.isfile, args.dataset)) and all(map(os.path.isfile, args.dataset_val)) and all(
+                map(os.path.isfile, args.dataset_test)):
             train_path = args.dataset  # Path list to train dataset
             val_path = args.dataset_val  # Path list to validation dataset
             test_path = args.dataset_test  # Path list to test dataset
         else:
-            assert os.path.isfile(os.path.join(args.dataset, 'train/train_list.txt')), "Error in train dataset"
+            assert os.path.isfile(os.path.join(args.dataset[0], 'train/train_list.txt')), "Error in train dataset"
             assert os.path.isfile(
-                os.path.join(args.dataset, 'validation/validation_list.txt')), "Error in validation dataset"
-            assert os.path.isfile(os.path.join(args.dataset, 'test/test_list.txt')), "Error in test dataset"
-            train_path = os.path.join(args.dataset, 'train/train_list.txt')
-            val_path = os.path.join(args.dataset, 'validation/validation_list.txt')
-            test_path = os.path.join(args.dataset, 'test/test_list.txt')
+                os.path.join(args.dataset[0], 'validation/validation_list.txt')), "Error in validation dataset"
+            assert os.path.isfile(os.path.join(args.dataset[0], 'test/test_list.txt')), "Error in test dataset"
+            train_path = os.path.join(args.dataset[0], 'train/train_list.txt')
+            val_path = os.path.join(args.dataset[0], 'validation/validation_list.txt')
+            test_path = os.path.join(args.dataset[0], 'test/test_list.txt')
 
             # for some reason, in some cases, if we're using lstm_txt_dataloader than test_path is not in the args.xxxx
             # instead we use data_path, or data_path = args.dataset previously defined.
