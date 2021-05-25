@@ -359,7 +359,7 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
         if not os.path.isdir(args.saveEmbeddingsPath):
             os.makedirs(args.saveEmbeddingsPath)
         np.savetxt(os.path.join(args.saveEmbeddingsPath, 'embeddings.txt'), np.vstack(all_embedding_matrix),
-                   delimiter='\t',fmt='%s')
+                   delimiter='\t', fmt='%s')
         np.savetxt(os.path.join(args.saveEmbeddingsPath, 'labels.txt'), labelRecord, delimiter='\t', fmt='%s')
 
     if args.test_method == 'distance':
@@ -853,11 +853,11 @@ def main(args, model=None):
         # args.dataset_val      >>> path to the folder
         # args.dataset_test     >>> path to the folder
 
-        if os.path.isfile(args.dataset) and os.path.isfile(args.dataset_val) and os.path.isfile(
-                args.dataset_test):
-            train_path = args.dataset  # Path to train dataset
-            val_path = args.dataset_val  # Path to validation dataset
-            test_path = args.dataset_test  # Path to test dataset
+        if all(map(os.path.exists, args.dataset)) and all(map(os.path.exists, args.dataset_val)) and all(
+                map(os.path.exists, args.dataset_test)):
+            train_path = args.dataset  # Path list to train dataset
+            val_path = args.dataset_val  # Path list to validation dataset
+            test_path = args.dataset_test  # Path list to test dataset
         else:
             assert os.path.isfile(os.path.join(args.dataset, 'train/train_list.txt')), "Error in train dataset"
             assert os.path.isfile(
@@ -1389,8 +1389,10 @@ if __name__ == '__main__':
     parser.add_argument('--validation_step', type=int, default=5, help='How often to perform validation and a '
                                                                        'checkpoint (epochs)')
     ### save things
-    parser.add_argument('--save_embeddings', type=str2bool, nargs='?', const=True, default=False, help='save embeddings')
-    parser.add_argument('--saveEmbeddingsPath', type=str, default='./trainedmodels/embeddings', help='path to save embbedingsf')
+    parser.add_argument('--save_embeddings', type=str2bool, nargs='?', const=True, default=False,
+                        help='save embeddings')
+    parser.add_argument('--saveEmbeddingsPath', type=str, default='./trainedmodels/embeddings',
+                        help='path to save embbedingsf')
     parser.add_argument('--save_model_path', type=str, default='./trainedmodels/', help='path to save model')
     parser.add_argument('--save_prefix', type=str, default='', help='Prefix to all saved models')
 
@@ -1401,10 +1403,10 @@ if __name__ == '__main__':
 
     parser.add_argument('--telegram', type=str2bool, nargs='?', const=True, default=False,
                         help='Send info through Telegram')
-    parser.add_argument('--dataset', type=str, help='path to the dataset you are using. (Train or full split)')
-    parser.add_argument('--dataset_val', type=str, default=None,
+    parser.add_argument('--dataset', action="extend", nargs="+", type=str, help='path to the dataset you are using. (Train or full split)')
+    parser.add_argument('--dataset_val', action="extend", nargs="+", type=str, default=None,
                         help='path to the validation dataset that you are using if is different to the training one')
-    parser.add_argument('--dataset_test', type=str, default=None,
+    parser.add_argument('--dataset_test', action="extend", nargs="+", type=str, default=None,
                         help='path to the testing dataset that you are using if is different to the training one')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
     parser.add_argument('--model', type=str, default="resnet18",
@@ -1473,7 +1475,8 @@ if __name__ == '__main__':
                         help='Use embedding matching')
     parser.add_argument('--triplet', type=str2bool, nargs='?', const=True, default=False, help='Use embedding matching')
     parser.add_argument('--centroids_path', type=str, help='Insert centroids teacher path (for student training)')
-    parser.add_argument('--label_centroids_path', type=str, help='Insert label centroids teacher path (for student training)')
+    parser.add_argument('--label_centroids_path', type=str,
+                        help='Insert label centroids teacher path (for student training)')
     parser.add_argument('--load_path', type=str, help='Insert path to the testing pth (for network testing)')
     parser.add_argument('--margin', type=float, default=1., help='margin in triplet and embedding')
     parser.add_argument('--feature_model', type=str, help='Feature extractor for lstm model')
