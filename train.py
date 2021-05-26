@@ -910,7 +910,10 @@ def main(args, model=None):
                                   '2013_05_28_drive_0004_sync',
                                   '2013_05_28_drive_0000_sync']
 
-    img_rescale = transforms.Resize(args.image_size)
+    if args.model == 'inception_v3':
+        img_rescale = transforms.Resize((299, 299))
+    else:
+        img_rescale = transforms.Resize(args.image_size)
 
     aanetTransforms = transforms.Compose(
         [GenerateBev(decimate=args.decimate), Mirror(), Rescale((224, 224)), Normalize(), ToTensor()])
