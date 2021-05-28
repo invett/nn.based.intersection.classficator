@@ -409,25 +409,33 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
             data = data.cuda()
             label = label.cuda()
 
-        embeddings = model(data)
-        if miner is not None:
-            hard_pairs = miner(embeddings.squeeze(), label)
-            loss = criterion(embeddings.squeeze(), label, hard_pairs)
+        if args.model == 'inception_v3' and model.training:
+            embeddings, embeddings_aux = model(data)
         else:
-            loss = criterion(embeddings.squeeze(), label)
+            embeddings = model(data)
+
+        if miner is not None:
+            if args.model == 'inception_v3' and model.training:
+                hard_pairs = miner(embeddings.squeeze(), label)
+                loss = criterion(embeddings.squeeze(), label, hard_pairs)
+                hard_pairs = miner(embeddings_aux.squeeze(), label)
+                loss_aux = criterion(embeddings_aux.squeeze(), label, hard_pairs)
+                loss = loss + loss_aux * 0.4
+            else:
+                hard_pairs = miner(embeddings.squeeze(), label)
+                loss = criterion(embeddings.squeeze(), label, hard_pairs)
+        else:
+            if args.model == 'inception_v3' and model.training:
+                loss = criterion(embeddings.squeeze(), label)
+                loss_aux = criterion(embeddings_aux.squeeze(), label)
+                loss = loss + loss_aux * 0.4
+            else:
+                loss = criterion(embeddings.squeeze(), label)
 
         # acc is not a value is a dict
         acc = acc_metric.get_accuracy(embeddings.squeeze().detach().cpu().numpy(),
                                       embeddings.squeeze().detach().cpu().numpy(), label.cpu().numpy(),
                                       label.cpu().numpy(), embeddings_come_from_same_source=True)
-
-        # TODO : no se puede hacer algo asi?
-        # conf_matrix = pd.crosstab(np.array(label_list),
-        #                           np.array(prediction_list),
-        #                           rownames=['Actual'],
-        #                           colnames=['Predicted'],
-        #                           normalize='index')
-        # conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6], fill_value=0.0)
 
     else:
         data = sample['data']
