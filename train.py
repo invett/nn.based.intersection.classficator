@@ -935,6 +935,10 @@ def main(args, model=None):
     # Transforms for Three-dimensional images (The DA was made offline)
     threedimensional_transfomrs = transforms.Compose([img_rescale, transforms.ToTensor()])
 
+    GAN_transfomrs = transforms.Compose([img_rescale, transforms.ToTensor(),
+                                                    transforms.Normalize((0.5, 0.5, 0.5),
+                                                                         (0.5, 0.5, 0.5))])
+
     if args.train or (args.test and (args.triplet or args.metric)):
 
         if not args.nowandb and args.train:  # if nowandb flag was set, skip
@@ -1300,9 +1304,12 @@ def main(args, model=None):
             test_dataset = lstm_txt_dataloader(test_path, transform=threedimensional_transfomrs,
                                                fixed_lenght=args.fixed_length)
 
-        elif args.dataloader == 'txt_dataloader' and 'KITTI-360_3D' not in train_path:
+        elif args.dataloader == 'txt_dataloader' and '3D' not in train_path:
             print('Training with rgb Data augmentation')
-            test_dataset = txt_dataloader(test_path, transform=rgb_image_test_transforms)
+            if args.imagenet_norm:
+                test_dataset = txt_dataloader(test_path, transform=rgb_image_test_transforms)
+            else:
+                test_dataset = txt_dataloader(test_path, transform=GAN_transfomrs)
         elif args.dataloader == 'txt_dataloader':
             print('Training with three-dimensional data')
             test_dataset = txt_dataloader(test_path, transform=threedimensional_transfomrs)
@@ -1411,6 +1418,8 @@ if __name__ == '__main__':
                         help='path to the testing dataset that you are using if is different to the training one')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
     parser.add_argument('--image_size', nargs='+', type=int, help='Number of images in each batch')
+    parser.add_argument('--imagenet_norm', type=str2bool, nargs='?', const=True, default=True,
+                        help='Use imagenet normalization values')
     parser.add_argument('--model', type=str, default="resnet18",
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
     parser.add_argument('--savemodel', type=str2bool, nargs='?', const=True, default=False,
