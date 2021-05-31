@@ -1072,6 +1072,10 @@ def get_distances_embb(embbedings, centroid_list):
 
     return npdist
 
+def get_distances_embb_torch(embbedings, centroid_list):
+
+    return torch.cdist(embbedings, centroid_list)
+
 
 def getCameraRototraslation(pitchCorrection_, yawCorrection_, rollCorrection_, dx_, dy_, dz_):
     """
