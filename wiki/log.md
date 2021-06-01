@@ -19,9 +19,13 @@ Pongamos aca lo que queremos hacer! [Markdown Cheat Sheet](https://www.markdowng
 - [X] GAN: Add MASK for the non-interesting parts of the RGB (eg. sky)  -> does not
 - [ ] GAN: Pix2Pix to convert from road mask to RGB. (connected to 'futuristic wannabe'? see below)
 - [X] GAN: StyleGAN2 (https://github.com/invett/stylegan2-pytorch/) /   
-- [ ] GAN: StyleGAN2-ADA: Training Generative Adversarial Networks with Limited Data  https://github.com/NVlabs/stylegan2-ada-pytorch)
+- [X] GAN: StyleGAN2-ADA: Training Generative Adversarial Networks with Limited Data  https://github.com/NVlabs/stylegan2-ada-pytorch)
 - [X] GAN: SWAGAN (https://github.com/invett/stylegan2-pytorch/)
-- [ ] GAN: Conditional StyleGAN2 for balancing classes.
+- [X] GAN: Conditional StyleGAN2 for balancing classes.
+- [ ] GAN: Include new penalty term: fake_distance_loss using Intersection Classificator embeddings.
+            - [X] Check embeddings distances to centroids for Alcala, Kitti, GAN and Random (Dogs)
+            - [X] Check distances per cluster.
+            - [ ] Compute statistics per cluster   
 - [ ] GAN: Explore latent space -> Project images to latent space and find clusters -> Generate new geometries
 - [ ] GAN: GauGAN -> https://blog.paperspace.com/gaugan-training-on-custom-datasets
 - [ ] GRU vs LSTM: should be 1-line change
@@ -373,8 +377,9 @@ The idea is to exploit the trained RESNET, then the train is made as follows:
       - Improves StyleGAN2 PPL regularization from iter 30k
       - Add KITTI and RESUME from .pt iter40k (robust-snow-9)  ->  70k
  - Projector.py -> Explore latent  space
- - STyleGAN2 ADA with RGB
- - STyleGAN2 ADA with WARPED (Kitti + Alcalá ALL) 
+ - STyleGAN2 ADA with RGB (Resume)
+ - STyleGAN2 ADA with WARPED (Kitti + Alcalá ALL)  (Resume)
+ - StyleGAN2 ADA with RGB from scratch.
  - Tests with Intersection Classificator to see how well classifies generated Images.
  - Use VGG (Intersection classificatior) trained with metric lerning for GAN training, to help it generate more realistic images wrt intersections:
     1. Check embeddings distances to centroids with Alcalá, Kitti, GAN, and random dataset (dogs). We observe GAN distances is a mean of Alcalá and Kitti distances.
