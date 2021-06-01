@@ -375,3 +375,9 @@ The idea is to exploit the trained RESNET, then the train is made as follows:
  - Projector.py -> Explore latent  space
  - STyleGAN2 ADA with RGB
  - STyleGAN2 ADA with WARPED (Kitti + Alcalá ALL) 
+ - Tests with Intersection Classificator to see how well classifies generated Images.
+ - Use VGG (Intersection classificatior) trained with metric lerning for GAN training, to help it generate more realistic images wrt intersections:
+    1. Check embeddings distances to centroids with Alcalá, Kitti, GAN, and random dataset (dogs). We observe GAN distances is a mean of Alcalá and Kitti distances.
+    2. Visualize distances to each cluster per class. We observe some images in 6 are nearer cluster 4. Same happens with cluster 3.  
+    3. Extract mean and std of each cluster (eg. clusters 2 and 4 have a much wider std than 0) -> Save 7 StandardScalers
+    4. During Training: add to d_loss and g_loss a penalty term: softplus(fake_distance_loss). Fake_distance_loss represents the confidence of that image belonging to a certain cluster, it is the normalized min distance.
