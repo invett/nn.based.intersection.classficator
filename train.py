@@ -1042,7 +1042,7 @@ def main(args, model=None):
             train_dataset = lstm_txt_dataloader(train_path, transform=threedimensional_transfomrs,
                                                 all_in_ram=args.all_in_ram, fixed_lenght=args.fixed_length)
 
-        elif args.dataloader == 'txt_dataloader' and '3D' not in train_path:  # // RGB // Homography
+        elif args.dataloader == 'txt_dataloader' and not all(map(lambda x: '3D' in x, train_path)):  # // RGB // Homography
             print('Training with rgb Data augmentation')
             val_dataset = txt_dataloader(val_path, transform=rgb_image_test_transforms, decimateStep=args.decimate)
 
@@ -1304,7 +1304,7 @@ def main(args, model=None):
             test_dataset = lstm_txt_dataloader(test_path, transform=threedimensional_transfomrs,
                                                fixed_lenght=args.fixed_length)
 
-        elif args.dataloader == 'txt_dataloader' and '3D' not in train_path:
+        elif args.dataloader == 'txt_dataloader' and not all(map(lambda x: '3D' in x, train_path)):
             print('Training with rgb Data augmentation')
             if args.imagenet_norm:
                 test_dataset = txt_dataloader(test_path, transform=rgb_image_test_transforms)
