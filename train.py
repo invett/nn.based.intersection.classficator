@@ -1132,7 +1132,8 @@ def main(args, model=None):
                 elif 'vgg' in args.feature_model:
                     feature_extractor_model = VGG(pretrained=False, embeddings=True, version=args.feature_model)
                 elif 'mobilenet' in args.feature_model:
-                    feature_extractor_model = Mobilenet_v3(pretrained=False, embeddings=True, version=args.feature_model)
+                    feature_extractor_model = Mobilenet_v3(pretrained=False, embeddings=True,
+                                                           version=args.feature_model)
                 elif 'inception' in args.feature_model:
                     feature_extractor_model = Inception_v3(pretrained=False, embeddings=True)
 
@@ -1450,7 +1451,7 @@ if __name__ == '__main__':
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
     parser.add_argument('--adam_weight_decay', type=float, default=5e-4, help='adam_weight_decay')
     parser.add_argument('--lossfunction', type=str, default='MSE',
-                        choices=['MSE', 'SmoothL1', 'L1', 'focal', 'triplet'],
+                        choices=['MSE', 'SmoothL1', 'L1', 'focal', 'triplet', 'CrossEntropy'],
                         help='lossfunction selection')
     parser.add_argument('--metric', type=str2bool, nargs='?', const=True, default=False, help='Metric learning losses')
     parser.add_argument('--freeze', type=str2bool, nargs='?', const=True, default=False, help='freezed model + FC')
