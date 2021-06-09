@@ -83,23 +83,32 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
 
     if 'vgg' in args.model:
         model = VGG(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
-                    version=args.model, logits=args.get_scores)
+                    version=args.model)
     elif 'resnet' in args.model:
         model = Resnet(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
-                       version=args.model, logits=args.get_scores)
+                       version=args.model)
     elif 'mobilenet' in args.model:
-        model = Mobilenet_v3(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
-                             version=args.model, logits=args.get_scores)
+        model = Mobilenet_v3(pretrained=args.pretrained, embeddings=return_embeddings,
+                             num_classes=args.num_classes,
+                             version=args.model)
     elif 'inception' in args.model:
-        model = Inception_v3(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
-                             logits=args.get_scores)
-    elif args.model == 'LSTM':
-        model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
-                     num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
-        if args.feature_model == 'resnet18':
-            feature_extractor_model = Resnet(pretrained=False, embeddings=True, num_classes=args.num_classes)
-        if args.feature_model == 'vgg11':
-            feature_extractor_model = VGG(pretrained=False, embeddings=True, num_classes=args.num_classes)
+        model = Inception_v3(pretrained=args.pretrained, embeddings=return_embeddings,
+                             num_classes=args.num_classes)
+    elif args.model == 'LSTM' or args.model == 'GRU':
+        if args.model == 'LSTM':
+            model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
+                         num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
+        else:
+            model = GRU(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
+                        num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
+        if 'resnet' in args.feature_model:
+            feature_extractor_model = Resnet(pretrained=False, embeddings=True, version=args.model)
+        elif 'vgg' in args.feature_model:
+            feature_extractor_model = VGG(pretrained=False, embeddings=True, version=args.model)
+        elif 'mobilenet' in args.feature_model:
+            feature_extractor_model = Mobilenet_v3(pretrained=False, embeddings=True, version=args.model)
+        elif 'inception' in args.feature_model:
+            feature_extractor_model = Inception_v3(pretrained=False, embeddings=True)
 
         # load saved feature extractor model
         if args.feature_detector_path is not None and os.path.isfile(args.feature_detector_path):
@@ -936,8 +945,8 @@ def main(args, model=None):
     threedimensional_transfomrs = transforms.Compose([img_rescale, transforms.ToTensor()])
 
     GAN_transfomrs = transforms.Compose([img_rescale, transforms.ToTensor(),
-                                                    transforms.Normalize((0.5, 0.5, 0.5),
-                                                                         (0.5, 0.5, 0.5))])
+                                         transforms.Normalize((0.5, 0.5, 0.5),
+                                                              (0.5, 0.5, 0.5))])
 
     if args.train or (args.test and (args.triplet or args.metric)):
 
@@ -1042,7 +1051,8 @@ def main(args, model=None):
             train_dataset = lstm_txt_dataloader(train_path, transform=threedimensional_transfomrs,
                                                 all_in_ram=args.all_in_ram, fixed_lenght=args.fixed_length)
 
-        elif args.dataloader == 'txt_dataloader' and not all(map(lambda x: '3D' in x, train_path)):  # // RGB // Homography
+        elif args.dataloader == 'txt_dataloader' and not all(
+                map(lambda x: '3D' in x, train_path)):  # // RGB // Homography
             print('Training with rgb Data augmentation')
             val_dataset = txt_dataloader(val_path, transform=rgb_image_test_transforms, decimateStep=args.decimate)
 
@@ -1117,10 +1127,14 @@ def main(args, model=None):
                 else:
                     model = GRU(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
                                 num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
-                if args.feature_model == 'resnet18':
-                    feature_extractor_model = Resnet(pretrained=False, embeddings=True, num_classes=args.num_classes)
-                if args.feature_model == 'vgg11':
-                    feature_extractor_model = VGG(pretrained=False, embeddings=True, num_classes=args.num_classes)
+                if 'resnet' in args.feature_model:
+                    feature_extractor_model = Resnet(pretrained=False, embeddings=True, version=args.model)
+                elif 'vgg' in args.feature_model:
+                    feature_extractor_model = VGG(pretrained=False, embeddings=True, version=args.model)
+                elif 'mobilenet' in args.feature_model:
+                    feature_extractor_model = Mobilenet_v3(pretrained=False, embeddings=True, version=args.model)
+                elif 'inception' in args.feature_model:
+                    feature_extractor_model = Inception_v3(pretrained=False, embeddings=True)
 
                 # load saved feature extractor model
                 if args.feature_detector_path is not None and os.path.isfile(args.feature_detector_path):
