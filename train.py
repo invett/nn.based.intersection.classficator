@@ -102,11 +102,11 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
             model = GRU(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
                         num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
         if 'resnet' in args.feature_model:
-            feature_extractor_model = Resnet(pretrained=False, embeddings=True, version=args.model)
+            feature_extractor_model = Resnet(pretrained=False, embeddings=True, version=args.feature_model)
         elif 'vgg' in args.feature_model:
-            feature_extractor_model = VGG(pretrained=False, embeddings=True, version=args.model)
+            feature_extractor_model = VGG(pretrained=False, embeddings=True, version=args.feature_model)
         elif 'mobilenet' in args.feature_model:
-            feature_extractor_model = Mobilenet_v3(pretrained=False, embeddings=True, version=args.model)
+            feature_extractor_model = Mobilenet_v3(pretrained=False, embeddings=True, version=args.feature_model)
         elif 'inception' in args.feature_model:
             feature_extractor_model = Inception_v3(pretrained=False, embeddings=True)
 
@@ -1128,11 +1128,11 @@ def main(args, model=None):
                     model = GRU(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
                                 num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
                 if 'resnet' in args.feature_model:
-                    feature_extractor_model = Resnet(pretrained=False, embeddings=True, version=args.model)
+                    feature_extractor_model = Resnet(pretrained=False, embeddings=True, version=args.feature_model)
                 elif 'vgg' in args.feature_model:
-                    feature_extractor_model = VGG(pretrained=False, embeddings=True, version=args.model)
+                    feature_extractor_model = VGG(pretrained=False, embeddings=True, version=args.feature_model)
                 elif 'mobilenet' in args.feature_model:
-                    feature_extractor_model = Mobilenet_v3(pretrained=False, embeddings=True, version=args.model)
+                    feature_extractor_model = Mobilenet_v3(pretrained=False, embeddings=True, version=args.feature_model)
                 elif 'inception' in args.feature_model:
                     feature_extractor_model = Inception_v3(pretrained=False, embeddings=True)
 
