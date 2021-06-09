@@ -571,24 +571,24 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         gt_list = None  # No need of centroids
         miner = None  # No need of miner
         acc_metric = None
-        if args.weighted:
-            if args.weight_tensor == 'Kitti360':
-                weights = [0.99, 1.01, 0.98, 0.99, 1.05, 0.98, 0.99]
-                class_weights = torch.FloatTensor(weights).cuda()
-            elif args.weight_tensor == 'Alcala':
-                weights = [0.89, 1.13, 1.09, 1.05, 0.93, 1.06, 0.86]
-                class_weights = torch.FloatTensor(weights).cuda()
-            elif args.weight_tensor == 'Kitti2011':
-                weights = [1.06, 1.11, 1.12, 0.98, 0.99, 0.96, 0.78]
-                class_weights = torch.FloatTensor(weights).cuda()
-            criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
+        if args.lossfunction == 'focal':
+            kwargs = {"alpha": 0.5, "gamma": 5.0, "reduction": 'mean'}
+            criterion = kornia.losses.FocalLoss(**kwargs)
         else:
-            weights = None
-            if args.lossfunction == 'focal':
-                kwargs = {"alpha": 0.5, "gamma": 5.0, "reduction": 'mean'}
-                criterion = kornia.losses.FocalLoss(**kwargs)
+            if args.weighted:
+                if args.weight_tensor == 'Kitti360':
+                    weights = [0.99, 1.01, 0.98, 0.99, 1.05, 0.98, 0.99]
+                    class_weights = torch.FloatTensor(weights).cuda()
+                elif args.weight_tensor == 'Alcala':
+                    weights = [0.89, 1.13, 1.09, 1.05, 0.93, 1.06, 0.86]
+                    class_weights = torch.FloatTensor(weights).cuda()
+                elif args.weight_tensor == 'Kitti2011':
+                    weights = [1.06, 1.11, 1.12, 0.98, 0.99, 0.96, 0.78]
+                    class_weights = torch.FloatTensor(weights).cuda()
+                criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
             else:
-                criterion = torch.nn.CrossEntropyLoss()  # LSTM Criterion
+                weights = None
+                criterion = torch.nn.CrossEntropyLoss()
 
     if args.model == 'LSTM':
         model.eval()
