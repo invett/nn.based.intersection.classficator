@@ -742,6 +742,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                 if max_val_acc < acc_val:
                     max_val_acc = acc_val
                     print('Best global accuracy: {}'.format(max_val_acc))
+                    wandb.run.summary["Best_Accuracy"] = max_val_acc
                 if min_val_loss > loss_val:
                     min_val_loss = loss_val
                     print('Best global loss: {}'.format(min_val_loss))
