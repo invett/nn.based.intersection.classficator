@@ -536,6 +536,8 @@ def lstm_network_pass(args, batch, criterion, model, lstm, miner=None, acc_metri
                                       prediction.detach().cpu().numpy(), label.cpu().numpy(),
                                       label.cpu().numpy(), embeddings_come_from_same_source=True)
     else:
+        if len(prediction.shape) == 1:
+            prediction = prediction.unsqueeze(dim=0)
         loss = criterion(prediction, label)
 
         predict = torch.argmax(prediction, 1)
