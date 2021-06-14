@@ -1074,7 +1074,7 @@ def main(args, model=None):
         if train_dataset.getIsSequence():
             print("Using a sequence dataset ...")
             dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                                          num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True,
+                                          num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=False,
                                           collate_fn=lambda x: x)
         else:
             print("Using a single-frame dataset (not a sequence) ...")
@@ -1083,7 +1083,7 @@ def main(args, model=None):
 
         if val_dataset.getIsSequence():
             dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True,
-                                        num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True,
+                                        num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=False,
                                         collate_fn=lambda x: x)
         else:
             dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True,
