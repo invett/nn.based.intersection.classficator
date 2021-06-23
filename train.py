@@ -954,12 +954,12 @@ def main(args, model=None):
         if not args.nowandb and args.train:  # if nowandb flag was set, skip
             if args.wandb_resume:
                 print('Resuming WANDB run, this run will log into: ', args.wandb_resume)
-                wandb.init(project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
+                wandb.init(project=args.project, group=group_id, entity='chiringuito',
                            job_type="training", reinit=True, resume=args.wandb_resume)
 
                 wandb.config.update(args, allow_val_change=True)
             else:
-                wandb.init(project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
+                wandb.init(project=args.project, group=group_id, entity='chiringuito',
                            job_type="training", reinit=True)
                 wandb.config.update(args)
 
@@ -1359,7 +1359,7 @@ def main(args, model=None):
                                          num_workers=args.num_workers, worker_init_fn=init_fn)
 
         if not args.nowandb:  # if nowandb flag was set, skip
-            wandb.init(project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
+            wandb.init(project=args.project, group=group_id, entity='chiringuito',
                        job_type="eval")
             wandb.config.update(args)
 
@@ -1421,6 +1421,7 @@ if __name__ == '__main__':
 
     ### wandb stuff
     parser.add_argument('--wandb_group_id', type=str, help='Set group id for the wandb experiment')
+    parser.add_argument('--project', type=str, help='wandb project name')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     parser.add_argument('--wandb_resume', type=str, default=None, help='the id of the wandb-resume, e.g. jhc0gvhb')
 
