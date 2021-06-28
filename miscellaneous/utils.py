@@ -774,6 +774,8 @@ def svm_testing(args, model, dataloader_test, classifier, probs=False):
             # all_output.append(output.cpu().numpy()) TODO: seems that we don't use this...
             dec = classifier.decision_function(output.cpu().numpy())
             prediction = np.argmax(dec, axis=1)
+            if dec.shape[1] != 7:  ### KITTI-ROAD no tiene clase 0
+                prediction = prediction + 1
 
             export_filenames.extend(sample['path_of_original_image'])
             label_list.append(label.cpu().numpy())
