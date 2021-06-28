@@ -67,7 +67,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     else:
         criterion = torch.nn.CrossEntropyLoss()
 
-    if (args.embedding or args.metric) and os.path.isfile(args.centroids_path):
+    if args.embedding and os.path.isfile(args.centroids_path):
         gt_list = []
         embeddings = np.loadtxt(args.centroids_path, delimiter='\t')
         labels = np.loadtxt(args.label_centroids_path, delimiter='\t')
