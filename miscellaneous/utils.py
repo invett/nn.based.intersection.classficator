@@ -610,8 +610,8 @@ def svm_generator(args, model, dataloader_train=None, dataloader_val=None, LSTM=
             else:
                 train_embeddings, train_labels = get_all_embeddings(dataloader_train, model)
                 val_embeddings, val_labels = get_all_embeddings(dataloader_val, model)
-                features = np.vstack((train_embeddings, val_embeddings))
-                labels = np.vstack((train_labels, val_labels))
+                features = np.vstack((train_embeddings.cpu().numpy(), val_embeddings.cpu().numpy()))
+                labels = np.vstack((train_labels.cpu().numpy(), val_labels.cpu().numpy()))
 
         classifier = svm_train(features, labels, mode=args.svm_mode)
         pickle.dump(classifier, open(svm_path, 'wb'))
