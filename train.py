@@ -572,6 +572,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         miner = None  # No need of miner
         acc_metric = None
         if args.lossfunction == 'focal':
+            weights = None
             kwargs = {"alpha": 0.5, "gamma": 5.0, "reduction": 'mean'}
             criterion = kornia.losses.FocalLoss(**kwargs)
         else:
