@@ -447,13 +447,21 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
         if args.get_scores:
             criterion = nn.NLLLoss()
 
-        output = model(data)
+        if args.model == 'inception_v3' and model.training:
+            output, output_aux = model(data)
+        else:
+            output = model(data)
 
         # save the embedding vector to return it - used in testing
         if return_embedding or args.get_scores:
             embedding = np.asarray(output.squeeze().cpu().detach().numpy())
 
-        loss = criterion(output, label)
+        if args.model == 'inception_v3' and model.training:
+            loss = criterion(output, label)
+            loss_aux = criterion(output_aux, label)
+            loss = loss + loss_aux * 0.4
+        else:
+            loss = criterion(output, label)
 
         predict = torch.argmax(output, 1)
         label = label.cpu().numpy()
