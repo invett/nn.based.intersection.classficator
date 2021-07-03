@@ -447,13 +447,21 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
         if args.get_scores:
             criterion = nn.NLLLoss()
 
-        output = model(data)
+        if args.model == 'inception_v3' and model.training:
+            output, output_aux = model(data)
+        else:
+            output = model(data)
 
         # save the embedding vector to return it - used in testing
         if return_embedding or args.get_scores:
             embedding = np.asarray(output.squeeze().cpu().detach().numpy())
 
-        loss = criterion(output, label)
+        if args.model == 'inception_v3' and model.training:
+            loss = criterion(output, label)
+            loss_aux = criterion(output_aux, label)
+            loss = loss + loss_aux * 0.4
+        else:
+            loss = criterion(output, label)
 
         predict = torch.argmax(output, 1)
         label = label.cpu().numpy()
@@ -536,6 +544,8 @@ def lstm_network_pass(args, batch, criterion, model, lstm, miner=None, acc_metri
                                       prediction.detach().cpu().numpy(), label.cpu().numpy(),
                                       label.cpu().numpy(), embeddings_come_from_same_source=True)
     else:
+        if len(prediction.shape) == 1:
+            prediction = prediction.unsqueeze(dim=0)
         loss = criterion(prediction, label)
 
         predict = torch.argmax(prediction, 1)
@@ -608,8 +618,8 @@ def svm_generator(args, model, dataloader_train=None, dataloader_val=None, LSTM=
             else:
                 train_embeddings, train_labels = get_all_embeddings(dataloader_train, model)
                 val_embeddings, val_labels = get_all_embeddings(dataloader_val, model)
-                features = np.vstack((train_embeddings, val_embeddings))
-                labels = np.vstack((train_labels, val_labels))
+                features = np.vstack((train_embeddings.cpu().numpy(), val_embeddings.cpu().numpy()))
+                labels = np.vstack((train_labels.cpu().numpy(), val_labels.cpu().numpy()))
 
         classifier = svm_train(features, labels, mode=args.svm_mode)
         pickle.dump(classifier, open(svm_path, 'wb'))
@@ -772,6 +782,8 @@ def svm_testing(args, model, dataloader_test, classifier, probs=False):
             # all_output.append(output.cpu().numpy()) TODO: seems that we don't use this...
             dec = classifier.decision_function(output.cpu().numpy())
             prediction = np.argmax(dec, axis=1)
+            if dec.shape[1] != 7:  ### KITTI-ROAD no tiene clase 0
+                prediction = prediction + 1
 
             export_filenames.extend(sample['path_of_original_image'])
             label_list.append(label.cpu().numpy())

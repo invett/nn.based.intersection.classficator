@@ -67,7 +67,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     else:
         criterion = torch.nn.CrossEntropyLoss()
 
-    if (args.embedding or args.metric) and os.path.isfile(args.centroids_path):
+    if args.embedding and os.path.isfile(args.centroids_path):
         gt_list = []
         embeddings = np.loadtxt(args.centroids_path, delimiter='\t')
         labels = np.loadtxt(args.label_centroids_path, delimiter='\t')
@@ -83,23 +83,32 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
 
     if 'vgg' in args.model:
         model = VGG(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
-                    version=args.model, logits=args.get_scores)
+                    version=args.model)
     elif 'resnet' in args.model:
         model = Resnet(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
-                       version=args.model, logits=args.get_scores)
+                       version=args.model)
     elif 'mobilenet' in args.model:
-        model = Mobilenet_v3(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
-                             version=args.model, logits=args.get_scores)
+        model = Mobilenet_v3(pretrained=args.pretrained, embeddings=return_embeddings,
+                             num_classes=args.num_classes,
+                             version=args.model)
     elif 'inception' in args.model:
-        model = Inception_v3(pretrained=args.pretrained, embeddings=return_embeddings, num_classes=args.num_classes,
-                             logits=args.get_scores)
-    elif args.model == 'LSTM':
-        model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
-                     num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
-        if args.feature_model == 'resnet18':
-            feature_extractor_model = Resnet(pretrained=False, embeddings=True, num_classes=args.num_classes)
-        if args.feature_model == 'vgg11':
-            feature_extractor_model = VGG(pretrained=False, embeddings=True, num_classes=args.num_classes)
+        model = Inception_v3(pretrained=args.pretrained, embeddings=return_embeddings,
+                             num_classes=args.num_classes)
+    elif args.model == 'LSTM' or args.model == 'GRU':
+        if args.model == 'LSTM':
+            model = LSTM(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
+                         num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
+        else:
+            model = GRU(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
+                        num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
+        if 'resnet' in args.feature_model:
+            feature_extractor_model = Resnet(pretrained=False, embeddings=True, version=args.feature_model)
+        elif 'vgg' in args.feature_model:
+            feature_extractor_model = VGG(pretrained=False, embeddings=True, version=args.feature_model)
+        elif 'mobilenet' in args.feature_model:
+            feature_extractor_model = Mobilenet_v3(pretrained=False, embeddings=True, version=args.feature_model)
+        elif 'inception' in args.feature_model:
+            feature_extractor_model = Inception_v3(pretrained=False, embeddings=True)
 
         # load saved feature extractor model
         if args.feature_detector_path is not None and os.path.isfile(args.feature_detector_path):
@@ -562,24 +571,25 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         gt_list = None  # No need of centroids
         miner = None  # No need of miner
         acc_metric = None
-        if args.weighted:
-            if args.weight_tensor == 'Kitti360':
-                weights = [0.99, 1.01, 0.98, 0.99, 1.05, 0.98, 0.99]
-                class_weights = torch.FloatTensor(weights).cuda()
-            elif args.weight_tensor == 'Alcala':
-                weights = [0.89, 1.13, 1.09, 1.05, 0.93, 1.06, 0.86]
-                class_weights = torch.FloatTensor(weights).cuda()
-            elif args.weight_tensor == 'Kitti2011':
-                weights = [1.06, 1.11, 1.12, 0.98, 0.99, 0.96, 0.78]
-                class_weights = torch.FloatTensor(weights).cuda()
-            criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
-        else:
+        if args.lossfunction == 'focal':
             weights = None
-            if args.lossfunction == 'focal':
-                kwargs = {"alpha": 0.5, "gamma": 5.0, "reduction": 'mean'}
-                criterion = kornia.losses.FocalLoss(**kwargs)
+            kwargs = {"alpha": 0.5, "gamma": 5.0, "reduction": 'mean'}
+            criterion = kornia.losses.FocalLoss(**kwargs)
+        else:
+            if args.weighted:
+                if args.weight_tensor == 'Kitti360':
+                    weights = [0.99, 1.01, 0.98, 0.99, 1.05, 0.98, 0.99]
+                    class_weights = torch.FloatTensor(weights).cuda()
+                elif args.weight_tensor == 'Alcala':
+                    weights = [0.89, 1.13, 1.09, 1.05, 0.93, 1.06, 0.86]
+                    class_weights = torch.FloatTensor(weights).cuda()
+                elif args.weight_tensor == 'Kitti2011':
+                    weights = [1.06, 1.11, 1.12, 0.98, 0.99, 0.96, 0.78]
+                    class_weights = torch.FloatTensor(weights).cuda()
+                criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
             else:
-                criterion = torch.nn.CrossEntropyLoss()  # LSTM Criterion
+                weights = None
+                criterion = torch.nn.CrossEntropyLoss()
 
     if args.model == 'LSTM':
         model.eval()
@@ -733,6 +743,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                 if max_val_acc < acc_val:
                     max_val_acc = acc_val
                     print('Best global accuracy: {}'.format(max_val_acc))
+                    wandb.run.summary["Best_Accuracy"] = max_val_acc
                 if min_val_loss > loss_val:
                     min_val_loss = loss_val
                     print('Best global loss: {}'.format(min_val_loss))
@@ -936,20 +947,20 @@ def main(args, model=None):
     threedimensional_transfomrs = transforms.Compose([img_rescale, transforms.ToTensor()])
 
     GAN_transfomrs = transforms.Compose([img_rescale, transforms.ToTensor(),
-                                                    transforms.Normalize((0.5, 0.5, 0.5),
-                                                                         (0.5, 0.5, 0.5))])
+                                         transforms.Normalize((0.5, 0.5, 0.5),
+                                                              (0.5, 0.5, 0.5))])
 
     if args.train or (args.test and (args.triplet or args.metric)):
 
         if not args.nowandb and args.train:  # if nowandb flag was set, skip
             if args.wandb_resume:
                 print('Resuming WANDB run, this run will log into: ', args.wandb_resume)
-                wandb.init(project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
+                wandb.init(project=args.project, group=group_id, entity='chiringuito',
                            job_type="training", reinit=True, resume=args.wandb_resume)
 
                 wandb.config.update(args, allow_val_change=True)
             else:
-                wandb.init(project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
+                wandb.init(project=args.project, group=group_id, entity='chiringuito',
                            job_type="training", reinit=True)
                 wandb.config.update(args)
 
@@ -1042,7 +1053,8 @@ def main(args, model=None):
             train_dataset = lstm_txt_dataloader(train_path, transform=threedimensional_transfomrs,
                                                 all_in_ram=args.all_in_ram, fixed_lenght=args.fixed_length)
 
-        elif args.dataloader == 'txt_dataloader' and '3D' not in train_path:  # // RGB // Homography
+        elif args.dataloader == 'txt_dataloader' and not all(
+                map(lambda x: '3D' in x, train_path)):  # // RGB // Homography
             print('Training with rgb Data augmentation')
             val_dataset = txt_dataloader(val_path, transform=rgb_image_test_transforms, decimateStep=args.decimate)
 
@@ -1064,7 +1076,7 @@ def main(args, model=None):
         if train_dataset.getIsSequence():
             print("Using a sequence dataset ...")
             dataloader_train = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                                          num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True,
+                                          num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=False,
                                           collate_fn=lambda x: x)
         else:
             print("Using a single-frame dataset (not a sequence) ...")
@@ -1073,7 +1085,7 @@ def main(args, model=None):
 
         if val_dataset.getIsSequence():
             dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True,
-                                        num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True,
+                                        num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=False,
                                         collate_fn=lambda x: x)
         else:
             dataloader_val = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True,
@@ -1117,10 +1129,15 @@ def main(args, model=None):
                 else:
                     model = GRU(args.num_classes, args.lstm_dropout, args.fc_dropout, embeddings=args.metric,
                                 num_layers=args.lstm_layers, input_size=args.lstm_input, hidden_size=args.lstm_hidden)
-                if args.feature_model == 'resnet18':
-                    feature_extractor_model = Resnet(pretrained=False, embeddings=True, num_classes=args.num_classes)
-                if args.feature_model == 'vgg11':
-                    feature_extractor_model = VGG(pretrained=False, embeddings=True, num_classes=args.num_classes)
+                if 'resnet' in args.feature_model:
+                    feature_extractor_model = Resnet(pretrained=False, embeddings=True, version=args.feature_model)
+                elif 'vgg' in args.feature_model:
+                    feature_extractor_model = VGG(pretrained=False, embeddings=True, version=args.feature_model)
+                elif 'mobilenet' in args.feature_model:
+                    feature_extractor_model = Mobilenet_v3(pretrained=False, embeddings=True,
+                                                           version=args.feature_model)
+                elif 'inception' in args.feature_model:
+                    feature_extractor_model = Inception_v3(pretrained=False, embeddings=True)
 
                 # load saved feature extractor model
                 if args.feature_detector_path is not None and os.path.isfile(args.feature_detector_path):
@@ -1304,7 +1321,7 @@ def main(args, model=None):
             test_dataset = lstm_txt_dataloader(test_path, transform=threedimensional_transfomrs,
                                                fixed_lenght=args.fixed_length)
 
-        elif args.dataloader == 'txt_dataloader' and '3D' not in train_path:
+        elif args.dataloader == 'txt_dataloader' and not all(map(lambda x: '3D' in x, train_path)):
             print('Training with rgb Data augmentation')
             if args.imagenet_norm:
                 test_dataset = txt_dataloader(test_path, transform=rgb_image_test_transforms)
@@ -1343,7 +1360,7 @@ def main(args, model=None):
                                          num_workers=args.num_workers, worker_init_fn=init_fn)
 
         if not args.nowandb:  # if nowandb flag was set, skip
-            wandb.init(project="lstm-based-intersection-classficator", group=group_id, entity='chiringuito',
+            wandb.init(project=args.project, group=group_id, entity='chiringuito',
                        job_type="eval")
             wandb.config.update(args)
 
@@ -1405,6 +1422,7 @@ if __name__ == '__main__':
 
     ### wandb stuff
     parser.add_argument('--wandb_group_id', type=str, help='Set group id for the wandb experiment')
+    parser.add_argument('--project', type=str, help='wandb project name')
     parser.add_argument('--nowandb', action='store_true', help='use this flag to DISABLE wandb logging')
     parser.add_argument('--wandb_resume', type=str, default=None, help='the id of the wandb-resume, e.g. jhc0gvhb')
 
@@ -1417,7 +1435,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset_test', action="extend", nargs="+", type=str, default=None,
                         help='path to the testing dataset that you are using if is different to the training one')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
-    parser.add_argument('--image_size', nargs='+', type=int, help='Number of images in each batch')
+    parser.add_argument('--image_size', nargs='+', type=int, default=[224, 224], help='Number of images in each batch')
     parser.add_argument('--imagenet_norm', type=str2bool, nargs='?', const=True, default=True,
                         help='Use imagenet normalization values')
     parser.add_argument('--model', type=str, default="resnet18",
@@ -1436,7 +1454,7 @@ if __name__ == '__main__':
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer, support rmsprop, sgd, adam')
     parser.add_argument('--adam_weight_decay', type=float, default=5e-4, help='adam_weight_decay')
     parser.add_argument('--lossfunction', type=str, default='MSE',
-                        choices=['MSE', 'SmoothL1', 'L1', 'focal', 'triplet'],
+                        choices=['MSE', 'SmoothL1', 'L1', 'focal', 'triplet', 'CrossEntropy'],
                         help='lossfunction selection')
     parser.add_argument('--metric', type=str2bool, nargs='?', const=True, default=False, help='Metric learning losses')
     parser.add_argument('--freeze', type=str2bool, nargs='?', const=True, default=False, help='freezed model + FC')
