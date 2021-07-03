@@ -10,6 +10,9 @@
     122302AA/0000004234.png;0
 
     the split of the last part of the name is done inside 'split_dataset' using tokens.
+
+    HEY!!!  if don't have the file, you can CREATE THE FILE using create_unique_file_from_GAN_generated_folder.py !!!!
+
 """
 
 from miscellaneous.utils import split_dataset
