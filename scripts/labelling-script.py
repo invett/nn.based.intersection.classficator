@@ -41,10 +41,10 @@ from miscellaneous.utils import split_dataset
 
 # used up to LSTM version of the paper 5/5/21
 # dataset = 'KITTI-ROAD'
-# dataset = 'KITTI360'
+dataset = 'KITTI360'
 # dataset = 'alcala-26.01.2021'
-dataset = 'alcala-12.02.2021'
-dataset = 'GAN-v2'
+# dataset = 'alcala-12.02.2021'
+# dataset = 'GAN-v2'
 
 # needs update / not used
 # dataset = 'ALCALA'
@@ -139,7 +139,7 @@ if dataset == 'GAN-v2':
 
 if dataset == 'KITTI-ROAD':
     base_folder = '/home/ballardini/Desktop/KITTI-ROAD/'
-    extract_field_from_path = 14
+    extract_field_from_path = 15
 
     folders = ['2011_09_26_drive_0019_sync', '2011_09_26_drive_0020_sync', '2011_09_26_drive_0022_sync',
                '2011_09_26_drive_0023_sync', '2011_09_26_drive_0035_sync', '2011_09_26_drive_0036_sync',
@@ -184,7 +184,7 @@ if dataset == 'KITTI-ROAD':
 
 if dataset == 'KITTI360':
     base_folder = '/media/ballardini/4tb/ALVARO/KITTI-360/'
-    extract_field_from_path = 19
+    extract_field_from_path = 20
 
     folders = ['2013_05_28_drive_0000_sync', '2013_05_28_drive_0002_sync', '2013_05_28_drive_0003_sync',
                '2013_05_28_drive_0004_sync', '2013_05_28_drive_0005_sync', '2013_05_28_drive_0006_sync',
@@ -244,7 +244,7 @@ if dataset == 'alcala-26.01.2021':
     # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
     # scale=800:-1 R2_video_0002_camera2_png/%010d.png
     base_folder = '/home/ballardini/Desktop/alcala-26.01.2021/'
-    extract_field_from_path = 8
+    extract_field_from_path = 9
 
     folders = ['161604AA', '161657AA', '161957AA', '162257AA', '162557AA', '162857AA', '163157AA', '163457AA',
                '163757AA', '164057AA', '164357AA', '164657AA', '164957AA', '165257AA', '165557AA', '165857AA',
@@ -290,7 +290,7 @@ if dataset == 'alcala-12.02.2021':
     # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
     # scale=800:-1 R2_video_0002_camera2_png/%010d.png
     base_folder = '/home/ballardini/Desktop/alcala-12.02.2021.000/'
-    extract_field_from_path = 10
+    extract_field_from_path = 11
 
     folders = ['120445AA', '122302AA', '164002AA', '165810AA']
 

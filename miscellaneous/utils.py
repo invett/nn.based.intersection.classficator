@@ -1218,8 +1218,25 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
 
         current_sequence_filenames = []
 
+        stats_per_file = [0, 0, 0, 0, 0, 0, 0]
+
         # iterate both annotations and filename lists together, contains labels and frame-names
         for frame_class, frame_filename in zip(annotations[i], files[i]):
+
+            if frame_class == 0:
+                stats_per_file[0] = stats_per_file[0] + 1
+            if frame_class == 1:
+                stats_per_file[1] = stats_per_file[1] + 1
+            if frame_class == 2:
+                stats_per_file[2] = stats_per_file[2] + 1
+            if frame_class == 3:
+                stats_per_file[3] = stats_per_file[3] + 1
+            if frame_class == 4:
+                stats_per_file[4] = stats_per_file[4] + 1
+            if frame_class == 5:
+                stats_per_file[5] = stats_per_file[5] + 1
+            if frame_class == 6:
+                stats_per_file[6] = stats_per_file[6] + 1
 
             if pathlib.Path(frame_filename).suffix != '.png':
                 print('WARNING!!! Hey take care! Folders with PNGs should contain PNG only! --> ' + frame_filename)
@@ -1284,6 +1301,16 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
             prev_frame_class = frame_class
             prev_frame_number = getFrameNumber(extract_field_from_path, frame_filename)
             current_sequence_filenames.append(frame_filename)
+
+        print('------------------------------------------------------------------------')
+        print(os.path.split(files[i][0]), ' has ', stats_per_file[0] , 'type 0 elements')
+        print(os.path.split(files[i][0]), ' has ', stats_per_file[1] , 'type 1 elements')
+        print(os.path.split(files[i][0]), ' has ', stats_per_file[2] , 'type 2 elements')
+        print(os.path.split(files[i][0]), ' has ', stats_per_file[3] , 'type 3 elements')
+        print(os.path.split(files[i][0]), ' has ', stats_per_file[4] , 'type 4 elements')
+        print(os.path.split(files[i][0]), ' has ', stats_per_file[5] , 'type 5 elements')
+        print(os.path.split(files[i][0]), ' has ', stats_per_file[6] , 'type 6 elements')
+        print('------------------------------------------------------------------------')
 
     # some sequences of kitti 360 have only one frame, others 2 or 3 ... we need to prune these sequences
     # set as parameter ---> threshold = 5
@@ -1421,8 +1448,8 @@ def getFrameNumber(extract_field_from_path, frame_filename):
         current_frame_number = int(tokenize(frame_filename)[extract_field_from_path])
     except:
         print('Current settings does not allow to extract the filename as number. Currently using field: ' + str(
-            extract_field_from_path) + '\nExpected a number, but asket to extract field ' +
+            extract_field_from_path) + '\nExpected a number, but asked to extract field ' +
               str(extract_field_from_path) + ' from the following list. Remember: start to count from zero!')
-        print(frame_filename.replace('_', '.', '-').replace('/', '.').split('.'))
+        print(frame_filename.replace('_', '.').replace('/', '.').replace('-','.').split('.'))
         exit()
     return current_frame_number

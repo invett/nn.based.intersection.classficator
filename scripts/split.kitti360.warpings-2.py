@@ -10,6 +10,10 @@
     122302AA/0000004234.png;0
 
     the split of the last part of the name is done inside 'split_dataset' using tokens.
+
+    HEY!!!  if don't have the file, you can CREATE THE FILE using create_unique_file_from_GAN_generated_folder.py !!!!
+    BUT REMEMBER THAT this works only for sequences right now ...
+
 """
 
 from miscellaneous.utils import split_dataset
@@ -18,11 +22,13 @@ from miscellaneous.utils import split_dataset
 annotations = []
 files = []
 input_file = '/home/ballardini/Desktop/alcala-12.02.2021.000/120445AA.122302AA.164002AA.165810AA.txt'
+input_file = '/media/14TBDISK/ballardini/GAN-generated_intersection_dataset-WARPED-conditional/prefix_all.txt'
 # input_file = '/home/ballardini/Desktop/alcala-12.02.2021.000/120445AA.122302AA.txt'
 # input_file = '/home/ballardini/Desktop/alcala-12.02.2021.000/164002AA.165810AA.txt'
 
 # parameters that will be passed to split_dataset
 prefix_filename = "seq.120445AA.122302AA.164002AA.165810AA."
+prefix_filename = "gan.warped.conditional"
 # prefix_filename = "seq.120445AA.122302AA."
 # prefix_filename = "seq.164002AA.165810AA."
 overwrite_i_dont_care = False
@@ -46,4 +52,4 @@ files = [files]
 annotations = [annotations]
 
 split_dataset(annotations=annotations, files=files, prefix_filename=prefix_filename, save_folder=save_folder,
-              overwrite_i_dont_care=overwrite_i_dont_care, extract_field_from_path=2)
+              overwrite_i_dont_care=overwrite_i_dont_care, extract_field_from_path=6)
