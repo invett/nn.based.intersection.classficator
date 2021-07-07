@@ -1041,13 +1041,16 @@ def main(args, model=None):
 
             train_dataset = Kitti2011_RGB(train_path, transform=rgb_image_train_transforms)
 
-        elif args.dataloader == 'lstm_txt_dataloader' and 'KITTI-360_3D' not in train_path:  # // RGB // Homography
+        elif args.dataloader == 'lstm_txt_dataloader' and not all(
+                map(lambda x: '3D' in x, train_path)):  # // RGB // Homography
+            print('Training with rgb Data augmentation')
             val_dataset = lstm_txt_dataloader(val_path, transform=rgb_image_train_transforms,
                                               all_in_ram=args.all_in_ram, fixed_lenght=args.fixed_length)
             train_dataset = lstm_txt_dataloader(train_path, transform=rgb_image_train_transforms,
                                                 all_in_ram=args.all_in_ram, fixed_lenght=args.fixed_length)
 
         elif args.dataloader == 'lstm_txt_dataloader':  # // 3D // 3D-Masked
+            print('Training with three-dimensional Data')
             val_dataset = lstm_txt_dataloader(val_path, transform=threedimensional_transfomrs,
                                               all_in_ram=args.all_in_ram, fixed_lenght=args.fixed_length)
             train_dataset = lstm_txt_dataloader(train_path, transform=threedimensional_transfomrs,
