@@ -735,7 +735,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                            "Val/Rp": acc_val['r_precision'],
                            "Completed epoch": epoch})
             if args.metric:
-                acc_val = mean(acc_val[k] for k in acc_val)
+                acc_val = acc_val['mean_average_precision_at_r']
 
             if (max_val_acc < acc_val) or (min_val_loss > loss_val):
                 patience = 0
