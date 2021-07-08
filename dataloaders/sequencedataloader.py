@@ -139,6 +139,9 @@ class txt_dataloader(AbstractSequence, Dataset):
 
         image = Image.open(imagepath)
 
+        if image.mode == "RGBA":
+            image = image.convert('RGB')
+
         neg_label = choice([i for i in range(0, 7) if i != label])
 
         if not self.usePIL:

@@ -735,7 +735,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                            "Val/Rp": acc_val['r_precision'],
                            "Completed epoch": epoch})
             if args.metric:
-                acc_val = mean(acc_val[k] for k in acc_val)
+                acc_val = acc_val['mean_average_precision_at_r']
 
             if (max_val_acc < acc_val) or (min_val_loss > loss_val):
                 patience = 0
@@ -1041,13 +1041,16 @@ def main(args, model=None):
 
             train_dataset = Kitti2011_RGB(train_path, transform=rgb_image_train_transforms)
 
-        elif args.dataloader == 'lstm_txt_dataloader' and 'KITTI-360_3D' not in train_path:  # // RGB // Homography
+        elif args.dataloader == 'lstm_txt_dataloader' and not all(
+                map(lambda x: '3D' in x, train_path)):  # // RGB // Homography
+            print('Training with rgb Data augmentation')
             val_dataset = lstm_txt_dataloader(val_path, transform=rgb_image_train_transforms,
                                               all_in_ram=args.all_in_ram, fixed_lenght=args.fixed_length)
             train_dataset = lstm_txt_dataloader(train_path, transform=rgb_image_train_transforms,
                                                 all_in_ram=args.all_in_ram, fixed_lenght=args.fixed_length)
 
         elif args.dataloader == 'lstm_txt_dataloader':  # // 3D // 3D-Masked
+            print('Training with three-dimensional Data')
             val_dataset = lstm_txt_dataloader(val_path, transform=threedimensional_transfomrs,
                                               all_in_ram=args.all_in_ram, fixed_lenght=args.fixed_length)
             train_dataset = lstm_txt_dataloader(train_path, transform=threedimensional_transfomrs,
@@ -1314,10 +1317,12 @@ def main(args, model=None):
             test_dataset = triplet_BOO([test_path], args.distance, canonical=True,
                                        transform_osm=osmTransforms, transform_bev=threedimensional_transfomrs)
 
-        elif args.dataloader == 'lstm_txt_dataloader' and 'KITTI-360_3D' not in train_path:  # // RGB // Homography
+        elif args.dataloader == 'lstm_txt_dataloader' and not all(map(lambda x: '3D' in x, train_path)):  # // RGB // Homography
+            print('Training with rgb Data augmentation')
             test_dataset = lstm_txt_dataloader(test_path, transform=rgb_image_test_transforms,
                                                fixed_lenght=args.fixed_length)
         elif args.dataloader == 'lstm_txt_dataloader':  # // 3D // 3D-Masked
+            print('Training with three-dimensional data')
             test_dataset = lstm_txt_dataloader(test_path, transform=threedimensional_transfomrs,
                                                fixed_lenght=args.fixed_length)
 
@@ -1436,7 +1441,7 @@ if __name__ == '__main__':
                         help='path to the testing dataset that you are using if is different to the training one')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
     parser.add_argument('--image_size', nargs='+', type=int, default=[224, 224], help='Number of images in each batch')
-    parser.add_argument('--imagenet_norm', type=str2bool, nargs='?', const=True, default=True,
+    parser.add_argument('--imagenet_norm', type=str2bool, nargs='?', const=True, default=False,
                         help='Use imagenet normalization values')
     parser.add_argument('--model', type=str, default="resnet18",
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
