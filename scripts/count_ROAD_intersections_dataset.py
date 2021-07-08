@@ -6,6 +6,8 @@
 ##  https://arxiv.org/pdf/2102.11585.pdf
 ##  https://github.com/gurkirt/road-dataset#frame-extraction
 
+## labels here https://drive.google.com/drive/folders/1hCLlgRqsJBONHgwGPvVu8VWXxlyYKCq-
+
 import json
 
 # Opening JSON file
