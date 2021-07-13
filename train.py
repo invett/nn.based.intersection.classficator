@@ -253,21 +253,20 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
 
     if confusion_matrix is not None:
         plt.figure(figsize=(10, 7))
-        title = str(
-            socket.gethostname()) + '\nTEST ' + args.test_method + '-' + args.svm_mode + '\n' + test_path
+        title = str(socket.gethostname()) + '\nTEST '
         plt.title(title)
-        sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
-
-    if args.telegram and confusion_matrix is not None:
-        if loss_val is not None:
-            send_telegram_picture(plt, "TEST" + "\nacc_val: " + str(acc_val) + "\nloss_val: " + str(loss_val))
+        if args.norm_conf_matrix == 'index' or args.norm_conf_matrix == 'columns':
+            sn.heatmap(confusion_matrix, annot=True, fmt='.2f')
         else:
-            send_telegram_picture(plt, "TEST" + "\nacc_val: " + str(acc_val))
+            sn.heatmap(confusion_matrix, annot=True, fmt='d')
+        if args.telegram:
+            if loss_val is not None:
+                send_telegram_picture(plt, "TEST" + "\nacc_val: " + str(acc_val) + "\nloss_val: " + str(loss_val))
+            else:
+                send_telegram_picture(plt, "TEST" + "\nacc_val: " + str(acc_val))
 
-    if not args.nowandb and confusion_matrix is not None:  # if nowandb flag was set, skip
-        plt.figure(figsize=(10, 7))
-        sn.heatmap(confusion_matrix, annot=True, fmt='.2f')
-        wandb.log({"Test/Acc": acc_val, "conf-matrix_test": wandb.Image(plt)})
+        if not args.nowandb:
+            wandb.log({"Test/Acc": acc_val, "conf-matrix_test": wandb.Image(plt)})
 
 
 def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
@@ -389,7 +388,7 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
 
     if labelRecord.size != 0 and predRecord.size != 0:
         conf_matrix = pd.crosstab(labelRecord, predRecord, rownames=['Actual'], colnames=['Predicted'],
-                                  normalize='index')
+                                  normalize=args.norm_conf_matrix)
         conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6], fill_value=0.0)
     else:
         conf_matrix = None
@@ -705,7 +704,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
 
             if confusion_matrix is not None:
                 plt.figure(figsize=(10, 7))
-                title = str(socket.gethostname()) + '\nEpoch: ' + str(epoch) + '\n' + str(valfolder)
+                title = str(socket.gethostname()) + '\nEpoch: ' + str(epoch)
                 plt.title(title)
                 sn.heatmap(confusion_matrix, annot=True, fmt='.3f')
 
@@ -1317,7 +1316,8 @@ def main(args, model=None):
             test_dataset = triplet_BOO([test_path], args.distance, canonical=True,
                                        transform_osm=osmTransforms, transform_bev=threedimensional_transfomrs)
 
-        elif args.dataloader == 'lstm_txt_dataloader' and not all(map(lambda x: '3D' in x, train_path)):  # // RGB // Homography
+        elif args.dataloader == 'lstm_txt_dataloader' and not all(
+                map(lambda x: '3D' in x, train_path)):  # // RGB // Homography
             print('Training with rgb Data augmentation')
             test_dataset = lstm_txt_dataloader(test_path, transform=rgb_image_test_transforms,
                                                fixed_lenght=args.fixed_length)
@@ -1433,6 +1433,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--telegram', type=str2bool, nargs='?', const=True, default=False,
                         help='Send info through Telegram')
+    parser.add_argument('--norm_conf_matrix', type=str, default=False, choices=['index', 'columns'],
+                        help='Normalization type of the confusion matix. Chooses: index, columns')
     parser.add_argument('--dataset', action="extend", nargs="+", type=str,
                         help='path to the dataset you are using. (Train or full split)')
     parser.add_argument('--dataset_val', action="extend", nargs="+", type=str, default=None,
