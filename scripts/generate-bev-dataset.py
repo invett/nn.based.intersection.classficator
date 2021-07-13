@@ -28,7 +28,7 @@ def main(args):
         # execute = 'KITTI-ROAD-3D'
         # execute = 'kitti360'
         # execute = 'kitti360-warping'
-        execute = 'kitti360-3D'
+        execute = 'KITTI-ROAD-3D'
 
         # execute = 'alcala26012021'   #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
         # execute = 'alcala.12.02.2021.000'   #CHANGE ALSO FILENAME OR USE ROOTFOLDER parser.add_argument('--rootfolder',
@@ -309,9 +309,13 @@ if __name__ == '__main__':
     # 3D
     # parser.add_argument('--rootfolder', default="/home/ballardini/DualBiSeNet/KITTI-ROAD/all.txt", type=str, help='Root folder for all datasets')
     # parser.add_argument('--savefolder', default="/home/ballardini/DualBiSeNet/KITTI-ROAD_3D", type=str, help='Where to save the new data')
+    # 3D Masked
+    parser.add_argument('--rootfolder', default="/home/ballardini/DualBiSeNet/KITTI-ROAD/prefix_all.txt", type=str, help='Root folder for all datasets')
+    parser.add_argument('--savefolder', default="/home/ballardini/DualBiSeNet/KITTI-ROAD_3D-MASKED", type=str, help='Where to save the new data')
 
-    parser.add_argument('--rootfolder', default="/home/ballardini/DualBiSeNet/KITTI-360/all.txt", type=str, help='Root folder for all datasets')
-    parser.add_argument('--savefolder', default="/home/ballardini/DualBiSeNet/KITTI-360_3D", type=str, help='Where to save the new data')
+    # KITTI-360
+    #parser.add_argument('--rootfolder', default="/home/ballardini/DualBiSeNet/KITTI-360/all.txt", type=str, help='Root folder for all datasets')
+    #parser.add_argument('--savefolder', default="/home/ballardini/DualBiSeNet/KITTI-360_3D", type=str, help='Where to save the new data')
 
 
     # ALCALA 26 - AUGUSTO's LAPTOP
