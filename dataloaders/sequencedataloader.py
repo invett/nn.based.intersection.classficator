@@ -1680,7 +1680,7 @@ class lstm_txt_dataloader(txt_dataloader, Dataset):
 
         if self.fixed_lenght == 1:
             # get the last min_elements
-            sequence_list = sequence_list[self.min_elements:]
+            sequence_list = sequence_list[-self.min_elements:]
 
         if self.fixed_lenght == 2:
             # linearize space and take the elements with equal-spaces

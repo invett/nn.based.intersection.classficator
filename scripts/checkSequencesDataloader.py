@@ -6,6 +6,8 @@
 ###     this little script was used to check/develope the sequence dataloader. nothing special here.
 ###
 ###     ALSO TO CREATE THE INPUT TO THE KERAS SCRIPT!
+
+###     AND ALSO FOR THE PYTORCHVIDEO STUFF!
 ###
 
 import os
@@ -70,27 +72,27 @@ to_process = [
     #  '/home/ballardini/DualBiSeNet/KITTI-360_3D-MASKED/prefix_test_list.txt',
     #  'KITTI-360_3D-MASKED']
     #
-    # ['/tmp/fixedlength6_keras_KITTI-360_train.pickle',
-    #  '/tmp/fixedlength6_keras_KITTI-360_valid.pickle',
-    #  '/tmp/fixedlength6_keras_KITTI-360_test.pickle',
-    #  '/home/ballardini/DualBiSeNet/KITTI-360/train.prefix/prefix_train_list.txt',
-    #  '/home/ballardini/DualBiSeNet/KITTI-360/validation.prefix/prefix_validation_list.txt',
-    #  '/home/ballardini/DualBiSeNet/KITTI-360/test.prefix/prefix_test_list.txt',
-    #  'KITTI-360']
+    ['/tmp/fixedlength6_keras_KITTI-360_train.pickle',
+     '/tmp/fixedlength6_keras_KITTI-360_valid.pickle',
+     '/tmp/fixedlength6_keras_KITTI-360_test.pickle',
+     '/home/ballardini/DualBiSeNet/KITTI-360/train.prefix/prefix_train_list.txt',
+     '/home/ballardini/DualBiSeNet/KITTI-360/validation.prefix/prefix_validation_list.txt',
+     '/home/ballardini/DualBiSeNet/KITTI-360/test.prefix/prefix_test_list.txt',
+     'KITTI-360']
 
-    ['/tmp/fixedlength6_keras_alcala26_train.pickle',
-     '/tmp/fixedlength6_keras_alcala26_valid.pickle',
-     '/tmp/fixedlength6_keras_alcala26_test.pickle',
-     '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected/prefix_train_list.txt',
-     '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected/prefix_validation_list.txt',
-     '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected/prefix_test_list.txt',
-     'alcala26-15frame']
+    # ['/tmp/fixedlength6_keras_alcala26_train.pickle',
+    #  '/tmp/fixedlength6_keras_alcala26_valid.pickle',
+    #  '/tmp/fixedlength6_keras_alcala26_test.pickle',
+    #  '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected/prefix_train_list.txt',
+    #  '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected/prefix_validation_list.txt',
+    #  '/home/ballardini/DualBiSeNet/alcala-26.01.2021_selected/prefix_test_list.txt',
+    #  'alcala26-15frame']
 
 ]
-
-txtdataset = txt_dataloader('/media/14TBDISK/ballardini/imagenet/prefix_all_unlabeled.txt',
-                               transform=rgb_image_test_transforms)
-txtdataloader = DataLoader(txtdataset, batch_size=1, num_workers=1, shuffle=False)
+#
+# txtdataset = txt_dataloader('/media/14TBDISK/ballardini/imagenet/prefix_all_unlabeled.txt',
+#                                transform=rgb_image_test_transforms)
+# txtdataloader = DataLoader(txtdataset, batch_size=1, num_workers=1, shuffle=False)
 
 
 
@@ -122,12 +124,12 @@ for i in to_process:
 
     # AND .... READ HERE!!! >>>> used to find the number "6" shared with all datasets (MAGIC NUMBER)
     print('min elements train/val/test: ', dataset_train.min_elements, dataset_valid.min_elements, dataset_test.min_elements)
-    exit(-21)
-    continue
+    # exit(-21)
+    # continue
 
-    dataset_train.min_elements = 15  # <<<<<< READ ABOVE: HOW TO FIND THIS MAGIC NUMBER
-    dataset_valid.min_elements = 15  # <<<<<< READ ABOVE: HOW TO FIND THIS MAGIC NUMBER
-    dataset_test.min_elements = 15   # <<<<<< READ ABOVE: HOW TO FIND THIS MAGIC NUMBER
+    dataset_train.min_elements = 6  # 15  # <<<<<< READ ABOVE: HOW TO FIND THIS MAGIC NUMBER
+    dataset_valid.min_elements = 6  # 15  # <<<<<< READ ABOVE: HOW TO FIND THIS MAGIC NUMBER
+    dataset_test.min_elements =  6  # 15   # <<<<<< READ ABOVE: HOW TO FIND THIS MAGIC NUMBER
 
     train_loader = DataLoader(dataset_train, batch_size=1, num_workers=1, shuffle=False)
     valid_loader = DataLoader(dataset_valid, batch_size=1, num_workers=1, shuffle=False)
@@ -165,6 +167,9 @@ for i in to_process:
             line = 'ovid_' + str(episode_id) + ' ' + str(episode_id) + ' ' + str(index) + ' ' + os.path.relpath(output,
                                                                                                       COMPOSED_BASE_PATH) + ' ' + \
                    '\"' + episode_['gt'] + '\"\n'
+            line = 'ovid_' + str(episode_id) + ' ' + str(episode_id) + ' ' + str(index) + ' ' + os.path.relpath(output,
+                                                                                                      COMPOSED_BASE_PATH) + ' ' + \
+                   '\"' + episode_['gt'] + '\" ' + input + '\n'
             annotation_file.write(line)
     annotation_file.close()
 
@@ -198,6 +203,9 @@ for i in to_process:
             line = 'ovid_' + str(episode_id) + ' ' + str(episode_id) + ' ' + str(index) + ' ' + os.path.relpath(output,
                                                                                                       COMPOSED_BASE_PATH) + ' ' + \
                    '\"' + episode_['gt'] + '\"\n'
+            line = 'ovid_' + str(episode_id) + ' ' + str(episode_id) + ' ' + str(index) + ' ' + os.path.relpath(output,
+                                                                                                      COMPOSED_BASE_PATH) + ' ' + \
+                   '\"' + episode_['gt'] + '\" ' + input + '\n'
             annotation_file.write(line)
     annotation_file.close()
 
@@ -231,6 +239,9 @@ for i in to_process:
             line = 'ovid_' + str(episode_id) + ' ' + str(episode_id) + ' ' + str(index) + ' ' + os.path.relpath(output,
                                                                                                       COMPOSED_BASE_PATH) + ' ' + \
                    '\"' + episode_['gt'] + '\"\n'
+            line = 'ovid_' + str(episode_id) + ' ' + str(episode_id) + ' ' + str(index) + ' ' + os.path.relpath(output,
+                                                                                                      COMPOSED_BASE_PATH) + ' ' + \
+                   '\"' + episode_['gt'] + '\" ' + input + '\n'
             annotation_file.write(line)
     annotation_file.close()
 

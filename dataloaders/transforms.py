@@ -533,15 +533,25 @@ class GenerateBev(object):
 
             dict_data = load(npz)
             aanet_image = dict_data['arr_0']
-            points = cv2.reprojectImageTo3D(aanet_image, rev_proj_matrix)
+
+            try:
+                points = cv2.reprojectImageTo3D(aanet_image, rev_proj_matrix)
+            except cv2.error as e:
+                print(e)
 
             # if exists, add alvaromask
             alvaromask_file = npz.replace('.npz', '.png').replace('/pred/', '/alvaromask/')
             if os.path.isfile(alvaromask_file):
                 sample['alvaromask'] = cv2.imread(alvaromask_file, cv2.IMREAD_UNCHANGED)
+                if np.sum(sample['alvaromask']) == 0:
+                    print(' ***** Warning, alvaromask is full of zeros! no detection at all in this frame: ',
+                          alvaromask_file, ' *****')
 
         else:
-            points = cv2.reprojectImageTo3D(sample['aanet'], rev_proj_matrix)
+            try:
+                points = cv2.reprojectImageTo3D(sample['aanet'], rev_proj_matrix)
+            except cv2.error as e:
+                print(e)
 
         # reflect on x axis
         reflect_matrix = np.identity(3)
@@ -573,6 +583,21 @@ class GenerateBev(object):
 
         # this if was added once we had kitti360
         if alvaro is not None:
+
+            # BUGFIX: handle different image size, due to KITTI different image sizes you know ...
+            if sample['alvaromask'].shape != aanet_image.shape:
+                try:
+                    size_alvaro = sample['alvaromask'].shape[0]*sample['alvaromask'].shape[1]
+                    size_aanet_ = aanet_image.shape[1]*aanet_image.shape[0]
+                    if size_alvaro > size_aanet_:
+                        alvaro = cv2.resize(sample['alvaromask'], (aanet_image.shape[1], aanet_image.shape[0]),
+                                             interpolation=cv2.INTER_AREA)
+                    else:
+                        alvaro = cv2.resize(sample['alvaromask'], (aanet_image.shape[1], aanet_image.shape[0]),
+                                            interpolation=cv2.INTER_CUBIC)
+                except cv2.error as e:
+                    print(e)
+
             # nice trick to avoid touching more code than needed... from this out_points needs to be 453620 x 3
             if self.excludeMask:
                 alvaro = np.ones(alvaro.shape, dtype=alvaro.dtype)
@@ -663,12 +688,20 @@ class GenerateBev(object):
         out_points = pointsandcolors[:, :3].astype('float64')
         out_colors = pointsandcolors[:, 3:].astype('float32')
 
-        imagePoints, jacobians = cv2.projectPoints(objectPoints=out_points,
-                                                   rvec=cv2.Rodrigues(R_00 @ baseRotationMatrix @
-                                                                      dataAugmentationRotationMatrixX @
-                                                                      dataAugmentationRotationMatrixY @
-                                                                      dataAugmentationRotationMatrixZ)[0],
-                                                   tvec=T_00, cameraMatrix=K_00, distCoeffs=D_00)
+        try:
+            # check if we have points.. if the alvaromask is present and no point is detected as road, we won't have
+            # any point at this line
+            if np.sum(out_points) > 0:
+                imagePoints, jacobians = cv2.projectPoints(objectPoints=out_points,
+                                                           rvec=cv2.Rodrigues(R_00 @ baseRotationMatrix @
+                                                                              dataAugmentationRotationMatrixX @
+                                                                              dataAugmentationRotationMatrixY @
+                                                                              dataAugmentationRotationMatrixZ)[0],
+                                                           tvec=T_00, cameraMatrix=K_00, distCoeffs=D_00)
+            else:
+                imagePoints = out_points
+        except cv2.error as e:
+            print(e)
 
         # generate the image
         blank_image = np.zeros((int(cy * 2), int(cx * 2), 3), np.float32)
