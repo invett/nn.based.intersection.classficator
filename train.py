@@ -258,7 +258,7 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
         if args.norm_conf_matrix == 'index' or args.norm_conf_matrix == 'columns':
             sn.heatmap(confusion_matrix, annot=True, fmt='.2f')
         else:
-            sn.heatmap(confusion_matrix, annot=True, fmt='d')
+            sn.heatmap(confusion_matrix, annot=True, fmt='.1f')
         if args.telegram:
             if loss_val is not None:
                 send_telegram_picture(plt, "TEST" + "\nacc_val: " + str(acc_val) + "\nloss_val: " + str(loss_val))
