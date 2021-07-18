@@ -280,7 +280,7 @@ The idea is to exploit the trained RESNET, then the train is made as follows:
     - Mahalanobis (94,99% ACC)
       `python train.py --test --metric --dataset ../../DualBiSeNet/alcala-26.01.2021_selected_warped --dataloader txt_dataloader --model resnet18 --load_path ./trainedmodels/model_de2u0bbr_30.pth --test_method mahalanobis --telegram`
       
-- Kitti 360 (Resnet): model_m5qcz4ha_75.pth
+- Kitti 360 warpinggs (Resnet): model_m5qcz4ha_75.pth
     - Linear SVM (75,28% ACC)
       `python train.py --test --metric --dataset ../../DualBiSeNet/KITTI-360_warped/train.prefix/prefix_train_list.txt --dataset_test ../../DualBiSeNet/KITTI-360_warped/test.prefix/prefix_test_list.txt --dataset_val ../../DualBiSeNet/KITTI-360_warped/validation.prefix/prefix_validation_list.txt --dataloader txt_dataloader --model resnet18 --load_path ./trainedmodels/model_m5qcz4ha_75.pth --test_method svm --svm_mode Linear --telegram`
     - OVO SVM (76,69% ACC)

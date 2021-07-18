@@ -63,7 +63,12 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
     loss_val = None
 
     if args.embedding:
-        criterion = torch.nn.MSELoss(reduction='mean')
+        if args.lossfunction == 'SmoothL1':
+            criterion = torch.nn.SmoothL1Loss(reduction='mean')
+        elif args.lossfunction == 'L1':
+            criterion = torch.nn.L1Loss(reduction='mean')
+        elif args.lossfunction == 'MSE':
+            criterion = torch.nn.MSELoss(reduction='mean')
     else:
         criterion = torch.nn.CrossEntropyLoss()
 
