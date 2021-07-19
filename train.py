@@ -1323,22 +1323,23 @@ def main(args, model=None):
 
         elif args.dataloader == 'lstm_txt_dataloader' and not all(
                 map(lambda x: '3D' in x, train_path)):  # // RGB // Homography
-            print('Training with rgb Data augmentation')
+            print('Testing with rgb Data augmentation')
             test_dataset = lstm_txt_dataloader(test_path, transform=rgb_image_test_transforms,
                                                fixed_lenght=args.fixed_length)
         elif args.dataloader == 'lstm_txt_dataloader':  # // 3D // 3D-Masked
-            print('Training with three-dimensional data')
+            print('Testing with three-dimensional data')
             test_dataset = lstm_txt_dataloader(test_path, transform=threedimensional_transfomrs,
                                                fixed_lenght=args.fixed_length)
 
         elif args.dataloader == 'txt_dataloader' and not all(map(lambda x: '3D' in x, train_path)):
-            print('Training with rgb Data augmentation')
             if args.imagenet_norm:
+                print('Testing with rgb Data augmentation')
                 test_dataset = txt_dataloader(test_path, transform=rgb_image_test_transforms)
             else:
+                print('Testing with GAN Data augmentation')
                 test_dataset = txt_dataloader(test_path, transform=GAN_transfomrs)
         elif args.dataloader == 'txt_dataloader':
-            print('Training with three-dimensional data')
+            print('Testing with three-dimensional data')
             test_dataset = txt_dataloader(test_path, transform=threedimensional_transfomrs)
 
         # we can change the min-elements of each dataloader here
