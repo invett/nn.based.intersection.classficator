@@ -613,8 +613,9 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
     for epoch in range(args.start_epoch, args.num_epochs):
         print("\n\n===========================================================")
         print("date and time:", datetime.now().strftime("%m/%d/%Y, %H:%M:%S"), '\n')
-        with GLOBAL_EPOCH.get_lock():
-            GLOBAL_EPOCH.value = epoch
+        if GLOBAL_EPOCH is not None:
+            with GLOBAL_EPOCH.get_lock():
+                GLOBAL_EPOCH.value = epoch
         lr = optimizer.param_groups[0]['lr']
         tq = tqdm.tqdm(total=len(dataloader_train) * args.batch_size)
         tq.set_description('epoch %d, lr %.e' % (epoch, lr))
@@ -821,10 +822,11 @@ def main(args, model=None):
             checkpoint = torch.load(args.resume, map_location='cpu')
             args.seed = checkpoint['epoch']
 
-    GLOBAL_EPOCH = multiprocessing.Value('i', args.seed)
-    seed = multiprocessing.Value('i', args.seed)
+    # GLOBAL_EPOCH = multiprocessing.Value('i', args.seed)
+    # seed = multiprocessing.Value('i', args.seed)
 
-    init_fn = partial(init_function, seed=seed, epoch=GLOBAL_EPOCH)
+    # init_fn = partial(init_function, seed=seed, epoch=GLOBAL_EPOCH)
+    init_fn = None
 
     # workaround for "TOO MANY OPEN FILES"
     # https://stackoverflow.com/questions/48250053/pytorchs-dataloader-too-many-open-files-error-when-no-files-should-be-open
