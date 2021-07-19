@@ -1449,7 +1449,7 @@ if __name__ == '__main__':
                         help='path to the testing dataset that you are using if is different to the training one')
     parser.add_argument('--batch_size', type=int, default=64, help='Number of images in each batch')
     parser.add_argument('--image_size', nargs='+', type=int, default=[224, 224], help='Number of images in each batch')
-    parser.add_argument('--imagenet_norm', type=str2bool, nargs='?', const=True, default=False,
+    parser.add_argument('--imagenet_norm', type=str2bool, nargs='?', const=True, default=True,
                         help='Use imagenet normalization values')
     parser.add_argument('--model', type=str, default="resnet18",
                         help='The context path model you are using, resnet18, resnet50 or resnet101.')
