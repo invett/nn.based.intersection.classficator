@@ -87,12 +87,12 @@ def main(args):
         else:
             if args.test:
                 wandb.init(project="journal_trainings", entity="chiringuito",
-                           group="Teacher Evaluation",
+                           group=args.wandb_group_id,
                            job_type="eval", tags=["Teacher", "class", hostname],
                            config=hyperparameter_defaults)
             else:
                 wandb.init(project="journal_trainings", entity="chiringuito",
-                           group="Teacher Train",
+                           group=args.wandb_group_id,
                            job_type="training", tags=["Teacher", "class", hostname],
                            config=hyperparameter_defaults)
             wandb.config.update(args, allow_val_change=True)
@@ -570,6 +570,7 @@ if __name__ == '__main__':
     parser.add_argument('--sweep', action='store_true', help='if set, this run is part of a wandb-sweep; use it with'
                                                              'as documented in '
                                                              'in https://docs.wandb.com/sweeps/configuration#command')
+    parser.add_argument('--wandb_group_id', type=str, help='Set group id for the wandb experiment')
     parser.add_argument('--telegram', action='store_true', help='Send info through Telegram')
     parser.add_argument('--triplet', type=str2bool, nargs='?', const=True, default=False, help='scheduling lr')
     parser.add_argument('--swap', action='store_true', help='Triplet Loss swap')
