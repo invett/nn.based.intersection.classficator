@@ -827,6 +827,7 @@ def main(args, model=None):
 
     # init_fn = partial(init_function, seed=seed, epoch=GLOBAL_EPOCH)
     init_fn = None
+    GLOBAL_EPOCH = None
 
     # workaround for "TOO MANY OPEN FILES"
     # https://stackoverflow.com/questions/48250053/pytorchs-dataloader-too-many-open-files-error-when-no-files-should-be-open
