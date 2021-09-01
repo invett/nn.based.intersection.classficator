@@ -343,6 +343,7 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
     embedding = None
     label = None
     predict = None
+    hardtriplets = None
 
     if args.embedding:
         data = sample['data']
@@ -424,6 +425,7 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
             else:
                 hard_pairs = miner(embeddings.squeeze(), label)
                 loss = criterion(embeddings.squeeze(), label, hard_pairs)
+                hardtriplets = len(miner(embeddings.squeeze(), label)[0])
         else:
             if args.model == 'inception_v3' and model.training:
                 loss = criterion(embeddings.squeeze(), label)
@@ -434,7 +436,8 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
 
         # acc is not a value is a dict
         acc = acc_metric.get_accuracy(embeddings.squeeze().detach().cpu().numpy(),
-                                      embeddings.squeeze().detach().cpu().numpy(), label.cpu().numpy(),
+                                      embeddings.squeeze().detach().cpu().numpy(),
+                                      label.cpu().numpy(),
                                       label.cpu().numpy(), embeddings_come_from_same_source=True)
 
     else:
@@ -469,7 +472,7 @@ def student_network_pass(args, sample, criterion, model, gt_list=None, weights_p
 
         acc = accuracy_score(label, predict)
 
-    return acc, loss, label, predict, embedding
+    return acc, loss, label, predict, embedding, hardtriplets
 
 
 def lstm_network_pass(args, batch, criterion, model, lstm, miner=None, acc_metric=None):
@@ -573,6 +576,7 @@ def init_function(worker_id, seed, epoch):
     seed = seed.value + worker_id + epoch.value * 100
     # if you want to debug... print(f"\nInit worker {worker_id} with seed {seed}")
     torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
     np.random.seed(seed)
     random.seed(seed)
 
@@ -1419,8 +1423,14 @@ def split_dataset(annotations, files, prefix_filename='prefix_', save_folder='/t
             f.write("%s\n" % item)
     with open(os.path.join(save_folder, all_filename), 'w') as f:
         print('Creating file... ', os.path.join(save_folder, all_filename))
-        for item in type_all_sequences:
-            f.write(item[0][0] + ';' + str(item[1]) + '\n')
+        # for item in type_all_sequences:
+        #     f.write(item[0][0] + ';' + str(item[1]) + '\n')
+        for item in train_list:
+            f.write("%s\n" % item)
+        for item in validation_list:
+            f.write("%s\n" % item)
+        for item in test_list:
+            f.write("%s\n" % item)
 
     print("Finish")
 

@@ -17,6 +17,7 @@ import seaborn as sn
 import torch
 import torchvision.transforms as transforms
 import tqdm
+import random
 from pytorch_metric_learning import losses, miners, reducers
 from pytorch_metric_learning.distances import SNRDistance, LpDistance, CosineSimilarity
 from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
@@ -330,7 +331,7 @@ def validation(args, model, criterion, dataloader, gt_list=None, weights=None,
                                                               acc_metric=acc_metric)
             else:
                 model.eval()
-                acc, loss, label, predict, embedding = student_network_pass(args, sample, criterion, model,
+                acc, loss, label, predict, embedding , _ = student_network_pass(args, sample, criterion, model,
                                                                             gt_list=gt_list, weights_param=weights,
                                                                             miner=miner, acc_metric=acc_metric,
                                                                             return_embedding=save_embeddings)
@@ -515,7 +516,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
     elif args.metric:
         gt_list = None  # No need of centroids
         # Accuracy calculator for metric learning
-        acc_metric = AccuracyCalculator(exclude=('AMI', 'NMI'))
+        acc_metric = AccuracyCalculator(exclude=('AMI', 'NMI'), avg_of_avgs=True)
         # Accuracy metrics for metric learning
         if args.weighted:
             if args.weight_tensor == 'Kitti360':
@@ -548,12 +549,13 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                 miner = None
 
         elif args.distance_function == 'pairwise':
-            criterion = losses.TripletMarginLoss(margin=args.margin, swap=False, smooth_loss=False,
-                                                 triplets_per_anchor="all",
+            criterion = losses.TripletMarginLoss(margin=args.margin, swap=True, smooth_loss=False,
+                                                 # triplets_per_anchor="all",
+                                                 triplets_per_anchor=100,
                                                  distance=LpDistance(p=args.p, normalize_embeddings=args.normalize),
                                                  reducer=reducer)
             if args.miner:
-                miner = miners.TripletMarginMiner(margin=args.margin * 2.0,
+                miner = miners.TripletMarginMiner(margin=args.margin_miner, # * 2.0,
                                                   type_of_triplets=args.TripletMarginMinerType,
                                                   distance=LpDistance(p=args.p, normalize_embeddings=args.normalize))
             else:
@@ -630,7 +632,7 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                 acc, loss, _, _ = lstm_network_pass(args, sample, criterion, model, LSTM, miner=miner,
                                                     acc_metric=acc_metric)
             else:
-                acc, loss, _, _, _ = student_network_pass(args, sample, criterion, model, gt_list=gt_list,
+                acc, loss, _, _, _ , hard_triplets = student_network_pass(args, sample, criterion, model, gt_list=gt_list,
                                                           weights_param=weights, miner=miner, acc_metric=acc_metric)
 
             loss.backward()
@@ -653,7 +655,8 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
                 wandb.log({"batch_training_accuracy": acc,
                            "batch_training_loss": loss.item(),
                            "batch_current_batch": current_batch,
-                           "batch_current_epoch": epoch})
+                           "batch_current_epoch": epoch,
+                           "batch_hardtriplets": hard_triplets})
 
                 current_batch += 1
 
@@ -822,12 +825,18 @@ def main(args, model=None):
             checkpoint = torch.load(args.resume, map_location='cpu')
             args.seed = checkpoint['epoch']
 
-    # GLOBAL_EPOCH = multiprocessing.Value('i', args.seed)
-    # seed = multiprocessing.Value('i', args.seed)
+    GLOBAL_EPOCH = multiprocessing.Value('i', args.seed)
+    seed = multiprocessing.Value('i', args.seed)
 
-    # init_fn = partial(init_function, seed=seed, epoch=GLOBAL_EPOCH)
-    init_fn = None
-    GLOBAL_EPOCH = None
+    init_fn = partial(init_function, seed=seed, epoch=GLOBAL_EPOCH)
+
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)
+    np.random.seed(args.seed)
+    random.seed(args.seed)
+
+    # init_fn = None
+    # GLOBAL_EPOCH = None
 
     # workaround for "TOO MANY OPEN FILES"
     # https://stackoverflow.com/questions/48250053/pytorchs-dataloader-too-many-open-files-error-when-no-files-should-be-open
@@ -939,6 +948,16 @@ def main(args, model=None):
     # Transforms for OSM in Triplet_OBB and Triplet_BOO dataloaders
     osmTransforms = transforms.Compose(
         [transforms.ToPILImage(), img_rescale, transforms.ToTensor()])
+
+    # Transforms for RGB images (RGB // Homography)
+    # rgb_image_train_transforms = transforms.Compose(
+    #     [img_rescale, transforms.RandomAffine(15, translate=(0.0, 0.1), shear=(-5, 5)),
+    #      transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5), transforms.ToTensor(),
+    #      transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
+    #
+    # rgb_image_test_transforms = transforms.Compose([img_rescale, transforms.ToTensor(),
+    #                                                 transforms.Normalize((0.485, 0.456, 0.406),
+    #                                                                      (0.229, 0.224, 0.225))])
 
     # Transforms for RGB images (RGB // Homography)
     rgb_image_train_transforms = transforms.Compose(
@@ -1496,7 +1515,7 @@ if __name__ == '__main__':
     parser.add_argument('--weight_tensor', type=str, default=None, choices=['Alcala', 'Kitti360', 'Kitti2011'])
     parser.add_argument('--miner', type=str2bool, nargs='?', const=True, default=False,
                         help='miner for metric learning')
-    parser.add_argument('--TripletMarginMinerType', type=str, default='all', choices=['all', 'hard'])
+    parser.add_argument('--TripletMarginMinerType', type=str, default='all', choices=['all', 'hard', 'semihard', 'easy'])
     parser.add_argument('--nonzero', type=str2bool, nargs='?', const=True, default=False, help='nonzero losses')
     parser.add_argument('--pretrained', type=str2bool, nargs='?', const=True, default=False,
                         help='whether to use a pretrained net, or not')
@@ -1507,7 +1526,7 @@ if __name__ == '__main__':
     parser.add_argument('--lstm_dropout', type=float, default=0.0, help='Lstm dropout between layers')
     parser.add_argument('--fc_dropout', type=float, default=0.0, help='fc dropout between layers')
     parser.add_argument('--lstm_input', type=int, default=512, help='size of the embbedings for lstm')
-    parser.add_argument('--lstm_hidden', type=int, default=256, help='size of the hidden layers for lstm')
+    parser.add_argument('--lstm_hidden', type=int, default=256, help='size of the hidden../../DualBiSeNet/KITTI-360_warped/validation.prefix/prefix_validation_list.txt layers for lstm')
     parser.add_argument('--lstm_layers', type=int, default=2, help='number of layers for lstm')
     parser.add_argument('--normalize', type=str2bool, nargs='?', const=True, default=False,
                         help='normalize embeddings in metric learning')
@@ -1524,6 +1543,7 @@ if __name__ == '__main__':
                         help='Insert label centroids teacher path (for student training)')
     parser.add_argument('--load_path', type=str, help='Insert path to the testing pth (for network testing)')
     parser.add_argument('--margin', type=float, default=1., help='margin in triplet and embedding')
+    parser.add_argument('--margin_miner', type=float, default=1., help='margin in triplet and embedding')
     parser.add_argument('--feature_model', type=str, help='Feature extractor for lstm model')
     parser.add_argument('--feature_detector_path', type=str, help='Path to the feature extractor trained model')
 
