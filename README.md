@@ -1,3 +1,5 @@
+[![CC BY-NC-SA 4.0][cc-by-sa-shield]][cc-by-sa]
+
 ## Urban Intersection Classification: A Comparative Analysis
 
 ### License
@@ -11,6 +13,9 @@ Tested on:
 * python 3.7
 * cuda 11
 * pytorch 1.8
+
+# News
+01/SEPT/2021 : license added.
 
 # Info: 
 ## Data Folder structure
