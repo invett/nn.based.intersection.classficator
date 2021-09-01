@@ -792,7 +792,7 @@ def svm_testing(args, model, dataloader_test, classifier, probs=False):
 
         conf_matrix = pd.crosstab(np.hstack(label_list), np.hstack(prediction_list), rownames=['Actual'],
                                   colnames=['Predicted'],
-                                  normalize='index')
+                                  normalize=args.norm_conf_matrix)
         conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6], fill_value=0.0)
         acc = accuracy_score(np.hstack(label_list), np.hstack(prediction_list))
         print('Accuracy for test : %f\n' % acc)
@@ -850,7 +850,7 @@ def svm_testing_lstm(model, dataloader_test, classifier, LSTM):
 
     conf_matrix = pd.crosstab(np.hstack(label_list), np.hstack(prediction_list), rownames=['Actual'],
                               colnames=['Predicted'],
-                              normalize='index')
+                              normalize=None)
     conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6], fill_value=0.0)
     acc = accuracy_score(np.hstack(label_list), np.hstack(prediction_list))
     print('Accuracy for test : %f\n' % acc)
@@ -928,7 +928,7 @@ def mahalanobis_testing(args, model, dataloader_test, covariances):
 
         conf_matrix = pd.crosstab(np.hstack(label_list), np.hstack(prediction_list), rownames=['Actual'],
                                   colnames=['Predicted'],
-                                  normalize='index')
+                                  normalize=args.norm_conf_matrix)
         conf_matrix = conf_matrix.reindex(index=[0, 1, 2, 3, 4, 5, 6], columns=[0, 1, 2, 3, 4, 5, 6], fill_value=0.0)
         acc = accuracy_score(np.hstack(label_list), np.hstack(prediction_list))
         print('Accuracy for test : %f\n' % acc)
