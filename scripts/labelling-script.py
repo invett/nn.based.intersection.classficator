@@ -41,10 +41,14 @@ from miscellaneous.utils import split_dataset
 
 # used up to LSTM version of the paper 5/5/21
 # dataset = 'KITTI-ROAD'
-dataset = 'KITTI360'
+# dataset = 'KITTI360'
 # dataset = 'alcala-26.01.2021'
 # dataset = 'alcala-12.02.2021'
+# dataset = 'alcala-10.06.2021'
 # dataset = 'GAN-v2'
+# dataset = 'alcala-10.06.2021'
+dataset = 'alcala-30.07.2021'
+
 
 # needs update / not used
 # dataset = 'ALCALA'
@@ -285,6 +289,76 @@ if dataset == 'alcala-26.01.2021':
     resizeme = 0  # resizeme = 0 does not perform the resize
     width = 800
 
+if dataset == 'alcala-30.07.2021':
+    base_folder = '/media/ballardini/500GBHECTOR/dataset/alcala-30.07.2021/'
+    extract_field_from_path = 12
+
+    folders = ['take_0001_GX010183', 'take_0001_GX020183', 'take_0001_GX030183', 'take_0001_GX040183',
+               'take_0001_GX050183', 'take_0001_GX060183', 'take_0001_GX070183']
+
+    pickle_filenames = ['take_0001_GX010183.pickle', 'take_0001_GX020183.pickle', 'take_0001_GX030183.pickle',
+                        'take_0001_GX040183.pickle', 'take_0001_GX050183.pickle', 'take_0001_GX060183.pickle',
+                        'take_0001_GX070183.pickle']
+
+    pickle_filenames = [i + dataset_version for i in pickle_filenames]
+
+    csv_filenames = ['take_0001_GX010183.csv', 'take_0001_GX020183.csv', 'take_0001_GX030183.csv',
+                     'take_0001_GX040183.csv', 'take_0001_GX050183.csv', 'take_0001_GX060183.csv',
+                     'take_0001_GX070183.csv']
+
+    height = 500
+    position1 = (10, 30)
+    position2 = (500, 30)
+    position3 = (500, 60)
+    resizeme = 0  # resizeme = 0 does not perform the resize
+    width = 800
+
+if dataset == 'alcala-10.06.2021':
+    base_folder = '/media/ballardini/500GBHECTOR/dataset/alcala-10.06.2021/'
+    extract_field_from_path = 12
+
+    folders = ['take_0001_GX010011', 'take_0001_GX010012', 'take_0001_GX020011', 'take_0001_GX030011',
+               'take_0001_GX040011', 'take_0001_GX050011', 'take_0001_GX060011', 'take_0001_GX070011',
+               'take_0002_GX010013', 'take_0002_GX020013', 'take_0002_GX030013', 'take_0002_GX040013',
+               'take_0002_GX050013', 'take_0002_GX060013', 'take_0002_GX070013', 'take_0003_GX010014',
+               'take_0003_GX010015', 'take_0003_GX020015', 'take_0003_GX030015', 'take_0003_GX040015',
+               'take_0003_GX050015', 'take_0003_GX060015', 'take_0004_GX010016', 'take_0004_GX010017',
+               'take_0004_GX010018', 'take_0004_GX010019', 'take_0004_GX020016', 'take_0004_GX020018',
+               'take_0004_GX020019', 'take_0004_GX030016', 'take_0004_GX040016']
+
+    pickle_filenames = ['take_0001_GX010011.pickle', 'take_0001_GX010012.pickle', 'take_0001_GX020011.pickle',
+                        'take_0001_GX030011.pickle', 'take_0001_GX040011.pickle', 'take_0001_GX050011.pickle',
+                        'take_0001_GX060011.pickle', 'take_0001_GX070011.pickle', 'take_0002_GX010013.pickle',
+                        'take_0002_GX020013.pickle', 'take_0002_GX030013.pickle', 'take_0002_GX040013.pickle',
+                        'take_0002_GX050013.pickle', 'take_0002_GX060013.pickle', 'take_0002_GX070013.pickle',
+                        'take_0003_GX010014.pickle', 'take_0003_GX010015.pickle', 'take_0003_GX020015.pickle',
+                        'take_0003_GX030015.pickle', 'take_0003_GX040015.pickle', 'take_0003_GX050015.pickle',
+                        'take_0003_GX060015.pickle', 'take_0004_GX010016.pickle', 'take_0004_GX010017.pickle',
+                        'take_0004_GX010018.pickle', 'take_0004_GX010019.pickle', 'take_0004_GX020016.pickle',
+                        'take_0004_GX020018.pickle', 'take_0004_GX020019.pickle', 'take_0004_GX030016.pickle',
+                        'take_0004_GX040016.pickle']
+
+    pickle_filenames = [i + dataset_version for i in pickle_filenames]
+
+    csv_filenames = ['take_0001_GX010011.csv', 'take_0001_GX010012.csv', 'take_0001_GX020011.csv',
+                     'take_0001_GX030011.csv', 'take_0001_GX040011.csv', 'take_0001_GX050011.csv',
+                     'take_0001_GX060011.csv', 'take_0001_GX070011.csv', 'take_0002_GX010013.csv',
+                     'take_0002_GX020013.csv', 'take_0002_GX030013.csv', 'take_0002_GX040013.csv',
+                     'take_0002_GX050013.csv', 'take_0002_GX060013.csv', 'take_0002_GX070013.csv',
+                     'take_0003_GX010014.csv', 'take_0003_GX010015.csv', 'take_0003_GX020015.csv',
+                     'take_0003_GX030015.csv', 'take_0003_GX040015.csv', 'take_0003_GX050015.csv',
+                     'take_0003_GX060015.csv', 'take_0004_GX010016.csv', 'take_0004_GX010017.csv',
+                     'take_0004_GX010018.csv', 'take_0004_GX010019.csv', 'take_0004_GX020016.csv',
+                     'take_0004_GX020018.csv', 'take_0004_GX020019.csv', 'take_0004_GX030016.csv',
+                     'take_0004_GX040016.csv']
+
+    height = 500
+    position1 = (10, 30)
+    position2 = (500, 30)
+    position3 = (500, 60)
+    resizeme = 0  # resizeme = 0 does not perform the resize
+    width = 800
+
 if dataset == 'alcala-12.02.2021':
     # images from raw files are 1920x1200 - resize as needed.
     # ffmpeg -f rawvideo -pixel_format bayer_rggb8 -video_size 1920x^C00 -framerate 10 -i R2_video_0002_camera2.raw -vf
@@ -372,6 +446,10 @@ right = 83  # 2555904
 down = 84
 space = 32
 f12 = 201
+wx = 100
+wy = 100
+fullscreen = True
+q_pressed = False
 
 files = []
 
@@ -521,22 +599,30 @@ for folder in folders:
     path = ''
     if dataset == 'KITTI-ROAD':
         path = os.path.join(base_folder, folder, 'image_02/data')
-    if dataset == 'KITTI360':
+    elif dataset == 'KITTI360':
         path = os.path.join(base_folder, 'data_2d_raw', folder, 'image_00/data_rect')
-    if dataset == 'ALCALA':
+    elif dataset == 'ALCALA':
+        path = os.path.join(base_folder, folder)    
+    elif dataset == 'alcala-26.01.2021':
         path = os.path.join(base_folder, folder)
-    if dataset == 'alcala-26.01.2021':
-        path = os.path.join(base_folder, folder)
-    if dataset == 'alcala-12.02.2021':
+    elif dataset == 'alcala-12.02.2021':
         path = os.path.join(base_folder, 'RGB', folder)
-    if dataset == 'AQP':
+    elif dataset == 'AQP':
         path = os.path.join(base_folder, folder, 'image_02')
-    if dataset == 'OXFORD':
+    elif dataset == 'OXFORD':
         path = os.path.join(base_folder, folder)
-    if dataset == 'GAN-v2':
+    elif dataset == 'GAN-v2':
         path = os.path.join(base_folder, folder)
+    elif dataset == 'alcala-10.06.2021':
+        path = os.path.join(base_folder, folder)
+    elif dataset == 'alcala-30.07.2021':
+        path = os.path.join(base_folder, folder)
+    else:
+        print('Mods to the code required...')
+        exit(-1)
     # list all files ending in .png
-    files.append(sorted([path + '/' + f for f in listdir(path) if f.endswith('.png')]))
+    data = sorted([path + '/' + f for f in listdir(path) if f.endswith('.png')])
+    files.append(data)
 
 # if for some reason some of the folders is empty, say no.
 for file_list_check in files:
@@ -553,7 +639,7 @@ else:
     print("CSV filenames list was not provided - no csv will be saved!")
 
 if pickle_filenames:
-    for pickle_filename in pickle_filenames:
+    for index, pickle_filename in enumerate(pickle_filenames):
         # try to read all the pickles in the list
         annotations_file = os.path.join(base_folder, pickle_filename)
         if os.path.exists(annotations_file):
@@ -561,9 +647,12 @@ if pickle_filenames:
                 # retrieve the first element of the pickle, the labels (second is filenames)
                 loaded = pickle.load(f)
 
-                # for compatibility with previous versions of the pickle files:
+                # for compatibility with previous versions of the pickle files:q
                 if type(loaded) == list and len(loaded) > 1:
-                    loaded = loaded[0]
+                    if type(loaded[0]) == list:
+                        loaded = loaded[0][index]
+                    else:
+                        loaded = loaded[0]
 
                 annotations.append(loaded)
 
@@ -575,9 +664,16 @@ if pickle_filenames:
                 for sequence in files:
                     annotations.append(np.ones(len(sequence), dtype=np.int8) * -1)
                 for pickle_filename_ in pickle_filenames:
-                    with open(os.path.join(base_folder, pickle_filename_), 'wb') as f:
-                        pickle.dump([annotations, files], f)  # TODO: check if valid
+                    annotations_file = os.path.join(base_folder, pickle_filename_)
+                    data = []
+                    with open(annotations_file, 'wb') as f:
+                        data = [annotations, files]
+                        pickle.dump(data, f)  # TODO: check if valid
                         annotations_filenames.append(os.path.join(base_folder, pickle_filename_))
+                    check_pickle = pickle.load(open(annotations_file, 'rb'))
+                    print('pinkle saved: ', annotations_file)
+
+
                 break
             else:
                 annotations_file = os.path.join(base_folder, pickle_filename)
@@ -616,7 +712,9 @@ for sequence_number, sequence in enumerate(files):
     start_number = re.sub("[^0-9]", "", os.path.splitext(os.path.basename(sequence[file]))[0])
     start_number = int(start_number)
 
-    cv2.namedWindow('image', cv2.WINDOW_AUTOSIZE)
+    WindowName = "Dataset Labelling Script"
+    cv2.namedWindow(WindowName, cv2.WINDOW_AUTOSIZE)
+
     while k != 0:
         print(str(folders[sequence_number]) + " -- " + str(file) + "/" + str(len(sequence)) + " -- " + str(
             sequence[file]))
@@ -651,7 +749,15 @@ for sequence_number, sequence in enumerate(files):
         cv2.putText(img, str(file) + '/' + str(len(sequence) - 2), position2, font, fontScale, fontColor, lineType)
         cv2.putText(img, os.path.basename(sequence[file]), position3, font, fontScale, fontColor, lineType)
 
-        cv2.imshow('image', img)
+        cv2.imshow(WindowName, img)
+        if q_pressed:
+            if fullscreen:
+                cv2.setWindowProperty(WindowName, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+            q_pressed = False
+
+        # wx, wy, _, _ = cv2.getWindowImageRect(WindowName)
+        # print('position:     ', wx, '   ', wy)
+        #cv2.moveWindow(WindowName, 100, 100)
 
         if skip:
             if annotations[sequence_number][file] == -1:
@@ -662,8 +768,16 @@ for sequence_number, sequence in enumerate(files):
                         continue
         skip = False  # disable skipping once a valid frame is found
 
+        if k == 194:  # fullscreen flip F5
+            if fullscreen:
+                cv2.setWindowProperty(WindowName, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+            else:
+                cv2.destroyAllWindows()
+                #cv2.setWindowProperty(WindowName, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
+            fullscreen = not fullscreen
+
         k = cv2.waitKey(0)
-        # print(k)
+        #print(k)
 
         if k == 190:  # enable skip F1
             if file + 1 < len(sequence) - 1:
@@ -735,6 +849,7 @@ for sequence_number, sequence in enumerate(files):
         if k == 113:  # pressing q
             cv2.waitKey(10)
             cv2.destroyAllWindows()
+            q_pressed = True
             break
 
         if k == 201:  # pressing F12

@@ -1,39 +1,19 @@
-# Remote Debug using SSH Tunnels
+## Urban Intersection Classification: A Comparative Analysis
 
-From your machine, open a connection do the DGX. This line will leave you an open shell.
-```ssh -L 1111:localhost:1111 ballardini@dgx-invett.aut.uah.es```
+### License
+This work is licensed under a [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License][cc-by-sa].
+[![CC BY-SA 4.0][cc-by-sa-image]][cc-by-sa]
 
-From that open connection, create a second tunnel direct to the Docker Container:
-```ssh -L 1111:localhost:22 ballardini@172.17.0.3```
+This code is a WIP (Work In Progress), use at your own risk. This version only works on GPUs (no CPU version available).
 
-Now from your machine use port 1111 to connect to the 22 of the Docker Container. You can test the connection connecting 
-with SSH from your local machine using ``-p`` parameter. 
+Tested on:
+* Kubuntu 20.04
+* python 3.7
+* cuda 11
+* pytorch 1.8
 
-```ssh ballardini@127.0.0.1 -p 1111```
-
-Don't forget to open the VPN first.
-
-# nn.based.intersection.classficator
-
-- [ ] Create dataloader
-- [ ] Create NN
-- [ ] Try to classify using BEVs + LABELs
-
-Experiments were performed on the RTX Ivan PC.
-
-# Requisites
-
-We used the following software; in brackets the version;
-
-- python()
-- pytorch()
-- nvidia drivers(10.2)
-- aanet(invett fork in github)
-- opencv(4)
-- wandb
-- seaborn
-
-# Data Folder structure
+# Info: 
+## Data Folder structure
 
 - The camera images are taken from the original [KITTI RAW dataset](http://www.cvlibs.net/datasets/kitti/raw_data.php), synchronized version. 
 - Crossing-frames and ground truth label are those available in [Intersection Ground Truth](https://ira.disco.unimib.it/research/robotic-perception-research/road-layout-estimation/an-online-probabilistic-road-intersection-detector/intersection-ground-truth/)
@@ -60,9 +40,9 @@ We used the following software; in brackets the version;
 .
 ```
 
-# Usage
+## Usage
 
-## reproject.py and generate.bev.and.pcds.sh
+### reproject.py and generate.bev.and.pcds.sh
 
 reproject takes as input the following list of arguments
 
@@ -98,11 +78,11 @@ Available dimensions: x y z rgb
 > Saving /media/ballardini/4tb/ALVARO/Secuencias/2011_09_30_drive_0034_sync/pcd/0000001017.pcd [done, 2 ms : 45604 points]
 ```
 
-# Video Generation
+## Video Generation
 
 Given the folders' structure you can generate a mosaic of BEVs+Images using the script _generate.videos.bash_
 
-# Info about BASH scripts
+## Info about BASH scripts
 
 The following scripts uses as input a txt file (foldes.txt) generated with 
 

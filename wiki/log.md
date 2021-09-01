@@ -106,6 +106,16 @@ ffmpeg -safe 0 -r 30 -f concat -i ffmpeg_check_type_3.txt -c:v libx264 -profile:
 ffmpeg -safe 0 -r 30 -f concat -i ffmpeg_check_type_4.txt -c:v libx264 -profile:v high444 -level:v 4.0 -pix_fmt yuv420p /tmp/alcala-26.01.2021_check_type_4.mp4
 ffmpeg -safe 0 -r 30 -f concat -i ffmpeg_check_type_5.txt -c:v libx264 -profile:v high444 -level:v 4.0 -pix_fmt yuv420p /tmp/alcala-26.01.2021_check_type_5.mp4
 ffmpeg -safe 0 -r 30 -f concat -i ffmpeg_check_type_6.txt -c:v libx264 -profile:v high444 -level:v 4.0 -pix_fmt yuv420p /tmp/alcala-26.01.2021_check_type_6.mp4
+
+or with h265
+
+ffmpeg -safe 0 -r 30 -f concat -i ffmpeg_check_type_0.txt -c:v libx265 -level:v 4.0 -pix_fmt yuv420p /tmp/alcala-26.01.2021_check_type_0_h265.mp4
+ffmpeg -safe 0 -r 30 -f concat -i ffmpeg_check_type_1.txt -c:v libx265 -level:v 4.0 -pix_fmt yuv420p /tmp/alcala-26.01.2021_check_type_1_h265.mp4
+ffmpeg -safe 0 -r 30 -f concat -i ffmpeg_check_type_2.txt -c:v libx265 -level:v 4.0 -pix_fmt yuv420p /tmp/alcala-26.01.2021_check_type_2_h265.mp4
+ffmpeg -safe 0 -r 30 -f concat -i ffmpeg_check_type_3.txt -c:v libx265 -level:v 4.0 -pix_fmt yuv420p /tmp/alcala-26.01.2021_check_type_3_h265.mp4
+ffmpeg -safe 0 -r 30 -f concat -i ffmpeg_check_type_4.txt -c:v libx265 -level:v 4.0 -pix_fmt yuv420p /tmp/alcala-26.01.2021_check_type_4_h265.mp4
+ffmpeg -safe 0 -r 30 -f concat -i ffmpeg_check_type_5.txt -c:v libx265 -level:v 4.0 -pix_fmt yuv420p /tmp/alcala-26.01.2021_check_type_5_h265.mp4
+ffmpeg -safe 0 -r 30 -f concat -i ffmpeg_check_type_6.txt -c:v libx265 -level:v 4.0 -pix_fmt yuv420p /tmp/alcala-26.01.2021_check_type_6_h265.mp4
 ```
 
 ## Log
