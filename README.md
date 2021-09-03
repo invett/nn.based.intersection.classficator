@@ -1,12 +1,11 @@
-[![CC BY-NC-SA 4.0][cc-by-sa-shield]][cc-by-sa]
+
 
 ## Urban Intersection Classification: A Comparative Analysis
 
 ### License
-This work is licensed under a [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License][cc-by-sa].
-[![CC BY-SA 4.0][cc-by-sa-image]][cc-by-sa]
+This work is licensed under GPL-3.0-or-later
 
-This code is a WIP (Work In Progress), use at your own risk. This version only works on GPUs (no CPU version available).
+This code is a WIP (Work In Progress), use at your own risk. 
 
 Tested on:
 * Kubuntu 20.04
@@ -15,7 +14,7 @@ Tested on:
 * pytorch 1.8
 
 # News
-01/SEPT/2021 : license added.
+01/SEPT/2021 : GPL license added.
 
 # Info: 
 ## Data Folder structure
