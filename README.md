@@ -1,10 +1,11 @@
 # Urban Intersection Classification: A Comparative Analysis
 
 The repository contains the code used for all the experiments of the work 
-"Urban Intersection Classification: A Comparative Analysis" by  
-
-Augusto Luis Ballardini, Álvaro Hernández Saz, Sandra Carrasco Limeros, Javier Lorenzo Díaz,
+"Urban Intersection Classification: A Comparative Analysis" by  Augusto Luis Ballardini, Álvaro Hernández Saz, Sandra Carrasco Limeros, Javier Lorenzo Díaz,
 Ignacio Parra Alonso, Noelia Hernández Parra, Iván García Daza and Miguel Ángel Sotelo.
+
+Download paper at: tbd
+DOI: tbd
 
 Contacts: augusto.ballardini@uah.es and alvaro.hernandezsaz@uah.es 
 
