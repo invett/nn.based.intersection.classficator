@@ -777,7 +777,45 @@ for sequence_number, sequence in enumerate(files):
             fullscreen = not fullscreen
 
         k = cv2.waitKey(0)
-        #print(k)
+        print(k)
+
+        if k == 110:  # SKIP TO NEXT
+            current_file = file
+            # skip until finds a new intersection
+            if annotations[sequence_number][current_file] == -1:
+                while annotations[sequence_number][current_file] == -1 and current_file < len(sequence) - 1:
+                    current_file = current_file + 1
+            else:
+                current_label = annotations[sequence_number][current_file]
+                while annotations[sequence_number][current_file] == current_label:
+                    current_file = current_file + 1
+                while annotations[sequence_number][current_file] == -1 and current_file < len(sequence) - 1:
+                    current_file = current_file + 1
+
+            if current_file >= len(sequence):
+                print('bug')
+                exit(-1)
+            file = current_file     # set the current frame
+            continue                # restart the main loop with the current frame
+
+        if k == 112:  # SKIP TO PREVIOUS
+            current_file = file
+            # skip until finds a new intersection
+            if annotations[sequence_number][current_file] == -1:
+                while annotations[sequence_number][current_file] == -1 and current_file > 1:
+                    current_file = current_file - 1
+            else:
+                current_label = annotations[sequence_number][current_file]
+                while annotations[sequence_number][current_file] == current_label:
+                    current_file = current_file - 1
+                while annotations[sequence_number][current_file] == -1 and current_file > 1:
+                    current_file = current_file - 1
+
+            if current_file >= len(sequence):
+                print('bug')
+                exit(-1)
+            file = current_file     # set the current frame
+            continue                # restart the main loop with the current frame
 
         if k == 190:  # enable skip F1
             if file + 1 < len(sequence) - 1:
