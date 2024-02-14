@@ -1,0 +1,25 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="generate new dataset" type="PythonConfigurationType" factoryName="Python">
+    <module name="nn.based.intersection.classficator" />
+    <option name="INTERPRETER_OPTIONS" value="" />
+    <option name="PARENT_ENVS" value="true" />
+    <envs>
+      <env name="PYTHONUNBUFFERED" value="1" />
+      <env name="CUDA_VISIBLE_DEVICES" value="0" />
+    </envs>
+    <option name="SDK_HOME" value="sftp://ballardini@127.0.0.1:1111/home/ballardini/anaconda3/envs/augusto3.8/bin/python" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts" />
+    <option name="IS_MODULE_SDK" value="false" />
+    <option name="ADD_CONTENT_ROOTS" value="true" />
+    <option name="ADD_SOURCE_ROOTS" value="true" />
+    <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+    <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/generate-bev-dataset.py" />
+    <option name="PARAMETERS" value="--rootfolder $USER_HOME$/DualBiSeNet/KITTI-ROAD/prefix_all.txt --savefolder /tmp/kitti-road-3d-masked --augmentation 0" />
+    <option name="SHOW_COMMAND_LINE" value="false" />
+    <option name="EMULATE_TERMINAL" value="false" />
+    <option name="MODULE_MODE" value="false" />
+    <option name="REDIRECT_INPUT" value="false" />
+    <option name="INPUT_FILE" value="" />
+    <method v="2" />
+  </configuration>
+</component>

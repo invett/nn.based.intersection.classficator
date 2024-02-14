@@ -1,4 +1,5 @@
 trainedmodels/teacher/*.pth
 miscellaneous/__pycache__/*
-.idea
 */__pycache__/*
+/.idea/*
+!/.idea/runConfigurations
