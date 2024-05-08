@@ -1,6 +1,7 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="train" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
     <module name="nn.based.intersection.classficator" />
+    <option name="ENV_FILES" value="" />
     <option name="INTERPRETER_OPTIONS" value="" />
     <option name="PARENT_ENVS" value="true" />
     <envs>
@@ -8,6 +9,7 @@
       <env name="CUDA_VISIBLE_DEVICES" value="0" />
     </envs>
     <option name="SDK_HOME" value="sftp://ballardini@127.0.0.1:1111/home/ballardini/anaconda3/envs/augusto3.8/bin/python" />
+    <option name="SDK_NAME" value="nn_based_intersection_classficator @ HP" />
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../nn.based.intersection.classficator.pycharm" />
     <option name="IS_MODULE_SDK" value="false" />
     <option name="ADD_CONTENT_ROOTS" value="true" />

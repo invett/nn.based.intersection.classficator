@@ -35,6 +35,7 @@ from miscellaneous.utils import init_function, send_telegram_message, send_teleg
     svm_testing_lstm, mahalanobis_testing_lstm, get_distances, get_distances_embb
 from model.models import Resnet, LSTM, GRU, VGG, Mobilenet_v3, Inception_v3, Freezed_Model
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def str2bool(v):
     """
@@ -144,11 +145,11 @@ def test(args, dataloader_test, dataloader_train=None, dataloader_val=None, save
 
     if torch.cuda.is_available() and args.use_gpu:
         if args.model == 'LSTM':
-            model = model.cuda()
-            feature_extractor_model = feature_extractor_model.cuda()
+            model = model.to(device)
+            feature_extractor_model = feature_extractor_model.to(device)
             feature_extractor_model.eval()
         else:
-            model = model.cuda()
+            model = model.to(device)
 
     # Start testing
 
@@ -521,13 +522,13 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
         if args.weighted:
             if args.weight_tensor == 'Kitti360':
                 weights = [0.99, 1.01, 0.98, 0.99, 1.05, 0.98, 0.99]
-                class_weights = torch.FloatTensor(weights).cuda()
+                class_weights = torch.FloatTensor(weights).to(device)
             elif args.weight_tensor == 'Alcala':
                 weights = [0.89, 1.13, 1.09, 1.05, 0.93, 1.06, 0.86]
-                class_weights = torch.FloatTensor(weights).cuda()
+                class_weights = torch.FloatTensor(weights).to(device)
             elif args.weight_tensor == 'Kitti2011':
                 weights = [1.06, 1.11, 1.12, 0.98, 0.99, 0.96, 0.78]
-                class_weights = torch.FloatTensor(weights).cuda()
+                class_weights = torch.FloatTensor(weights).to(device)
             reducer = reducers.ClassWeightedReducer(class_weights)
         elif args.nonzero:
             weights = None
@@ -585,13 +586,13 @@ def train(args, model, optimizer, scheduler, dataloader_train, dataloader_val, v
             if args.weighted:
                 if args.weight_tensor == 'Kitti360':
                     weights = [0.99, 1.01, 0.98, 0.99, 1.05, 0.98, 0.99]
-                    class_weights = torch.FloatTensor(weights).cuda()
+                    class_weights = torch.FloatTensor(weights).to(device)
                 elif args.weight_tensor == 'Alcala':
                     weights = [0.89, 1.13, 1.09, 1.05, 0.93, 1.06, 0.86]
-                    class_weights = torch.FloatTensor(weights).cuda()
+                    class_weights = torch.FloatTensor(weights).to(device)
                 elif args.weight_tensor == 'Kitti2011':
                     weights = [1.06, 1.11, 1.12, 0.98, 0.99, 0.96, 0.78]
-                    class_weights = torch.FloatTensor(weights).cuda()
+                    class_weights = torch.FloatTensor(weights).to(device)
                 criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
             else:
                 weights = None
@@ -1179,7 +1180,7 @@ def main(args, model=None):
                     print("=> training all from scratch")
 
                 if torch.cuda.is_available() and args.use_gpu:
-                    feature_extractor_model = feature_extractor_model.cuda()
+                    feature_extractor_model = feature_extractor_model.to(device)
             else:
                 print('Wrong model selection')
                 exit(-1)
@@ -1196,14 +1197,14 @@ def main(args, model=None):
                     args.start_epoch = checkpoint['epoch'] + 1
                     model.load_state_dict(checkpoint['model_state_dict'])
                     if torch.cuda.is_available() and args.use_gpu:
-                        model = model.cuda()
+                        model = model.to(device)
                     print("=> loaded checkpoint '{}' (epoch {}) (loss {})"
                           .format(args.resume, checkpoint['epoch'], checkpoint['loss']))
                 else:
                     print("=> no checkpoint found at '{}'".format(args.resume))
             else:
                 if torch.cuda.is_available() and args.use_gpu:
-                    model = model.cuda()
+                    model = model.to(device)
 
             # Build optimizer
             if args.optimizer == 'rmsprop':
